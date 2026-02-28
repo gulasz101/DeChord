@@ -14,11 +14,11 @@
 
 ## Task 1: Backend Project Setup
 
-- [ ] Step 1: Create backend directory and pyproject.toml
-- [ ] Step 2: Install dependencies
-- [ ] Step 3: Create FastAPI skeleton
-- [ ] Step 4: Verify server starts
-- [ ] Step 5: Commit
+- [x] Step 1: Create backend directory and pyproject.toml
+- [x] Step 2: Install dependencies
+- [x] Step 3: Create FastAPI skeleton
+- [x] Step 4: Verify server starts
+- [x] Step 5: Commit
 
 **Files:**
 - Create: `backend/pyproject.toml`
@@ -105,10 +105,10 @@ refs: docs/plans/2026-02-28-dechord-web-implementation.md"
 
 ## Task 2: Backend Analysis Module
 
-- [ ] Step 1: Create analysis module with chord/key/tempo detection
-- [ ] Step 2: Create tests for cache logic
-- [ ] Step 3: Run tests
-- [ ] Step 4: Commit
+- [x] Step 1: Create analysis module with chord/key/tempo detection
+- [x] Step 2: Create tests for cache logic
+- [x] Step 3: Run tests
+- [x] Step 4: Commit
 
 **Files:**
 - Create: `backend/app/analysis.py`
@@ -313,10 +313,10 @@ refs: docs/plans/2026-02-28-dechord-web-implementation.md"
 
 ## Task 3: Backend API Endpoints
 
-- [ ] Step 1: Create API routes for analyze, status, result, audio
-- [ ] Step 2: Create tests for API endpoints
-- [ ] Step 3: Run tests
-- [ ] Step 4: Commit
+- [x] Step 1: Create API routes for analyze, status, result, audio
+- [x] Step 2: Create tests for API endpoints
+- [x] Step 3: Run tests
+- [x] Step 4: Commit
 
 **Files:**
 - Modify: `backend/app/main.py`
@@ -476,11 +476,11 @@ refs: docs/plans/2026-02-28-dechord-web-implementation.md"
 
 ## Task 4: Frontend Project Setup
 
-- [ ] Step 1: Scaffold Vite + React + TypeScript project with Bun
-- [ ] Step 2: Install Tailwind CSS v4
-- [ ] Step 3: Configure Vite proxy to backend
-- [ ] Step 4: Verify dev server starts
-- [ ] Step 5: Commit
+- [x] Step 1: Scaffold Vite + React + TypeScript project with Bun
+- [x] Step 2: Install Tailwind CSS v4
+- [x] Step 3: Configure Vite proxy to backend
+- [x] Step 4: Verify dev server starts
+- [x] Step 5: Commit
 
 **Files:**
 - Create: `frontend/` (scaffolded by Vite)
@@ -563,9 +563,9 @@ refs: docs/plans/2026-02-28-dechord-web-implementation.md"
 
 ## Task 5: Frontend API Client & Types
 
-- [ ] Step 1: Create TypeScript types for API responses
-- [ ] Step 2: Create API client module
-- [ ] Step 3: Commit
+- [x] Step 1: Create TypeScript types for API responses
+- [x] Step 2: Create API client module
+- [x] Step 3: Commit
 
 **Files:**
 - Create: `frontend/src/lib/types.ts`
@@ -660,10 +660,10 @@ refs: docs/plans/2026-02-28-dechord-web-implementation.md"
 
 ## Task 6: Music Theory Utility (Chord-to-Notes Mapping)
 
-- [ ] Step 1: Create music utility with chord parsing and fretboard mapping
-- [ ] Step 2: Create tests
-- [ ] Step 3: Run tests
-- [ ] Step 4: Commit
+- [x] Step 1: Create music utility with chord parsing and fretboard mapping
+- [x] Step 2: Create tests
+- [x] Step 3: Run tests
+- [x] Step 4: Commit
 
 **Files:**
 - Create: `frontend/src/lib/music.ts`
@@ -870,8 +870,8 @@ refs: docs/plans/2026-02-28-dechord-web-implementation.md"
 
 ## Task 7: Audio Player Hook
 
-- [ ] Step 1: Create useAudioPlayer hook
-- [ ] Step 2: Commit
+- [x] Step 1: Create useAudioPlayer hook
+- [x] Step 2: Commit
 
 **Files:**
 - Create: `frontend/src/hooks/useAudioPlayer.ts`
@@ -1014,8 +1014,8 @@ refs: docs/plans/2026-02-28-dechord-web-implementation.md"
 
 ## Task 8: Chord Sync Hook
 
-- [ ] Step 1: Create useChordSync hook
-- [ ] Step 2: Commit
+- [x] Step 1: Create useChordSync hook
+- [x] Step 2: Commit
 
 **Files:**
 - Create: `frontend/src/hooks/useChordSync.ts`
@@ -1068,8 +1068,8 @@ refs: docs/plans/2026-02-28-dechord-web-implementation.md"
 
 ## Task 9: DropZone Component
 
-- [ ] Step 1: Create DropZone component
-- [ ] Step 2: Commit
+- [x] Step 1: Create DropZone component
+- [x] Step 2: Commit
 
 **Files:**
 - Create: `frontend/src/components/DropZone.tsx`
@@ -1161,8 +1161,8 @@ refs: docs/plans/2026-02-28-dechord-web-implementation.md"
 
 ## Task 10: ChordTimeline Component
 
-- [ ] Step 1: Create ChordTimeline component with wrapping lines and playhead
-- [ ] Step 2: Commit
+- [x] Step 1: Create ChordTimeline component with wrapping lines and playhead
+- [x] Step 2: Commit
 
 **Files:**
 - Create: `frontend/src/components/ChordTimeline.tsx`
@@ -1286,8 +1286,8 @@ refs: docs/plans/2026-02-28-dechord-web-implementation.md"
 
 ## Task 11: Fretboard Component
 
-- [ ] Step 1: Create Fretboard component
-- [ ] Step 2: Commit
+- [x] Step 1: Create Fretboard component
+- [x] Step 2: Commit
 
 **Files:**
 - Create: `frontend/src/components/Fretboard.tsx`
@@ -1378,8 +1378,8 @@ refs: docs/plans/2026-02-28-dechord-web-implementation.md"
 
 ## Task 12: TransportBar Component
 
-- [ ] Step 1: Create TransportBar component
-- [ ] Step 2: Commit
+- [x] Step 1: Create TransportBar component
+- [x] Step 2: Commit
 
 **Files:**
 - Create: `frontend/src/components/TransportBar.tsx`
@@ -1501,8 +1501,8 @@ refs: docs/plans/2026-02-28-dechord-web-implementation.md"
 
 ## Task 13: Header Component
 
-- [ ] Step 1: Create Header component
-- [ ] Step 2: Commit
+- [x] Step 1: Create Header component
+- [x] Step 2: Commit
 
 **Files:**
 - Create: `frontend/src/components/Header.tsx`
