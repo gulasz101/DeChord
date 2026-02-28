@@ -19,11 +19,9 @@ export function ChordTimeline({
   chords,
   currentIndex,
   currentTime,
-  duration,
   loopStart,
   loopEnd,
   onChordClick,
-  onSeek,
 }: ChordTimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLDivElement>(null);

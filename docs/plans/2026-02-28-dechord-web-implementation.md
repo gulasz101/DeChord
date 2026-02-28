@@ -1554,9 +1554,9 @@ refs: docs/plans/2026-02-28-dechord-web-implementation.md"
 
 ## Task 14: App Integration — Wire Everything Together
 
-- [ ] Step 1: Update App.tsx to integrate all components
-- [ ] Step 2: Test end-to-end manually
-- [ ] Step 3: Commit
+- [x] Step 1: Update App.tsx to integrate all components
+- [x] Step 2: Test end-to-end manually
+- [x] Step 3: Commit
 
 **Files:**
 - Modify: `frontend/src/App.tsx`
