@@ -17,16 +17,16 @@
 
 ## Task 2: Add tmux-backed Makefile targets
 
-- [ ] Step 1: Red phase - verify missing targets fail
-- [ ] Step 2: Green phase - implement `backend-up/backend-attach/backend-down/backend-status/backend-logs`
-- [ ] Step 3: Green phase - implement `frontend-up/frontend-attach/frontend-down/frontend-status/frontend-logs`
-- [ ] Step 4: Green phase - implement aggregate targets (`up`, `down`, `status`, `logs`) and keep `dev/backend/frontend` compatible
-- [ ] Step 5: Verify with `make -n` and targeted runtime status checks
-- [ ] Step 6: Commit
+- [x] Step 1: Red phase - verify missing targets fail
+- [x] Step 2: Green phase - implement `backend-up/backend-attach/backend-down/backend-status/backend-logs`
+- [x] Step 3: Green phase - implement `frontend-up/frontend-attach/frontend-down/frontend-status/frontend-logs`
+- [x] Step 4: Green phase - implement aggregate targets (`up`, `down`, `status`, `logs`) and keep `dev/backend/frontend` compatible
+- [x] Step 5: Verify with `make -n` and targeted runtime status checks
+- [x] Step 6: Commit
 
 ## Task 3: Final verification and progress reflection
 
-- [ ] Step 1: Validate no duplicate session creation behavior
+- [x] Step 1: Validate no duplicate session creation behavior
 - [ ] Step 2: Mark plan tasks complete
 - [ ] Step 3: Commit
 
