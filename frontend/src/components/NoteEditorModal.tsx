@@ -4,6 +4,9 @@ interface NoteEditorModalProps {
   open: boolean;
   mode: "time" | "chord";
   title: string;
+  initialText?: string;
+  initialToastDurationSec?: number;
+  submitLabel?: string;
   onClose: () => void;
   onSave: (payload: { text: string; toastDurationSec?: number }) => Promise<void>;
 }
@@ -12,6 +15,9 @@ export function NoteEditorModal({
   open,
   mode,
   title,
+  initialText,
+  initialToastDurationSec,
+  submitLabel,
   onClose,
   onSave,
 }: NoteEditorModalProps) {
@@ -21,11 +27,11 @@ export function NoteEditorModal({
 
   useEffect(() => {
     if (open) {
-      setText("");
-      setToastDurationSec(2);
+      setText(initialText ?? "");
+      setToastDurationSec(initialToastDurationSec ?? 2);
       setSaving(false);
     }
-  }, [open]);
+  }, [open, initialText, initialToastDurationSec]);
 
   if (!open) return null;
 
@@ -79,7 +85,7 @@ export function NoteEditorModal({
             className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-60"
             disabled={saving || !text.trim()}
           >
-            Save Note
+            {submitLabel ?? "Save Note"}
           </button>
         </div>
       </div>

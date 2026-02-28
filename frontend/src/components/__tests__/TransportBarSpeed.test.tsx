@@ -11,12 +11,13 @@ describe("TransportBar speed options", () => {
         playing={false}
         volume={1}
         speedPercent={100}
-        noteMarkers={[]}
+        timeNoteMarkers={[]}
         loopActive={false}
         onTogglePlay={() => {}}
         onSeek={() => {}}
         onSeekRelative={() => {}}
-        onProgressClick={() => {}}
+        onNoteLaneClick={() => {}}
+        onNoteMarkerClick={() => {}}
         onVolumeChange={() => {}}
         onSpeedChange={() => {}}
         onClearLoop={() => {}}

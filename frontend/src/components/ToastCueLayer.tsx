@@ -11,11 +11,11 @@ export function ToastCueLayer({ toasts }: ToastCueLayerProps) {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="pointer-events-none fixed right-4 top-16 z-40 flex w-80 flex-col gap-2">
+    <div className="pointer-events-none fixed left-1/2 top-6 z-40 flex w-[min(92vw,48rem)] -translate-x-1/2 flex-col gap-3">
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className="rounded-lg border border-amber-400/40 bg-amber-500/20 px-3 py-2 text-sm text-amber-100 shadow-lg backdrop-blur"
+          className="rounded-xl border border-amber-300/50 bg-amber-500/25 px-6 py-4 text-center text-base font-semibold text-amber-100 shadow-2xl backdrop-blur"
         >
           {toast.text}
         </div>

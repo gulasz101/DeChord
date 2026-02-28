@@ -52,6 +52,7 @@ export function ChordTimeline({
     <div className="flex flex-wrap gap-1 p-4 overflow-y-auto">
       {chords.map((chord, i) => {
         const isCurrent = i === currentIndex;
+        const isNext = i === currentIndex + 1;
         const inLoop = isInLoop(i);
         const hasNote = noteChordIndexes?.has(i);
         const progress =
@@ -69,6 +70,8 @@ export function ChordTimeline({
             className={`relative h-10 cursor-pointer select-none overflow-hidden rounded text-sm font-mono transition-colors ${
               isCurrent
                 ? "bg-blue-600 text-white"
+                : isNext
+                  ? "bg-amber-700/80 text-amber-100"
                 : inLoop
                   ? "bg-indigo-800 text-indigo-200"
                   : "bg-slate-800 text-slate-200 hover:bg-slate-700"

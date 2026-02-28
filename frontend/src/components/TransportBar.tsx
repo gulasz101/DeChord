@@ -4,13 +4,14 @@ interface TransportBarProps {
   playing: boolean;
   volume: number;
   speedPercent: number;
-  noteMarkers: number[];
+  timeNoteMarkers: Array<{ id: number; timestampSec: number }>;
   loopActive: boolean;
   loopLabel?: string;
   onTogglePlay: () => void;
   onSeek: (time: number) => void;
   onSeekRelative: (delta: number) => void;
-  onProgressClick: (time: number) => void;
+  onNoteLaneClick: (time: number) => void;
+  onNoteMarkerClick: (noteId: number) => void;
   onVolumeChange: (v: number) => void;
   onSpeedChange: (speedPercent: number) => void;
   onClearLoop: () => void;
@@ -30,17 +31,25 @@ export function TransportBar({
   playing,
   volume,
   speedPercent,
-  noteMarkers,
+  timeNoteMarkers,
   loopActive,
   loopLabel,
   onTogglePlay,
   onSeek,
   onSeekRelative,
-  onProgressClick,
+  onNoteLaneClick,
+  onNoteMarkerClick,
   onVolumeChange,
   onSpeedChange,
   onClearLoop,
 }: TransportBarProps) {
+  const clampTimeFromClientX = (target: HTMLDivElement, clientX: number) => {
+    const rect = target.getBoundingClientRect();
+    if (rect.width <= 0) return 0;
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return (duration || 0) * ratio;
+  };
+
   return (
     <div className="border-t border-slate-800 bg-slate-900 px-4 py-2">
       <div className="mb-2 flex items-center gap-2">
@@ -60,6 +69,42 @@ export function TransportBar({
         <span className="w-12 text-right font-mono text-xs text-slate-300">{formatTime(currentTime)}</span>
 
         <div className="relative flex-1">
+          <div
+            role="button"
+            tabIndex={0}
+            title="Click to add/edit timed note"
+            className="mb-1 h-4 w-full cursor-pointer rounded bg-slate-800/70"
+            onClick={(e) => {
+              const t = clampTimeFromClientX(e.currentTarget, e.clientX);
+              onNoteLaneClick(t);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                const t = duration * 0.5;
+                onNoteLaneClick(t);
+              }
+            }}
+          >
+            <div className="relative h-full w-full">
+              {timeNoteMarkers.map((m) => {
+                const left = duration > 0 ? (m.timestampSec / duration) * 100 : 0;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className="absolute top-1/2 h-3 w-3 -translate-y-1/2 -translate-x-1/2 rounded-full border border-amber-200 bg-amber-400 shadow"
+                    style={{ left: `${left}%` }}
+                    title="Edit note"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onNoteMarkerClick(m.id);
+                    }}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
           <input
             type="range"
             min={0}
@@ -67,24 +112,8 @@ export function TransportBar({
             step={0.05}
             value={currentTime}
             onChange={(e) => onSeek(parseFloat(e.target.value))}
-            onClick={(e) => {
-              const rect = (e.target as HTMLInputElement).getBoundingClientRect();
-              if (rect.width <= 0) return;
-              const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-              onProgressClick((duration || 0) * ratio);
-            }}
             className="h-1 w-full accent-blue-500"
           />
-          {noteMarkers.map((sec, idx) => {
-            const left = duration > 0 ? (sec / duration) * 100 : 0;
-            return (
-              <span
-                key={`${sec}-${idx}`}
-                className="pointer-events-none absolute -top-1 h-2 w-1 rounded bg-amber-300"
-                style={{ left: `${left}%` }}
-              />
-            );
-          })}
         </div>
 
         <span className="w-12 font-mono text-xs text-slate-300">{formatTime(duration)}</span>
@@ -121,7 +150,7 @@ export function TransportBar({
           className="h-1 w-20 accent-blue-500"
         />
       </div>
-      <p className="text-[11px] text-slate-500">Tip: double-click a chord to add a chord note. Click progress to add a timed note.</p>
+      <p className="text-[11px] text-slate-500">Tip: double-click a chord to add a chord note. Click the lane above progress to add/edit timed notes.</p>
     </div>
   );
 }

@@ -16,6 +16,7 @@ import {
   listSongs,
   getSong,
   createSongNote,
+  updateSongNote,
   savePlaybackPrefs,
 } from "./lib/api";
 import type { AnalysisResult, PlaybackPrefs, SongNote, SongSummary } from "./lib/types";
@@ -23,8 +24,11 @@ import type { AnalysisResult, PlaybackPrefs, SongNote, SongSummary } from "./lib
 interface NoteModalState {
   open: boolean;
   mode: "time" | "chord";
+  noteId?: number;
   timestampSec?: number;
   chordIndex?: number;
+  initialText?: string;
+  initialToastDurationSec?: number;
 }
 
 interface ActiveToast {
@@ -240,30 +244,70 @@ function App() {
     return new Set(notes.filter((n) => n.type === "chord" && n.chord_index !== null).map((n) => n.chord_index as number));
   }, [notes]);
 
-  const noteMarkers = useMemo(() => {
-    if (!result) return [];
-    const markers: number[] = [];
-    for (const note of notes) {
-      if (note.type === "time" && note.timestamp_sec !== null) markers.push(note.timestamp_sec);
-      if (note.type === "chord" && note.chord_index !== null && result.chords[note.chord_index]) {
-        markers.push(result.chords[note.chord_index].start);
-      }
-    }
-    return markers;
-  }, [notes, result]);
+  const timeNoteMarkers = useMemo(
+    () =>
+      notes
+        .filter((n) => n.type === "time" && n.timestamp_sec !== null)
+        .map((n) => ({ id: n.id, timestampSec: n.timestamp_sec as number })),
+    [notes],
+  );
 
   const openTimedNoteModal = useCallback((timestampSec: number) => {
-    setNoteModal({ open: true, mode: "time", timestampSec });
-  }, []);
+    const currentChordDurationLeft =
+      result && currentIndex >= 0 && result.chords[currentIndex]
+        ? Math.max(0.5, result.chords[currentIndex].end - player.currentTime)
+        : 2;
+    setNoteModal({
+      open: true,
+      mode: "time",
+      timestampSec,
+      initialText: "",
+      initialToastDurationSec: currentChordDurationLeft,
+    });
+  }, [result, currentIndex, player.currentTime]);
+
+  const openTimedNoteEditModal = useCallback((noteId: number) => {
+    const note = notes.find((n) => n.id === noteId);
+    if (!note || note.type !== "time") return;
+
+    setNoteModal({
+      open: true,
+      mode: "time",
+      noteId,
+      timestampSec: note.timestamp_sec ?? undefined,
+      initialText: note.text,
+      initialToastDurationSec: note.toast_duration_sec ?? 2,
+    });
+  }, [notes]);
 
   const openChordNoteModal = useCallback((chordIndex: number) => {
-    setNoteModal({ open: true, mode: "chord", chordIndex });
+    setNoteModal({ open: true, mode: "chord", chordIndex, initialText: "" });
   }, []);
 
   const saveModalNote = useCallback(async ({ text, toastDurationSec }: { text: string; toastDurationSec?: number }) => {
     if (!selectedSongId) return;
 
     if (noteModal.mode === "time") {
+      if (noteModal.noteId) {
+        const updated = await updateSongNote(noteModal.noteId, {
+          text,
+          toast_duration_sec: toastDurationSec,
+        });
+        setNotes((prev) =>
+          prev.map((n) =>
+            n.id === noteModal.noteId
+              ? {
+                  ...n,
+                  text: updated.text,
+                  toast_duration_sec: updated.toast_duration_sec,
+                }
+              : n,
+          ),
+        );
+        setNoteModal({ open: false, mode: "time" });
+        return;
+      }
+
       const created = await createSongNote(selectedSongId, {
         type: "time",
         text,
@@ -350,13 +394,14 @@ function App() {
             playing={player.playing}
             volume={player.volume}
             speedPercent={prefs.speed_percent}
-            noteMarkers={noteMarkers}
+            timeNoteMarkers={timeNoteMarkers}
             loopActive={loopStartIdx !== null && loopEndIdx !== null}
             loopLabel={loopLabel}
             onTogglePlay={player.togglePlay}
             onSeek={player.seek}
             onSeekRelative={player.seekRelative}
-            onProgressClick={openTimedNoteModal}
+            onNoteLaneClick={openTimedNoteModal}
+            onNoteMarkerClick={openTimedNoteEditModal}
             onVolumeChange={(v) => setPrefs((p) => ({ ...p, volume: v }))}
             onSpeedChange={(speedPercent) => setPrefs((p) => ({ ...p, speed_percent: speedPercent }))}
             onClearLoop={clearLoop}
@@ -367,7 +412,10 @@ function App() {
       <NoteEditorModal
         open={noteModal.open}
         mode={noteModal.mode}
-        title={noteModal.mode === "time" ? "Add Time Note" : "Add Chord Note"}
+        title={noteModal.mode === "time" ? "Timed Note" : "Chord Note"}
+        initialText={noteModal.initialText}
+        initialToastDurationSec={noteModal.initialToastDurationSec}
+        submitLabel={noteModal.noteId ? "Update Note" : "Save Note"}
         onClose={() => setNoteModal({ open: false, mode: "time" })}
         onSave={saveModalNote}
       />
