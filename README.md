@@ -228,3 +228,62 @@ Thank you for using DeChord! I hope it helps you in your musical journey.
 ![Screenshot (6)](https://github.com/chinmaykrishnroy/DeChord/assets/65699140/318b373d-1896-4549-9d0a-7b9a290b9744)
 ![Screenshot (5)](https://github.com/chinmaykrishnroy/DeChord/assets/65699140/09d12110-2b0c-4de9-bf04-4eedbca234f5)
 ![image](https://github.com/user-attachments/assets/8c1966eb-27f2-4a5f-9cc4-b1ea8785847b)
+
+## Web App (2026 Redesign)
+
+The repository now includes a browser-based DeChord practice app (FastAPI backend + React frontend) with persistent local storage.
+
+### Highlights
+
+- Persistent song library (single-user localhost mode)
+- Audio files stored as BLOB in local LibSQL database
+- Saved analysis (key/tempo/chords) per song
+- Playback speed control from `40%` to `200%`
+- Timeline looping and chord sync
+- Fretboard current + next chord highlighting
+- Timestamp notes and chord notes with playback toasts
+- Note markers on playback progress and chord timeline
+
+### Start Locally
+
+Use tmux-managed targets from the root `Makefile`:
+
+```bash
+make install
+make up
+make status
+```
+
+Open:
+
+- Frontend: [http://localhost:5173](http://localhost:5173)
+- Backend API: [http://localhost:8000/api/health](http://localhost:8000/api/health)
+
+### tmux Controls
+
+```bash
+make backend-up
+make backend-attach
+make backend-status
+make backend-logs
+make backend-down
+
+make frontend-up
+make frontend-attach
+make frontend-status
+make frontend-logs
+make frontend-down
+
+make up
+make down
+make status
+make logs
+```
+
+### Test Commands
+
+```bash
+cd backend && uv run pytest tests/ -v
+cd frontend && bun test
+cd frontend && bun run build
+```

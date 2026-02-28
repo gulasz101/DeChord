@@ -1,34 +1,115 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Header } from "./components/Header";
 import { DropZone } from "./components/DropZone";
+import { SongLibraryPanel } from "./components/SongLibraryPanel";
 import { ChordTimeline } from "./components/ChordTimeline";
 import { Fretboard } from "./components/Fretboard";
 import { TransportBar } from "./components/TransportBar";
+import { NoteEditorModal } from "./components/NoteEditorModal";
+import { ToastCueLayer } from "./components/ToastCueLayer";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
 import { useChordSync } from "./hooks/useChordSync";
-import { uploadAudio, pollUntilComplete, getAudioUrl } from "./lib/api";
-import type { AnalysisResult } from "./lib/types";
+import {
+  uploadAudio,
+  pollUntilComplete,
+  getAudioUrl,
+  listSongs,
+  getSong,
+  createSongNote,
+  savePlaybackPrefs,
+} from "./lib/api";
+import type { AnalysisResult, PlaybackPrefs, SongNote, SongSummary } from "./lib/types";
+
+interface NoteModalState {
+  open: boolean;
+  mode: "time" | "chord";
+  timestampSec?: number;
+  chordIndex?: number;
+}
+
+interface ActiveToast {
+  id: number;
+  text: string;
+}
+
+const DEFAULT_PREFS: PlaybackPrefs = {
+  speed_percent: 100,
+  volume: 1,
+  loop_start_index: null,
+  loop_end_index: null,
+};
 
 function App() {
+  const [songs, setSongs] = useState<SongSummary[]>([]);
+  const [selectedSongId, setSelectedSongId] = useState<number | null>(null);
+
   const [result, setResult] = useState<AnalysisResult | null>(null);
-  const [jobId, setJobId] = useState<string | null>(null);
+  const [fileName, setFileName] = useState("");
+  const [notes, setNotes] = useState<SongNote[]>([]);
+  const [prefs, setPrefs] = useState<PlaybackPrefs>(DEFAULT_PREFS);
+
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState("");
-  const [fileName, setFileName] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // Loop state: indices into chords array
   const [loopStartIdx, setLoopStartIdx] = useState<number | null>(null);
   const [loopEndIdx, setLoopEndIdx] = useState<number | null>(null);
 
-  const audioSrc = jobId ? getAudioUrl(jobId) : null;
-  const player = useAudioPlayer(audioSrc);
-  const { currentIndex, currentChord } = useChordSync(
-    result?.chords ?? [],
-    player.currentTime,
-  );
+  const [noteModal, setNoteModal] = useState<NoteModalState>({
+    open: false,
+    mode: "time",
+  });
+  const [activeToasts, setActiveToasts] = useState<ActiveToast[]>([]);
 
-  // Compute loop points in seconds from chord indices
+  const audioSrc = selectedSongId ? getAudioUrl(selectedSongId) : null;
+  const player = useAudioPlayer(audioSrc);
+  const { currentIndex, currentChord } = useChordSync(result?.chords ?? [], player.currentTime);
+
+  const firedTimeNotesRef = useRef<Set<number>>(new Set());
+  const lastTimeRef = useRef(0);
+  const lastChordNoteIndexRef = useRef<number>(-1);
+
+  const loadSongs = useCallback(async () => {
+    const data = await listSongs();
+    setSongs(data.songs);
+    return data.songs;
+  }, []);
+
+  const loadSong = useCallback(async (songId: number) => {
+    const data = await getSong(songId);
+    setSelectedSongId(songId);
+    setFileName(data.song.title);
+    setResult(data.analysis);
+    setNotes(data.notes);
+    setPrefs(data.playback_prefs);
+    setLoopStartIdx(data.playback_prefs.loop_start_index);
+    setLoopEndIdx(data.playback_prefs.loop_end_index);
+    firedTimeNotesRef.current = new Set();
+    lastTimeRef.current = 0;
+    lastChordNoteIndexRef.current = -1;
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const loaded = await loadSongs();
+        if (loaded.length > 0) {
+          await loadSong(loaded[0].id);
+        }
+      } catch {
+        // Best-effort initial load.
+      }
+    })();
+  }, [loadSongs, loadSong]);
+
+  useEffect(() => {
+    player.setPlaybackRate(prefs.speed_percent / 100);
+  }, [prefs.speed_percent]);
+
+  useEffect(() => {
+    player.setVolume(prefs.volume);
+  }, [prefs.volume]);
+
   const loopPoints =
     result && loopStartIdx !== null && loopEndIdx !== null
       ? {
@@ -37,34 +118,87 @@ function App() {
         }
       : null;
 
-  // Sync loop points to audio player
-  if (loopPoints && player.loop?.start !== loopPoints.start) {
-    player.setLoop(loopPoints);
-  }
-  if (!loopPoints && player.loop) {
-    player.setLoop(null);
-  }
+  useEffect(() => {
+    if (loopPoints) {
+      if (!player.loop || player.loop.start !== loopPoints.start || player.loop.end !== loopPoints.end) {
+        player.setLoop(loopPoints);
+      }
+      return;
+    }
+
+    if (player.loop) {
+      player.setLoop(null);
+    }
+  }, [loopPoints, player.loop]);
+
+  useEffect(() => {
+    if (!selectedSongId) return;
+    void savePlaybackPrefs(selectedSongId, {
+      speed_percent: prefs.speed_percent,
+      volume: prefs.volume,
+      loop_start_index: loopStartIdx,
+      loop_end_index: loopEndIdx,
+    });
+  }, [selectedSongId, prefs.speed_percent, prefs.volume, loopStartIdx, loopEndIdx]);
+
+  const addToast = useCallback((text: string, durationSec: number) => {
+    const id = Date.now() + Math.floor(Math.random() * 1000);
+    setActiveToasts((prev) => [...prev, { id, text }]);
+    window.setTimeout(() => {
+      setActiveToasts((prev) => prev.filter((t) => t.id !== id));
+    }, Math.max(durationSec, 0.5) * 1000);
+  }, []);
+
+  useEffect(() => {
+    const lastTime = lastTimeRef.current;
+    const currentTime = player.currentTime;
+
+    if (currentTime < lastTime) {
+      firedTimeNotesRef.current = new Set();
+      lastChordNoteIndexRef.current = -1;
+    }
+
+    const timeNotes = notes.filter((n) => n.type === "time" && n.timestamp_sec !== null);
+    for (const note of timeNotes) {
+      const ts = note.timestamp_sec as number;
+      if (!firedTimeNotesRef.current.has(note.id) && ts > lastTime && ts <= currentTime) {
+        addToast(note.text, note.toast_duration_sec ?? 2);
+        firedTimeNotesRef.current.add(note.id);
+      }
+    }
+
+    if (currentIndex >= 0 && currentIndex !== lastChordNoteIndexRef.current && result) {
+      const chordNotes = notes.filter((n) => n.type === "chord" && n.chord_index === currentIndex);
+      const duration = result.chords[currentIndex].end - result.chords[currentIndex].start;
+      for (const note of chordNotes) {
+        addToast(note.text, note.toast_duration_sec ?? duration);
+      }
+      lastChordNoteIndexRef.current = currentIndex;
+    }
+
+    lastTimeRef.current = currentTime;
+  }, [player.currentTime, currentIndex, notes, addToast, result]);
 
   const handleFile = useCallback(async (file: File) => {
     setLoading(true);
     setError(null);
-    setFileName(file.name.replace(/\.[^.]+$/, ""));
-    setLoopStartIdx(null);
-    setLoopEndIdx(null);
 
     try {
-      const id = await uploadAudio(file);
-      setJobId(id);
-      const analysisResult = await pollUntilComplete(id, (s) => {
+      const upload = await uploadAudio(file);
+      const analysisResult = await pollUntilComplete(upload.job_id, (s) => {
         setProgress(s.progress || "Processing...");
       });
-      setResult(analysisResult);
+
+      await loadSongs();
+      const songId = analysisResult.song_id ?? upload.song_id;
+      await loadSong(songId);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Analysis failed");
     } finally {
       setLoading(false);
+      setProgress("");
     }
-  }, []);
+  }, [loadSong, loadSongs]);
 
   const handleChordClick = useCallback(
     (index: number) => {
@@ -74,20 +208,17 @@ function App() {
         if (index > loopStartIdx) {
           setLoopEndIdx(index);
         } else if (index < loopStartIdx) {
-          // Clicked before start — make this the new start
           setLoopEndIdx(loopStartIdx);
           setLoopStartIdx(index);
-        } else {
-          // Clicked same chord — seek to it
-          if (result) player.seek(result.chords[index].start);
+        } else if (result) {
+          player.seek(result.chords[index].start);
         }
       } else {
-        // Loop already set — clear and start new
         setLoopStartIdx(index);
         setLoopEndIdx(null);
       }
     },
-    [loopStartIdx, loopEndIdx, result, player],
+    [loopStartIdx, loopEndIdx, result],
   );
 
   const clearLoop = useCallback(() => {
@@ -100,77 +231,146 @@ function App() {
       ? `${result.chords[loopStartIdx].label} → ${result.chords[loopEndIdx].label}`
       : undefined;
 
+  const nextChord =
+    result && currentIndex >= 0 && currentIndex < result.chords.length - 1
+      ? result.chords[currentIndex + 1]
+      : null;
+
+  const noteChordIndexes = useMemo(() => {
+    return new Set(notes.filter((n) => n.type === "chord" && n.chord_index !== null).map((n) => n.chord_index as number));
+  }, [notes]);
+
+  const noteMarkers = useMemo(() => {
+    if (!result) return [];
+    const markers: number[] = [];
+    for (const note of notes) {
+      if (note.type === "time" && note.timestamp_sec !== null) markers.push(note.timestamp_sec);
+      if (note.type === "chord" && note.chord_index !== null && result.chords[note.chord_index]) {
+        markers.push(result.chords[note.chord_index].start);
+      }
+    }
+    return markers;
+  }, [notes, result]);
+
+  const openTimedNoteModal = useCallback((timestampSec: number) => {
+    setNoteModal({ open: true, mode: "time", timestampSec });
+  }, []);
+
+  const openChordNoteModal = useCallback((chordIndex: number) => {
+    setNoteModal({ open: true, mode: "chord", chordIndex });
+  }, []);
+
+  const saveModalNote = useCallback(async ({ text, toastDurationSec }: { text: string; toastDurationSec?: number }) => {
+    if (!selectedSongId) return;
+
+    if (noteModal.mode === "time") {
+      const created = await createSongNote(selectedSongId, {
+        type: "time",
+        text,
+        timestamp_sec: noteModal.timestampSec,
+        toast_duration_sec: toastDurationSec,
+      });
+      setNotes((prev) => [...prev, created]);
+      setNoteModal({ open: false, mode: "time" });
+      return;
+    }
+
+    const chordIndex = noteModal.chordIndex ?? 0;
+    const chordDuration =
+      result && result.chords[chordIndex]
+        ? result.chords[chordIndex].end - result.chords[chordIndex].start
+        : 2;
+
+    const created = await createSongNote(selectedSongId, {
+      type: "chord",
+      text,
+      chord_index: chordIndex,
+      toast_duration_sec: chordDuration,
+    });
+    setNotes((prev) => [...prev, created]);
+    setNoteModal({ open: false, mode: "time" });
+  }, [selectedSongId, noteModal, result]);
+
   return (
-    <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
-      <Header
-        songKey={result?.key}
-        tempo={result?.tempo}
-        fileName={fileName || undefined}
-      />
+    <div className="flex h-screen flex-col bg-slate-950 text-slate-100">
+      <Header songKey={result?.key} tempo={result?.tempo} fileName={fileName || undefined} />
+      <ToastCueLayer toasts={activeToasts} />
 
-      <main className="flex-1 overflow-y-auto">
-        {!result && !loading && (
-          <div className="flex items-center justify-center h-full p-4">
-            <DropZone onFile={handleFile} />
-          </div>
-        )}
+      <main className="grid flex-1 grid-cols-1 gap-3 overflow-hidden p-3 lg:grid-cols-[320px,1fr]">
+        <SongLibraryPanel
+          songs={songs}
+          selectedSongId={selectedSongId}
+          loading={loading}
+          onSelect={(songId) => void loadSong(songId)}
+          onUpload={(file) => void handleFile(file)}
+        />
 
-        {loading && (
-          <div className="flex items-center justify-center h-full">
-            <DropZone onFile={() => {}} loading progress={progress} />
-          </div>
-        )}
-
-        {error && (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <p className="text-red-400 mb-4">{error}</p>
-              <button
-                onClick={() => {
-                  setError(null);
-                  setResult(null);
-                  setJobId(null);
-                }}
-                className="px-4 py-2 bg-gray-800 rounded hover:bg-gray-700"
-              >
-                Try again
-              </button>
+        <section className="overflow-y-auto rounded-xl border border-slate-800 bg-slate-900/50">
+          {!result && !loading ? (
+            <div className="flex h-full items-center justify-center p-4">
+              <DropZone onFile={handleFile} />
             </div>
-          </div>
-        )}
+          ) : null}
 
-        {result && !loading && (
-          <ChordTimeline
-            chords={result.chords}
-            currentIndex={currentIndex}
-            currentTime={player.currentTime}
-            duration={result.duration}
-            loopStart={loopStartIdx}
-            loopEnd={loopEndIdx}
-            onChordClick={handleChordClick}
-            onSeek={player.seek}
-          />
-        )}
+          {loading ? (
+            <div className="flex h-full items-center justify-center">
+              <DropZone onFile={() => {}} loading progress={progress} />
+            </div>
+          ) : null}
+
+          {error ? (
+            <div className="flex h-full items-center justify-center">
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          ) : null}
+
+          {result && !loading ? (
+            <ChordTimeline
+              chords={result.chords}
+              currentIndex={currentIndex}
+              currentTime={player.currentTime}
+              duration={result.duration}
+              loopStart={loopStartIdx}
+              loopEnd={loopEndIdx}
+              noteChordIndexes={noteChordIndexes}
+              onChordClick={handleChordClick}
+              onChordNoteRequest={openChordNoteModal}
+              onSeek={player.seek}
+            />
+          ) : null}
+        </section>
       </main>
 
-      {result && (
+      {result ? (
         <>
-          <Fretboard chordLabel={currentChord?.label ?? null} />
+          <Fretboard chordLabel={currentChord?.label ?? null} nextChordLabel={nextChord?.label ?? null} />
           <TransportBar
             currentTime={player.currentTime}
-            duration={player.duration}
+            duration={player.duration || result.duration}
             playing={player.playing}
             volume={player.volume}
+            speedPercent={prefs.speed_percent}
+            noteMarkers={noteMarkers}
             loopActive={loopStartIdx !== null && loopEndIdx !== null}
             loopLabel={loopLabel}
             onTogglePlay={player.togglePlay}
             onSeek={player.seek}
             onSeekRelative={player.seekRelative}
-            onVolumeChange={player.setVolume}
+            onProgressClick={openTimedNoteModal}
+            onVolumeChange={(v) => setPrefs((p) => ({ ...p, volume: v }))}
+            onSpeedChange={(speedPercent) => setPrefs((p) => ({ ...p, speed_percent: speedPercent }))}
             onClearLoop={clearLoop}
           />
         </>
-      )}
+      ) : null}
+
+      <NoteEditorModal
+        open={noteModal.open}
+        mode={noteModal.mode}
+        title={noteModal.mode === "time" ? "Add Time Note" : "Add Chord Note"}
+        onClose={() => setNoteModal({ open: false, mode: "time" })}
+        onSave={saveModalNote}
+      />
     </div>
   );
 }

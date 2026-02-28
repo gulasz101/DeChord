@@ -8,7 +8,9 @@ interface ChordTimelineProps {
   duration: number;
   loopStart: number | null;
   loopEnd: number | null;
+  noteChordIndexes?: Set<number>;
   onChordClick: (index: number) => void;
+  onChordNoteRequest?: (index: number) => void;
   onSeek: (time: number) => void;
 }
 
@@ -21,18 +23,15 @@ export function ChordTimeline({
   currentTime,
   loopStart,
   loopEnd,
+  noteChordIndexes,
   onChordClick,
+  onChordNoteRequest,
 }: ChordTimelineProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to keep current chord visible
   useEffect(() => {
     if (activeRef.current) {
-      activeRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
+      activeRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [currentIndex]);
 
@@ -50,10 +49,11 @@ export function ChordTimeline({
   );
 
   return (
-    <div ref={containerRef} className="flex flex-wrap gap-1 p-4 overflow-y-auto">
+    <div className="flex flex-wrap gap-1 p-4 overflow-y-auto">
       {chords.map((chord, i) => {
         const isCurrent = i === currentIndex;
         const inLoop = isInLoop(i);
+        const hasNote = noteChordIndexes?.has(i);
         const progress =
           isCurrent && chord.end > chord.start
             ? ((currentTime - chord.start) / (chord.end - chord.start)) * 100
@@ -64,30 +64,27 @@ export function ChordTimeline({
             key={i}
             ref={isCurrent ? activeRef : undefined}
             onClick={() => onChordClick(i)}
+            onDoubleClick={() => onChordNoteRequest?.(i)}
             style={{ width: getBlockWidth(chord) }}
-            className={`relative h-10 flex items-center justify-center rounded text-sm font-mono cursor-pointer select-none overflow-hidden transition-colors ${
+            className={`relative h-10 cursor-pointer select-none overflow-hidden rounded text-sm font-mono transition-colors ${
               isCurrent
                 ? "bg-blue-600 text-white"
                 : inLoop
                   ? "bg-indigo-800 text-indigo-200"
-                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                  : "bg-slate-800 text-slate-200 hover:bg-slate-700"
             }`}
           >
-            {/* Progress fill for current chord */}
             {isCurrent && (
-              <div
-                className="absolute inset-y-0 left-0 bg-blue-400/30"
-                style={{ width: `${progress}%` }}
-              />
+              <div className="absolute inset-y-0 left-0 bg-blue-300/30" style={{ width: `${progress}%` }} />
             )}
-            <span className="relative z-10">{chord.label}</span>
-            {/* Loop boundary markers */}
-            {loopStart === i && (
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-400" />
-            )}
-            {loopEnd === i && (
-              <div className="absolute right-0 top-0 bottom-0 w-1 bg-red-400" />
-            )}
+
+            <div className="relative z-10 flex h-full items-center justify-center">
+              {chord.label}
+              {hasNote ? <span className="ml-1 text-amber-300">•</span> : null}
+            </div>
+
+            {loopStart === i && <div className="absolute bottom-0 left-0 top-0 w-1 bg-green-400" />}
+            {loopEnd === i && <div className="absolute bottom-0 right-0 top-0 w-1 bg-red-400" />}
           </div>
         );
       })}

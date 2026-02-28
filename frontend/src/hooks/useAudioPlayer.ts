@@ -1,8 +1,8 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 
 export interface LoopPoints {
-  start: number; // seconds
-  end: number;   // seconds
+  start: number;
+  end: number;
 }
 
 export function useAudioPlayer(src: string | null) {
@@ -12,16 +12,19 @@ export function useAudioPlayer(src: string | null) {
   const [duration, setDuration] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [volume, setVolumeState] = useState(1);
+  const [playbackRate, setPlaybackRateState] = useState(1);
   const [loop, setLoop] = useState<LoopPoints | null>(null);
 
-  // Create audio element when src changes
   useEffect(() => {
     if (!src) return;
     const audio = new Audio(src);
+    audio.volume = volume;
+    audio.playbackRate = playbackRate;
     audioRef.current = audio;
+    setCurrentTime(0);
 
     audio.addEventListener("loadedmetadata", () => {
-      setDuration(audio.duration);
+      setDuration(audio.duration || 0);
     });
     audio.addEventListener("ended", () => {
       setPlaying(false);
@@ -35,7 +38,16 @@ export function useAudioPlayer(src: string | null) {
     };
   }, [src]);
 
-  // Animation frame loop for time tracking
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) audio.volume = volume;
+  }, [volume]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) audio.playbackRate = playbackRate;
+  }, [playbackRate]);
+
   useEffect(() => {
     if (!playing) {
       cancelAnimationFrame(rafRef.current);
@@ -47,22 +59,21 @@ export function useAudioPlayer(src: string | null) {
       if (!audio) return;
       setCurrentTime(audio.currentTime);
 
-      // Handle loop
       if (loop && audio.currentTime >= loop.end) {
         audio.currentTime = loop.start;
       }
 
       rafRef.current = requestAnimationFrame(tick);
     };
-    rafRef.current = requestAnimationFrame(tick);
 
+    rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
   }, [playing, loop]);
 
   const play = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    audio.play();
+    void audio.play();
     setPlaying(true);
   }, []);
 
@@ -81,25 +92,25 @@ export function useAudioPlayer(src: string | null) {
   const seek = useCallback((time: number) => {
     const audio = audioRef.current;
     if (!audio) return;
-    audio.currentTime = time;
-    setCurrentTime(time);
+    const clamped = Math.max(0, Math.min(audio.duration || 0, time));
+    audio.currentTime = clamped;
+    setCurrentTime(clamped);
   }, []);
 
-  const seekRelative = useCallback(
-    (delta: number) => {
-      const audio = audioRef.current;
-      if (!audio) return;
-      const newTime = Math.max(0, Math.min(audio.duration, audio.currentTime + delta));
-      audio.currentTime = newTime;
-      setCurrentTime(newTime);
-    },
-    [],
-  );
+  const seekRelative = useCallback((delta: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const newTime = Math.max(0, Math.min(audio.duration || 0, audio.currentTime + delta));
+    audio.currentTime = newTime;
+    setCurrentTime(newTime);
+  }, []);
 
   const setVolume = useCallback((v: number) => {
-    const audio = audioRef.current;
-    if (audio) audio.volume = v;
     setVolumeState(v);
+  }, []);
+
+  const setPlaybackRate = useCallback((rate: number) => {
+    setPlaybackRateState(rate);
   }, []);
 
   return {
@@ -107,6 +118,7 @@ export function useAudioPlayer(src: string | null) {
     duration,
     playing,
     volume,
+    playbackRate,
     loop,
     play,
     pause,
@@ -114,6 +126,7 @@ export function useAudioPlayer(src: string | null) {
     seek,
     seekRelative,
     setVolume,
+    setPlaybackRate,
     setLoop,
   };
 }

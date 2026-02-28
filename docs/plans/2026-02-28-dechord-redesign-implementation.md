@@ -77,11 +77,11 @@
 
 ## Task 6: Frontend API/types expansion for songs, notes, prefs
 
-- [ ] Step 1: Write failing frontend type/API tests
-- [ ] Step 2: Run fail
-- [ ] Step 3: Implement API client and types for library/note/prefs flows
-- [ ] Step 4: Run tests pass
-- [ ] Step 5: Commit
+- [x] Step 1: Write failing frontend type/API tests
+- [x] Step 2: Run fail
+- [x] Step 3: Implement API client and types for library/note/prefs flows
+- [x] Step 4: Run tests pass
+- [x] Step 5: Commit
 
 **Files:**
 - Modify: `frontend/src/lib/types.ts`
@@ -90,11 +90,11 @@
 
 ## Task 7: Build Song Library panel and persisted song selection
 
-- [ ] Step 1: Write failing UI test for library rendering/selection
-- [ ] Step 2: Run fail
-- [ ] Step 3: Implement `SongLibraryPanel` and integrate into App layout
-- [ ] Step 4: Run tests pass
-- [ ] Step 5: Commit
+- [x] Step 1: Write failing UI test for library rendering/selection
+- [x] Step 2: Run fail
+- [x] Step 3: Implement `SongLibraryPanel` and integrate into App layout
+- [x] Step 4: Run tests pass
+- [x] Step 5: Commit
 
 **Files:**
 - Create: `frontend/src/components/SongLibraryPanel.tsx`
@@ -103,11 +103,11 @@
 
 ## Task 8: Playback speed control (40%-200%) persisted per song
 
-- [ ] Step 1: Write failing tests for speed selector and audio rate updates
-- [ ] Step 2: Run fail
-- [ ] Step 3: Add speed state to player hook + transport dropdown + persistence calls
-- [ ] Step 4: Run tests pass
-- [ ] Step 5: Commit
+- [x] Step 1: Write failing tests for speed selector and audio rate updates
+- [x] Step 2: Run fail
+- [x] Step 3: Add speed state to player hook + transport dropdown + persistence calls
+- [x] Step 4: Run tests pass
+- [x] Step 5: Commit
 
 **Files:**
 - Modify: `frontend/src/hooks/useAudioPlayer.ts`
@@ -117,11 +117,11 @@
 
 ## Task 9: Fretboard next-chord highlighting
 
-- [ ] Step 1: Write failing tests for current vs next note rendering state
-- [ ] Step 2: Run fail
-- [ ] Step 3: Extend fretboard props/rendering with dual-highlight logic
-- [ ] Step 4: Run tests pass
-- [ ] Step 5: Commit
+- [x] Step 1: Write failing tests for current vs next note rendering state
+- [x] Step 2: Run fail
+- [x] Step 3: Extend fretboard props/rendering with dual-highlight logic
+- [x] Step 4: Run tests pass
+- [x] Step 5: Commit
 
 **Files:**
 - Modify: `frontend/src/components/Fretboard.tsx`
@@ -130,11 +130,11 @@
 
 ## Task 10: Note creation UX (timestamp + chord modal flows)
 
-- [ ] Step 1: Write failing tests for modal open/save behavior
-- [ ] Step 2: Run fail
-- [ ] Step 3: Implement note modal and event wiring from progress/chord interactions
-- [ ] Step 4: Run tests pass
-- [ ] Step 5: Commit
+- [x] Step 1: Write failing tests for modal open/save behavior
+- [x] Step 2: Run fail
+- [x] Step 3: Implement note modal and event wiring from progress/chord interactions
+- [x] Step 4: Run tests pass
+- [x] Step 5: Commit
 
 **Files:**
 - Create: `frontend/src/components/NoteEditorModal.tsx`
@@ -145,11 +145,11 @@
 
 ## Task 11: Toast cue system + note markers on progress/timeline
 
-- [ ] Step 1: Write failing tests for note marker and toast trigger timing
-- [ ] Step 2: Run fail
-- [ ] Step 3: Implement toast scheduler, marker rendering, and overlap handling
-- [ ] Step 4: Run tests pass
-- [ ] Step 5: Commit
+- [x] Step 1: Write failing tests for note marker and toast trigger timing
+- [x] Step 2: Run fail
+- [x] Step 3: Implement toast scheduler, marker rendering, and overlap handling
+- [x] Step 4: Run tests pass
+- [x] Step 5: Commit
 
 **Files:**
 - Create: `frontend/src/components/ToastCueLayer.tsx`
@@ -161,11 +161,11 @@
 
 ## Task 12: Visual polish pass (Guitar Pro / GoPlayAlong-inspired playback UX)
 
-- [ ] Step 1: Write failing snapshot/assertion tests for key visual states
-- [ ] Step 2: Run fail
-- [ ] Step 3: Apply Tailwind/layout refinements and consistent visual hierarchy
-- [ ] Step 4: Run tests/build pass
-- [ ] Step 5: Commit
+- [x] Step 1: Write failing snapshot/assertion tests for key visual states
+- [x] Step 2: Run fail
+- [x] Step 3: Apply Tailwind/layout refinements and consistent visual hierarchy
+- [x] Step 4: Run tests/build pass
+- [x] Step 5: Commit
 
 **Files:**
 - Modify: `frontend/src/index.css`
@@ -177,11 +177,11 @@
 
 ## Task 13: End-to-end verification and docs update
 
-- [ ] Step 1: Run backend tests
-- [ ] Step 2: Run frontend tests
-- [ ] Step 3: Run frontend build
-- [ ] Step 4: Update README usage for library/notes/speed/tmux flow
-- [ ] Step 5: Commit
+- [x] Step 1: Run backend tests
+- [x] Step 2: Run frontend tests
+- [x] Step 3: Run frontend build
+- [x] Step 4: Update README usage for library/notes/speed/tmux flow
+- [x] Step 5: Commit
 
 **Files:**
 - Modify: `README.md`
