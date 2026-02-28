@@ -1777,8 +1777,8 @@ refs: docs/plans/2026-02-28-dechord-web-implementation.md"
 
 ## Task 15: Makefile for Dev Workflow
 
-- [ ] Step 1: Create Makefile
-- [ ] Step 2: Commit
+- [x] Step 1: Create Makefile
+- [x] Step 2: Commit
 
 **Files:**
 - Create: `Makefile`
