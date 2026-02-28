@@ -355,29 +355,26 @@ function App() {
       <ToastCueLayer toasts={activeToasts} />
 
       <main className="flex flex-1 flex-col gap-3 overflow-hidden p-3">
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[5fr,2fr]">
-          <SongLibraryPanel
-            songs={songs}
-            selectedSongId={selectedSongId}
-            loading={loading}
-            onSelect={(songId) => void loadSong(songId)}
-            onUpload={(file) => void handleFile(file)}
-          />
-          <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-300">Legend</h2>
-            <div className="space-y-1.5 text-xs text-slate-300">
-              <div className="flex items-center gap-2">
-                <span className="inline-block rounded bg-blue-600 px-2 py-0.5 text-[11px] font-semibold text-white">Blue</span>
-                <span>Current</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="inline-block rounded bg-amber-700 px-2 py-0.5 text-[11px] font-semibold text-amber-100">Amber</span>
-                <span>Next</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="inline-block rounded bg-fuchsia-500 px-2 py-0.5 text-[11px] font-semibold text-white">Pink</span>
-                <span>Overlap</span>
-              </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+          <div className="min-w-0 flex-1">
+            <SongLibraryPanel
+              songs={songs}
+              selectedSongId={selectedSongId}
+              loading={loading}
+              onSelect={(songId) => void loadSong(songId)}
+              onUpload={(file) => void handleFile(file)}
+            />
+          </div>
+          <section className="flex shrink-0 flex-row items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 sm:flex-col sm:items-start sm:gap-1.5 sm:py-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 sm:mb-1">Legend</h2>
+            <div className="flex items-center gap-2">
+              <span className="inline-block rounded bg-blue-600 px-1.5 py-0.5 text-[11px] font-semibold text-white">Current</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block rounded bg-amber-700 px-1.5 py-0.5 text-[11px] font-semibold text-amber-100">Next</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block rounded bg-fuchsia-500 px-1.5 py-0.5 text-[11px] font-semibold text-white">Overlap</span>
             </div>
           </section>
         </div>
