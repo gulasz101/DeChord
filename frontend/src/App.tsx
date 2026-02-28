@@ -359,12 +359,25 @@ function App() {
           <SongLibraryPanel
             songs={songs}
             selectedSongId={selectedSongId}
-            loading={loading}
             onSelect={(songId) => void loadSong(songId)}
-            onUpload={(file) => void handleFile(file)}
           />
           <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-300">Legend</h2>
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-300">Legend</h2>
+              <label className="cursor-pointer rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-500">
+                {loading ? "Processing..." : "Upload"}
+                <input
+                  type="file"
+                  accept=".mp3,.wav,.m4a,.aac,.mp4"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void handleFile(file);
+                  }}
+                  disabled={loading}
+                />
+              </label>
+            </div>
             <div className="space-y-2 text-xs text-slate-300">
               <div className="flex items-center gap-2 rounded-md border border-slate-700 bg-slate-950/70 px-2 py-1.5">
                 <span className="inline-block rounded bg-blue-600 px-2 py-0.5 text-[11px] font-semibold text-white">Blue</span>

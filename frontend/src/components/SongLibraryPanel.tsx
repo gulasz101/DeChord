@@ -3,35 +3,18 @@ import type { SongSummary } from "../lib/types";
 interface SongLibraryPanelProps {
   songs: SongSummary[];
   selectedSongId: number | null;
-  loading?: boolean;
   onSelect: (songId: number) => void;
-  onUpload: (file: File) => void;
 }
 
 export function SongLibraryPanel({
   songs,
   selectedSongId,
-  loading,
   onSelect,
-  onUpload,
 }: SongLibraryPanelProps) {
   return (
     <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-slate-100">Song Library</h2>
-        <label className="cursor-pointer rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500">
-          {loading ? "Processing..." : "Upload"}
-          <input
-            type="file"
-            accept=".mp3,.wav,.m4a,.aac,.mp4"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) onUpload(file);
-            }}
-            disabled={loading}
-          />
-        </label>
       </div>
 
       <div className="max-h-48 space-y-1 overflow-y-auto pr-1">

@@ -48,6 +48,14 @@
 - [x] Step 4: Verify with frontend tests/build
 - [x] Step 5: Commit
 
+## Task 6: Match top-row layout exactly (library left, compact legend+upload right)
+
+- [x] Step 1: Keep Song Library box focused on list only
+- [x] Step 2: Move Upload control into compact right legend box
+- [x] Step 3: Keep both cards in same row on desktop
+- [x] Step 4: Verify with frontend tests/build
+- [x] Step 5: Commit
+
 ## Verification
 
 ```bash
