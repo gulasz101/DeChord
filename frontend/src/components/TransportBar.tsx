@@ -9,6 +9,8 @@ interface TransportBarProps {
   loopLabel?: string;
   onTogglePlay: () => void;
   onSeek: (time: number) => void;
+  onSeekDragStart: () => void;
+  onSeekDragEnd: () => void;
   onSeekRelative: (delta: number) => void;
   onNoteLaneClick: (time: number) => void;
   onNoteMarkerClick: (noteId: number) => void;
@@ -36,6 +38,8 @@ export function TransportBar({
   loopLabel,
   onTogglePlay,
   onSeek,
+  onSeekDragStart,
+  onSeekDragEnd,
   onSeekRelative,
   onNoteLaneClick,
   onNoteMarkerClick,
@@ -92,7 +96,7 @@ export function TransportBar({
                   <button
                     key={m.id}
                     type="button"
-                    className="absolute top-1/2 h-3 w-3 -translate-y-1/2 -translate-x-1/2 rounded-full border border-amber-200 bg-amber-400 shadow"
+                    className="absolute top-1/2 h-3 w-3 -translate-y-1/2 -translate-x-1/2 rounded-full border border-yellow-100 bg-yellow-400 shadow"
                     style={{ left: `${left}%` }}
                     title="Edit note"
                     onClick={(e) => {
@@ -112,6 +116,14 @@ export function TransportBar({
             step={0.05}
             value={currentTime}
             onChange={(e) => onSeek(parseFloat(e.target.value))}
+            onMouseDown={onSeekDragStart}
+            onMouseUp={onSeekDragEnd}
+            onTouchStart={onSeekDragStart}
+            onTouchEnd={onSeekDragEnd}
+            onPointerDown={onSeekDragStart}
+            onPointerUp={onSeekDragEnd}
+            onPointerCancel={onSeekDragEnd}
+            onBlur={onSeekDragEnd}
             className="h-1 w-full accent-blue-500"
           />
         </div>

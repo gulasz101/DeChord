@@ -56,7 +56,7 @@ export function Fretboard({ chordLabel, nextChordLabel }: FretboardProps) {
                       </div>
                     )}
                     {!both && !current && next && (
-                      <div className="z-10 flex h-5 w-5 items-center justify-center rounded-full border border-amber-300 bg-amber-500/20 text-[10px] font-bold text-amber-100">
+                      <div className="z-10 flex h-5 w-5 items-center justify-center rounded-full border border-amber-200 bg-amber-700 text-[10px] font-bold text-amber-100">
                         {next.note}
                       </div>
                     )}
@@ -71,7 +71,7 @@ export function Fretboard({ chordLabel, nextChordLabel }: FretboardProps) {
       <div className="mt-2 text-center text-sm font-semibold text-slate-200">
         <span className="text-blue-400">{chordLabel || "—"}</span>
         {nextChordLabel ? <span className="text-slate-500">  →  </span> : null}
-        {nextChordLabel ? <span className="text-amber-300">{nextChordLabel}</span> : null}
+        {nextChordLabel ? <span className="text-amber-100">{nextChordLabel}</span> : null}
       </div>
     </div>
   );

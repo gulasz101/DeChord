@@ -30,6 +30,16 @@
 - [x] Step 3: Verify progression behavior while playback advances
 - [x] Step 4: Commit
 
+## Task 4: Legend clarity, color consistency, and scrub-safe toasts
+
+- [x] Step 1: Add prominent color legend box near song library
+- [x] Step 2: Narrow library area and place legend to the right on desktop
+- [x] Step 3: Match next-chord color semantics between timeline and fretboard
+- [x] Step 4: Allow timed-note edit modal to delete notes
+- [x] Step 5: Suppress note toast triggers while dragging seek thumb
+- [x] Step 6: Verify with frontend tests/build
+- [x] Step 7: Commit
+
 ## Verification
 
 ```bash

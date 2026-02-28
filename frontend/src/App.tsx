@@ -17,6 +17,7 @@ import {
   getSong,
   createSongNote,
   updateSongNote,
+  deleteSongNote,
   savePlaybackPrefs,
 } from "./lib/api";
 import type { AnalysisResult, PlaybackPrefs, SongNote, SongSummary } from "./lib/types";
@@ -64,6 +65,7 @@ function App() {
     mode: "time",
   });
   const [activeToasts, setActiveToasts] = useState<ActiveToast[]>([]);
+  const [isScrubbing, setIsScrubbing] = useState(false);
 
   const audioSrc = selectedSongId ? getAudioUrl(selectedSongId) : null;
   const player = useAudioPlayer(audioSrc);
@@ -154,6 +156,11 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (isScrubbing) {
+      lastTimeRef.current = player.currentTime;
+      return;
+    }
+
     const lastTime = lastTimeRef.current;
     const currentTime = player.currentTime;
 
@@ -181,7 +188,7 @@ function App() {
     }
 
     lastTimeRef.current = currentTime;
-  }, [player.currentTime, currentIndex, notes, addToast, result]);
+  }, [player.currentTime, currentIndex, notes, addToast, result, isScrubbing]);
 
   const handleFile = useCallback(async (file: File) => {
     setLoading(true);
@@ -335,21 +342,47 @@ function App() {
     setNoteModal({ open: false, mode: "time" });
   }, [selectedSongId, noteModal, result]);
 
+  const deleteModalNote = useCallback(async () => {
+    if (!noteModal.noteId) return;
+    await deleteSongNote(noteModal.noteId);
+    setNotes((prev) => prev.filter((n) => n.id !== noteModal.noteId));
+    setNoteModal({ open: false, mode: "time" });
+  }, [noteModal.noteId]);
+
   return (
     <div className="flex h-screen flex-col bg-slate-950 text-slate-100">
       <Header songKey={result?.key} tempo={result?.tempo} fileName={fileName || undefined} />
       <ToastCueLayer toasts={activeToasts} />
 
-      <main className="grid flex-1 grid-cols-1 gap-3 overflow-hidden p-3 lg:grid-cols-[320px,1fr]">
-        <SongLibraryPanel
-          songs={songs}
-          selectedSongId={selectedSongId}
-          loading={loading}
-          onSelect={(songId) => void loadSong(songId)}
-          onUpload={(file) => void handleFile(file)}
-        />
+      <main className="flex flex-1 flex-col gap-3 overflow-hidden p-3">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[3fr,2fr]">
+          <SongLibraryPanel
+            songs={songs}
+            selectedSongId={selectedSongId}
+            loading={loading}
+            onSelect={(songId) => void loadSong(songId)}
+            onUpload={(file) => void handleFile(file)}
+          />
+          <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+            <h2 className="mb-2 text-sm font-semibold text-slate-100">Color Legend</h2>
+            <div className="grid grid-cols-1 gap-2 text-xs text-slate-300 sm:grid-cols-3">
+              <div className="rounded-md border border-slate-700 bg-slate-950/70 p-2">
+                <span className="inline-block rounded bg-blue-600 px-2 py-0.5 text-[11px] font-semibold text-white">Blue</span>
+                <p className="mt-1">Current chord / current fret notes.</p>
+              </div>
+              <div className="rounded-md border border-slate-700 bg-slate-950/70 p-2">
+                <span className="inline-block rounded bg-amber-700 px-2 py-0.5 text-[11px] font-semibold text-amber-100">Amber</span>
+                <p className="mt-1">Next chord / next fret notes.</p>
+              </div>
+              <div className="rounded-md border border-slate-700 bg-slate-950/70 p-2">
+                <span className="inline-block rounded bg-fuchsia-500 px-2 py-0.5 text-[11px] font-semibold text-white">Pink</span>
+                <p className="mt-1">Shared note between current and next chord.</p>
+              </div>
+            </div>
+          </section>
+        </div>
 
-        <section className="overflow-y-auto rounded-xl border border-slate-800 bg-slate-900/50">
+        <section className="flex-1 overflow-y-auto rounded-xl border border-slate-800 bg-slate-900/50">
           {!result && !loading ? (
             <div className="flex h-full items-center justify-center p-4">
               <DropZone onFile={handleFile} />
@@ -399,6 +432,11 @@ function App() {
             loopLabel={loopLabel}
             onTogglePlay={player.togglePlay}
             onSeek={player.seek}
+            onSeekDragStart={() => setIsScrubbing(true)}
+            onSeekDragEnd={() => {
+              setIsScrubbing(false);
+              lastTimeRef.current = player.currentTime;
+            }}
             onSeekRelative={player.seekRelative}
             onNoteLaneClick={openTimedNoteModal}
             onNoteMarkerClick={openTimedNoteEditModal}
@@ -416,6 +454,7 @@ function App() {
         initialText={noteModal.initialText}
         initialToastDurationSec={noteModal.initialToastDurationSec}
         submitLabel={noteModal.noteId ? "Update Note" : "Save Note"}
+        onDelete={noteModal.noteId ? deleteModalNote : undefined}
         onClose={() => setNoteModal({ open: false, mode: "time" })}
         onSave={saveModalNote}
       />

@@ -15,6 +15,8 @@ describe("TransportBar speed options", () => {
         loopActive={false}
         onTogglePlay={() => {}}
         onSeek={() => {}}
+        onSeekDragStart={() => {}}
+        onSeekDragEnd={() => {}}
         onSeekRelative={() => {}}
         onNoteLaneClick={() => {}}
         onNoteMarkerClick={() => {}}

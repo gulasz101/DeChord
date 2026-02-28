@@ -7,6 +7,7 @@ interface NoteEditorModalProps {
   initialText?: string;
   initialToastDurationSec?: number;
   submitLabel?: string;
+  onDelete?: () => Promise<void>;
   onClose: () => void;
   onSave: (payload: { text: string; toastDurationSec?: number }) => Promise<void>;
 }
@@ -18,6 +19,7 @@ export function NoteEditorModal({
   initialText,
   initialToastDurationSec,
   submitLabel,
+  onDelete,
   onClose,
   onSave,
 }: NoteEditorModalProps) {
@@ -65,7 +67,22 @@ export function NoteEditorModal({
           </label>
         )}
 
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-between gap-2">
+          <div>
+            {onDelete ? (
+              <button
+                onClick={async () => {
+                  setSaving(true);
+                  await onDelete();
+                }}
+                className="rounded-md border border-red-500/60 px-3 py-1.5 text-sm text-red-200 hover:bg-red-900/40"
+                disabled={saving}
+              >
+                Delete
+              </button>
+            ) : null}
+          </div>
+          <div className="flex gap-2">
           <button
             onClick={onClose}
             className="rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800"
@@ -87,6 +104,7 @@ export function NoteEditorModal({
           >
             {submitLabel ?? "Save Note"}
           </button>
+          </div>
         </div>
       </div>
     </div>
