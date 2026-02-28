@@ -1,0 +1,13 @@
+[project]
+name = "dechord-api"
+version = "0.1.0"
+description = "DeChord web API - chord/key/tempo detection from audio"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi[standard]",
+    "python-multipart",
+    "madmom",
+]
+
+[tool.uv.sources]
+madmom = { git = "https://github.com/CPJKU/madmom" }
