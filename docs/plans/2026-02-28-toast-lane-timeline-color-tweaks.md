@@ -40,6 +40,14 @@
 - [x] Step 6: Verify with frontend tests/build
 - [x] Step 7: Commit
 
+## Task 5: Compact legend placement beside song library
+
+- [x] Step 1: Keep legend in the same row as song library on desktop
+- [x] Step 2: Make legend compact as a right-side helper box
+- [x] Step 3: Keep mobile stacked behavior
+- [x] Step 4: Verify with frontend tests/build
+- [x] Step 5: Commit
+
 ## Verification
 
 ```bash

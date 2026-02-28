@@ -355,7 +355,7 @@ function App() {
       <ToastCueLayer toasts={activeToasts} />
 
       <main className="flex flex-1 flex-col gap-3 overflow-hidden p-3">
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[3fr,2fr]">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[5fr,2fr]">
           <SongLibraryPanel
             songs={songs}
             selectedSongId={selectedSongId}
@@ -364,19 +364,19 @@ function App() {
             onUpload={(file) => void handleFile(file)}
           />
           <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
-            <h2 className="mb-2 text-sm font-semibold text-slate-100">Color Legend</h2>
-            <div className="grid grid-cols-1 gap-2 text-xs text-slate-300 sm:grid-cols-3">
-              <div className="rounded-md border border-slate-700 bg-slate-950/70 p-2">
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-300">Legend</h2>
+            <div className="space-y-2 text-xs text-slate-300">
+              <div className="flex items-center gap-2 rounded-md border border-slate-700 bg-slate-950/70 px-2 py-1.5">
                 <span className="inline-block rounded bg-blue-600 px-2 py-0.5 text-[11px] font-semibold text-white">Blue</span>
-                <p className="mt-1">Current chord / current fret notes.</p>
+                <span>Current</span>
               </div>
-              <div className="rounded-md border border-slate-700 bg-slate-950/70 p-2">
+              <div className="flex items-center gap-2 rounded-md border border-slate-700 bg-slate-950/70 px-2 py-1.5">
                 <span className="inline-block rounded bg-amber-700 px-2 py-0.5 text-[11px] font-semibold text-amber-100">Amber</span>
-                <p className="mt-1">Next chord / next fret notes.</p>
+                <span>Next</span>
               </div>
-              <div className="rounded-md border border-slate-700 bg-slate-950/70 p-2">
+              <div className="flex items-center gap-2 rounded-md border border-slate-700 bg-slate-950/70 px-2 py-1.5">
                 <span className="inline-block rounded bg-fuchsia-500 px-2 py-0.5 text-[11px] font-semibold text-white">Pink</span>
-                <p className="mt-1">Shared note between current and next chord.</p>
+                <span>Overlap</span>
               </div>
             </div>
           </section>
