@@ -83,8 +83,10 @@ export function ChordTimeline({
 
             <div className="relative z-10 flex h-full items-center justify-center">
               {chord.label}
-              {hasNote ? <span className="ml-1 text-amber-300">•</span> : null}
             </div>
+            {hasNote && (
+              <span className="absolute right-1 top-1 z-10 h-2.5 w-2.5 rounded-full border border-yellow-200 bg-yellow-400 shadow" />
+            )}
 
             {loopStart === i && <div className="absolute bottom-0 left-0 top-0 w-1 bg-green-400" />}
             {loopEnd === i && <div className="absolute bottom-0 right-0 top-0 w-1 bg-red-400" />}
