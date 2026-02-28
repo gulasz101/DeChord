@@ -12,11 +12,11 @@
 
 ## Task 1: Add LibSQL dependency and DB module scaffolding
 
-- [ ] Step 1: Write failing backend tests expecting DB module symbols
-- [ ] Step 2: Run test to confirm fail
-- [ ] Step 3: Add `libsql-client` dependency and create DB module files
-- [ ] Step 4: Re-run tests to pass
-- [ ] Step 5: Commit
+- [x] Step 1: Write failing backend tests expecting DB module symbols
+- [x] Step 2: Run test to confirm fail
+- [x] Step 3: Add `libsql-client` dependency and create DB module files
+- [x] Step 4: Re-run tests to pass
+- [x] Step 5: Commit
 
 **Files:**
 - Modify: `backend/pyproject.toml`
@@ -26,11 +26,11 @@
 
 ## Task 2: Create schema + bootstrap + default user (`Wojtek`)
 
-- [ ] Step 1: Write failing tests for table creation/default user
-- [ ] Step 2: Run fail
-- [ ] Step 3: Implement migration/bootstrap SQL in backend startup utilities
-- [ ] Step 4: Run tests pass
-- [ ] Step 5: Commit
+- [x] Step 1: Write failing tests for table creation/default user
+- [x] Step 2: Run fail
+- [x] Step 3: Implement migration/bootstrap SQL in backend startup utilities
+- [x] Step 4: Run tests pass
+- [x] Step 5: Commit
 
 **Files:**
 - Modify: `backend/app/db.py`
