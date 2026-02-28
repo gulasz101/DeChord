@@ -27,8 +27,8 @@
 ## Task 3: Final verification and progress reflection
 
 - [x] Step 1: Validate no duplicate session creation behavior
-- [ ] Step 2: Mark plan tasks complete
-- [ ] Step 3: Commit
+- [x] Step 2: Mark plan tasks complete
+- [x] Step 3: Commit
 
 ## Notes
 
