@@ -172,7 +172,7 @@ function App() {
     const timeNotes = notes.filter((n) => n.type === "time" && n.timestamp_sec !== null);
     for (const note of timeNotes) {
       const ts = note.timestamp_sec as number;
-      if (!firedTimeNotesRef.current.has(note.id) && ts > lastTime && ts <= currentTime) {
+      if (!firedTimeNotesRef.current.has(note.id) && ts >= lastTime && ts <= currentTime) {
         addToast(note.text, note.toast_duration_sec ?? 2);
         firedTimeNotesRef.current.add(note.id);
       }
