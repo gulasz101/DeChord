@@ -56,6 +56,14 @@
 - [x] Step 4: Verify with frontend tests/build
 - [x] Step 5: Commit
 
+## Task 7: Correct top-row controls placement per Excalidraw
+
+- [x] Step 1: Keep upload button inside Song Library card (left box)
+- [x] Step 2: Keep right card as compact legend only
+- [x] Step 3: Keep single top row with both cards
+- [x] Step 4: Verify with frontend tests/build
+- [x] Step 5: Commit
+
 ## Verification
 
 ```bash
