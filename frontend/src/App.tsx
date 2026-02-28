@@ -260,16 +260,21 @@ function App() {
   );
 
   const openTimedNoteModal = useCallback((timestampSec: number) => {
-    const currentChordDurationLeft =
-      result && currentIndex >= 0 && result.chords[currentIndex]
-        ? Math.max(0.5, result.chords[currentIndex].end - player.currentTime)
-        : 2;
+    let defaultDuration = 2;
+    if (result && currentIndex >= 0) {
+      const nextIndex = currentIndex + 1;
+      const endTime =
+        nextIndex < result.chords.length
+          ? result.chords[nextIndex].end
+          : result.chords[currentIndex].end;
+      defaultDuration = Math.max(0.5, Math.round((endTime - player.currentTime) * 10) / 10);
+    }
     setNoteModal({
       open: true,
       mode: "time",
-      timestampSec,
+      timestampSec: Math.round(timestampSec * 10) / 10,
       initialText: "",
-      initialToastDurationSec: currentChordDurationLeft,
+      initialToastDurationSec: defaultDuration,
     });
   }, [result, currentIndex, player.currentTime]);
 

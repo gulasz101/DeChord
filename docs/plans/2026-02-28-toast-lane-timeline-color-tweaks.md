@@ -64,6 +64,14 @@
 - [x] Step 4: Verify with frontend tests/build
 - [x] Step 5: Commit
 
+## Task 8: Fix timed note toast duration and timestamp rounding
+
+- [x] Step 1: Default toast duration = end of next chord minus current time (rounded to 0.1s)
+- [x] Step 2: Round timed note timestamp to 1 decimal place
+- [x] Step 3: Change modal duration step from 0.5 to 0.1 for finer control
+- [x] Step 4: Verify with frontend tests/build
+- [x] Step 5: Commit
+
 ## Verification
 
 ```bash

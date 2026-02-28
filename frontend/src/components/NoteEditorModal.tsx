@@ -59,7 +59,7 @@ export function NoteEditorModal({
             <input
               type="number"
               min={0.5}
-              step={0.5}
+              step={0.1}
               value={toastDurationSec}
               onChange={(e) => setToastDurationSec(parseFloat(e.target.value))}
               className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-blue-500 focus:outline-none"
