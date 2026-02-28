@@ -1,16 +1,20 @@
 # backend/app/main.py
+import asyncio
 import os
-import uuid
 import shutil
-from pathlib import Path
+import uuid
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from typing import Literal
 
-from fastapi import FastAPI, UploadFile, HTTPException
+from fastapi import FastAPI, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
-from app.analysis import analyze_audio, AnalysisResult
+from app.analysis import AnalysisResult, analyze_audio
+from app.db import close_db, execute, get_default_user, init_db
 
 app = FastAPI(title="DeChord API")
 
@@ -24,21 +28,138 @@ app.add_middleware(
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
-# In-memory job store (sufficient for single-user local tool)
+# In-memory job store (single-user local)
 jobs: dict[str, dict] = {}
 executor = ThreadPoolExecutor(max_workers=2)
 
 
-def _run_analysis(job_id: str, audio_path: str):
+class NoteCreate(BaseModel):
+    type: Literal["time", "chord"]
+    text: str = Field(min_length=1)
+    timestamp_sec: float | None = None
+    chord_index: int | None = None
+    toast_duration_sec: float | None = None
+
+
+class NoteUpdate(BaseModel):
+    text: str | None = None
+    toast_duration_sec: float | None = None
+
+
+class PlaybackPrefsUpdate(BaseModel):
+    speed_percent: int = Field(ge=40, le=200)
+    volume: float = Field(ge=0.0, le=1.0)
+    loop_start_index: int | None = None
+    loop_end_index: int | None = None
+
+
+def _row_to_dict(row) -> dict:
+    return row.asdict() if hasattr(row, "asdict") else dict(row)
+
+
+async def _create_song_record(filename: str | None, mime_type: str | None, audio_blob: bytes) -> int:
+    user = await get_default_user()
+    title = Path(filename or "Untitled").stem or "Untitled"
+    rs = await execute(
+        """
+        INSERT INTO songs (user_id, title, original_filename, mime_type, audio_blob)
+        VALUES (?, ?, ?, ?, ?)
+        RETURNING id
+        """,
+        [user["id"], title, filename, mime_type, audio_blob],
+    )
+    return int(rs.rows[0][0])
+
+
+async def _persist_analysis(song_id: int, result: AnalysisResult) -> None:
+    # Keep one latest analysis per song for simplicity.
+    prev = await execute("SELECT id FROM analyses WHERE song_id = ?", [song_id])
+    for row in prev.rows:
+        analysis_id = int(row[0])
+        await execute("DELETE FROM analysis_chords WHERE analysis_id = ?", [analysis_id])
+    await execute("DELETE FROM analyses WHERE song_id = ?", [song_id])
+
+    analysis_insert = await execute(
+        """
+        INSERT INTO analyses (song_id, song_key, tempo, duration)
+        VALUES (?, ?, ?, ?)
+        RETURNING id
+        """,
+        [song_id, result.key, result.tempo, result.duration],
+    )
+    analysis_id = int(analysis_insert.rows[0][0])
+
+    for idx, chord in enumerate(result.chords):
+        await execute(
+            """
+            INSERT INTO analysis_chords (analysis_id, chord_index, start_sec, end_sec, label)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            [analysis_id, idx, chord.start, chord.end, chord.label],
+        )
+
+
+async def _load_latest_analysis(song_id: int) -> dict | None:
+    analysis_rs = await execute(
+        """
+        SELECT id, song_key, tempo, duration
+        FROM analyses
+        WHERE song_id = ?
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+        """,
+        [song_id],
+    )
+    if not analysis_rs.rows:
+        return None
+
+    analysis = _row_to_dict(analysis_rs.rows[0])
+    chords_rs = await execute(
+        """
+        SELECT chord_index, start_sec, end_sec, label
+        FROM analysis_chords
+        WHERE analysis_id = ?
+        ORDER BY chord_index ASC
+        """,
+        [analysis["id"]],
+    )
+
+    return {
+        "key": analysis["song_key"],
+        "tempo": analysis["tempo"],
+        "duration": analysis["duration"],
+        "chords": [
+            {
+                "start": row[1],
+                "end": row[2],
+                "label": row[3],
+            }
+            for row in chords_rs.rows
+        ],
+    }
+
+
+def _run_analysis(job_id: str, audio_path: str, song_id: int):
     try:
         jobs[job_id]["status"] = "processing"
         jobs[job_id]["progress"] = "Analyzing audio..."
         result = analyze_audio(audio_path)
+        asyncio.run(_persist_analysis(song_id, result))
         jobs[job_id]["status"] = "complete"
         jobs[job_id]["result"] = result
     except Exception as e:
         jobs[job_id]["status"] = "error"
         jobs[job_id]["error"] = str(e)
+
+
+@app.on_event("startup")
+async def startup_event():
+    await init_db()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await close_db()
 
 
 @app.get("/api/health")
@@ -52,16 +173,20 @@ async def analyze(file: UploadFile):
     ext = Path(file.filename).suffix if file.filename else ".mp3"
     audio_path = UPLOAD_DIR / f"{job_id}{ext}"
 
+    content = await file.read()
     with open(audio_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+        f.write(content)
+
+    song_id = await _create_song_record(file.filename, file.content_type, content)
 
     jobs[job_id] = {
         "status": "queued",
         "audio_path": str(audio_path),
+        "song_id": song_id,
     }
 
-    executor.submit(_run_analysis, job_id, str(audio_path))
-    return {"job_id": job_id}
+    executor.submit(_run_analysis, job_id, str(audio_path), song_id)
+    return {"job_id": job_id, "song_id": song_id}
 
 
 @app.get("/api/status/{job_id}")
@@ -84,24 +209,235 @@ async def result(job_id: str):
     if job["status"] != "complete":
         raise HTTPException(400, "Analysis not complete")
 
-    r: AnalysisResult = job["result"]
+    song_id = int(job["song_id"])
+    analysis = await _load_latest_analysis(song_id)
+    if analysis is None:
+        r: AnalysisResult = job["result"]
+        return {
+            "song_id": song_id,
+            "key": r.key,
+            "tempo": r.tempo,
+            "duration": r.duration,
+            "chords": [{"start": c.start, "end": c.end, "label": c.label} for c in r.chords],
+        }
+
     return {
-        "key": r.key,
-        "tempo": r.tempo,
-        "duration": r.duration,
-        "chords": [
-            {"start": c.start, "end": c.end, "label": c.label}
-            for c in r.chords
-        ],
+        "song_id": song_id,
+        **analysis,
     }
 
 
-@app.get("/api/audio/{job_id}")
-async def audio(job_id: str):
-    if job_id not in jobs:
-        raise HTTPException(404, "Job not found")
-    audio_path = jobs[job_id]["audio_path"]
-    return FileResponse(audio_path, media_type="audio/mpeg")
+@app.get("/api/songs")
+async def list_songs():
+    rows = await execute(
+        """
+        SELECT
+            s.id,
+            s.title,
+            s.original_filename,
+            s.created_at,
+            (SELECT song_key FROM analyses a WHERE a.song_id = s.id ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS song_key,
+            (SELECT tempo FROM analyses a WHERE a.song_id = s.id ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS tempo,
+            (SELECT duration FROM analyses a WHERE a.song_id = s.id ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS duration
+        FROM songs s
+        ORDER BY s.created_at DESC, s.id DESC
+        """
+    )
+
+    songs = []
+    for row in rows.rows:
+        songs.append(
+            {
+                "id": row[0],
+                "title": row[1],
+                "original_filename": row[2],
+                "created_at": row[3],
+                "key": row[4],
+                "tempo": row[5],
+                "duration": row[6],
+            }
+        )
+    return {"songs": songs}
+
+
+@app.get("/api/songs/{song_id}")
+async def get_song(song_id: int):
+    song_rs = await execute(
+        """
+        SELECT id, title, original_filename, mime_type, created_at
+        FROM songs
+        WHERE id = ?
+        """,
+        [song_id],
+    )
+    if not song_rs.rows:
+        raise HTTPException(404, "Song not found")
+
+    song_row = song_rs.rows[0]
+    analysis = await _load_latest_analysis(song_id)
+
+    notes_rs = await execute(
+        """
+        SELECT id, type, timestamp_sec, chord_index, text, toast_duration_sec
+        FROM notes
+        WHERE song_id = ?
+        ORDER BY created_at ASC, id ASC
+        """,
+        [song_id],
+    )
+    notes = [
+        {
+            "id": row[0],
+            "type": row[1],
+            "timestamp_sec": row[2],
+            "chord_index": row[3],
+            "text": row[4],
+            "toast_duration_sec": row[5],
+        }
+        for row in notes_rs.rows
+    ]
+
+    prefs_rs = await execute(
+        """
+        SELECT speed_percent, volume, loop_start_index, loop_end_index
+        FROM playback_prefs
+        WHERE song_id = ?
+        """,
+        [song_id],
+    )
+    prefs = {
+        "speed_percent": 100,
+        "volume": 1.0,
+        "loop_start_index": None,
+        "loop_end_index": None,
+    }
+    if prefs_rs.rows:
+        row = prefs_rs.rows[0]
+        prefs = {
+            "speed_percent": row[0],
+            "volume": row[1],
+            "loop_start_index": row[2],
+            "loop_end_index": row[3],
+        }
+
+    return {
+        "song": {
+            "id": song_row[0],
+            "title": song_row[1],
+            "original_filename": song_row[2],
+            "mime_type": song_row[3],
+            "created_at": song_row[4],
+        },
+        "analysis": analysis,
+        "notes": notes,
+        "playback_prefs": prefs,
+    }
+
+
+@app.get("/api/audio/{audio_id}")
+async def audio(audio_id: str):
+    # Backward compatible path: if this is an in-memory job id, serve uploaded file path.
+    if audio_id in jobs:
+        audio_path = jobs[audio_id]["audio_path"]
+        return FileResponse(audio_path, media_type="audio/mpeg")
+
+    try:
+        song_id = int(audio_id)
+    except ValueError as exc:
+        raise HTTPException(404, "Song not found") from exc
+
+    rs = await execute(
+        "SELECT audio_blob, mime_type FROM songs WHERE id = ?",
+        [song_id],
+    )
+    if not rs.rows:
+        raise HTTPException(404, "Song not found")
+
+    blob, mime_type = rs.rows[0][0], rs.rows[0][1] or "audio/mpeg"
+    return Response(content=blob, media_type=mime_type)
+
+
+@app.post("/api/songs/{song_id}/notes")
+async def create_note(song_id: int, payload: NoteCreate):
+    if payload.type == "time" and payload.timestamp_sec is None:
+        raise HTTPException(400, "timestamp_sec is required for time notes")
+    if payload.type == "chord" and payload.chord_index is None:
+        raise HTTPException(400, "chord_index is required for chord notes")
+
+    inserted = await execute(
+        """
+        INSERT INTO notes (song_id, type, timestamp_sec, chord_index, text, toast_duration_sec)
+        VALUES (?, ?, ?, ?, ?, ?)
+        RETURNING id
+        """,
+        [
+            song_id,
+            payload.type,
+            payload.timestamp_sec,
+            payload.chord_index,
+            payload.text,
+            payload.toast_duration_sec,
+        ],
+    )
+    note_id = int(inserted.rows[0][0])
+    return {
+        "id": note_id,
+        "song_id": song_id,
+        **payload.model_dump(),
+    }
+
+
+@app.patch("/api/notes/{note_id}")
+async def update_note(note_id: int, payload: NoteUpdate):
+    row_rs = await execute("SELECT text, toast_duration_sec FROM notes WHERE id = ?", [note_id])
+    if not row_rs.rows:
+        raise HTTPException(404, "Note not found")
+
+    current = row_rs.rows[0]
+    text = payload.text if payload.text is not None else current[0]
+    toast_duration_sec = (
+        payload.toast_duration_sec if payload.toast_duration_sec is not None else current[1]
+    )
+
+    await execute(
+        """
+        UPDATE notes
+        SET text = ?, toast_duration_sec = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        [text, toast_duration_sec, note_id],
+    )
+    return {"id": note_id, "text": text, "toast_duration_sec": toast_duration_sec}
+
+
+@app.delete("/api/notes/{note_id}")
+async def delete_note(note_id: int):
+    await execute("DELETE FROM notes WHERE id = ?", [note_id])
+    return {"status": "ok"}
+
+
+@app.put("/api/songs/{song_id}/playback-prefs")
+async def update_playback_prefs(song_id: int, payload: PlaybackPrefsUpdate):
+    await execute(
+        """
+        INSERT INTO playback_prefs (song_id, speed_percent, volume, loop_start_index, loop_end_index)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(song_id) DO UPDATE SET
+            speed_percent = excluded.speed_percent,
+            volume = excluded.volume,
+            loop_start_index = excluded.loop_start_index,
+            loop_end_index = excluded.loop_end_index,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        [
+            song_id,
+            payload.speed_percent,
+            payload.volume,
+            payload.loop_start_index,
+            payload.loop_end_index,
+        ],
+    )
+    return payload.model_dump()
 
 
 # Serve frontend static files in production

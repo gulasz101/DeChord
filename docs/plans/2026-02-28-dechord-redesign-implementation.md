@@ -39,11 +39,11 @@
 
 ## Task 3: Persist songs/audio blobs and analysis records
 
-- [ ] Step 1: Write failing API tests for persisted song lifecycle
-- [ ] Step 2: Run fail
-- [ ] Step 3: Implement repository operations and wire `/api/analyze`, `/api/result/{job_id}`
-- [ ] Step 4: Run API tests pass
-- [ ] Step 5: Commit
+- [x] Step 1: Write failing API tests for persisted song lifecycle
+- [x] Step 2: Run fail
+- [x] Step 3: Implement repository operations and wire `/api/analyze`, `/api/result/{job_id}`
+- [x] Step 4: Run API tests pass
+- [x] Step 5: Commit
 
 **Files:**
 - Modify: `backend/app/main.py`
@@ -52,11 +52,11 @@
 
 ## Task 4: Add song library endpoints and audio-by-song streaming
 
-- [ ] Step 1: Write failing tests for `GET /api/songs`, `GET /api/songs/{id}`, `GET /api/audio/{song_id}`
-- [ ] Step 2: Run fail
-- [ ] Step 3: Implement endpoints + serializers
-- [ ] Step 4: Run tests pass
-- [ ] Step 5: Commit
+- [x] Step 1: Write failing tests for `GET /api/songs`, `GET /api/songs/{id}`, `GET /api/audio/{song_id}`
+- [x] Step 2: Run fail
+- [x] Step 3: Implement endpoints + serializers
+- [x] Step 4: Run tests pass
+- [x] Step 5: Commit
 
 **Files:**
 - Modify: `backend/app/main.py`
@@ -64,11 +64,11 @@
 
 ## Task 5: Add notes CRUD + playback preferences APIs
 
-- [ ] Step 1: Write failing tests for note creation/update/delete and prefs save/load
-- [ ] Step 2: Run fail
-- [ ] Step 3: Implement endpoints and DB logic
-- [ ] Step 4: Run tests pass
-- [ ] Step 5: Commit
+- [x] Step 1: Write failing tests for note creation/update/delete and prefs save/load
+- [x] Step 2: Run fail
+- [x] Step 3: Implement endpoints and DB logic
+- [x] Step 4: Run tests pass
+- [x] Step 5: Commit
 
 **Files:**
 - Modify: `backend/app/main.py`
