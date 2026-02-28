@@ -72,6 +72,15 @@
 - [x] Step 4: Verify with frontend tests/build
 - [x] Step 5: Commit
 
+## Task 9: Chord note dots on transport bar + clickable edit on timeline
+
+- [x] Step 1: Add chord note markers to transport bar note lane (positioned at chord start time)
+- [x] Step 2: Make yellow dots on chord timeline clickable to edit/delete notes
+- [x] Step 3: Unify note edit handler to work for both timed and chord notes by ID
+- [x] Step 4: Add chord note update path in saveModalNote (was create-only)
+- [x] Step 5: Verify with frontend tests/build
+- [x] Step 6: Commit
+
 ## Verification
 
 ```bash

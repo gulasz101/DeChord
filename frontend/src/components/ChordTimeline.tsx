@@ -11,6 +11,7 @@ interface ChordTimelineProps {
   noteChordIndexes?: Set<number>;
   onChordClick: (index: number) => void;
   onChordNoteRequest?: (index: number) => void;
+  onChordNoteEdit?: (chordIndex: number) => void;
   onSeek: (time: number) => void;
 }
 
@@ -26,6 +27,7 @@ export function ChordTimeline({
   noteChordIndexes,
   onChordClick,
   onChordNoteRequest,
+  onChordNoteEdit,
 }: ChordTimelineProps) {
   const activeRef = useRef<HTMLDivElement>(null);
 
@@ -85,7 +87,15 @@ export function ChordTimeline({
               {chord.label}
             </div>
             {hasNote && (
-              <span className="absolute right-1 top-1 z-10 h-2.5 w-2.5 rounded-full border border-yellow-200 bg-yellow-400 shadow" />
+              <button
+                type="button"
+                title="Edit chord note"
+                className="absolute right-1 top-1 z-20 h-2.5 w-2.5 rounded-full border border-yellow-200 bg-yellow-400 shadow hover:scale-125"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChordNoteEdit?.(i);
+                }}
+              />
             )}
 
             {loopStart === i && <div className="absolute bottom-0 left-0 top-0 w-1 bg-green-400" />}

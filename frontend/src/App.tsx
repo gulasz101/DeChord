@@ -259,6 +259,16 @@ function App() {
     [notes],
   );
 
+  const chordNoteMarkers = useMemo(() => {
+    if (!result) return [];
+    return notes
+      .filter((n) => n.type === "chord" && n.chord_index !== null)
+      .map((n) => {
+        const chord = result.chords[n.chord_index as number];
+        return { id: n.id, timestampSec: chord ? chord.start : 0 };
+      });
+  }, [notes, result]);
+
   const openTimedNoteModal = useCallback((timestampSec: number) => {
     let defaultDuration = 2;
     if (result && currentIndex >= 0) {
@@ -278,23 +288,55 @@ function App() {
     });
   }, [result, currentIndex, player.currentTime]);
 
-  const openTimedNoteEditModal = useCallback((noteId: number) => {
+  const openNoteEditModalById = useCallback((noteId: number) => {
     const note = notes.find((n) => n.id === noteId);
-    if (!note || note.type !== "time") return;
+    if (!note) return;
 
-    setNoteModal({
-      open: true,
-      mode: "time",
-      noteId,
-      timestampSec: note.timestamp_sec ?? undefined,
-      initialText: note.text,
-      initialToastDurationSec: note.toast_duration_sec ?? 2,
-    });
-  }, [notes]);
+    if (note.type === "time") {
+      setNoteModal({
+        open: true,
+        mode: "time",
+        noteId,
+        timestampSec: note.timestamp_sec ?? undefined,
+        initialText: note.text,
+        initialToastDurationSec: note.toast_duration_sec ?? 2,
+      });
+    } else if (note.type === "chord") {
+      const chordDuration =
+        result && note.chord_index !== null && result.chords[note.chord_index]
+          ? result.chords[note.chord_index].end - result.chords[note.chord_index].start
+          : 2;
+      setNoteModal({
+        open: true,
+        mode: "chord",
+        noteId,
+        chordIndex: note.chord_index ?? undefined,
+        initialText: note.text,
+        initialToastDurationSec: note.toast_duration_sec ?? chordDuration,
+      });
+    }
+  }, [notes, result]);
 
   const openChordNoteModal = useCallback((chordIndex: number) => {
     setNoteModal({ open: true, mode: "chord", chordIndex, initialText: "" });
   }, []);
+
+  const openChordNoteEditModal = useCallback((chordIndex: number) => {
+    const note = notes.find((n) => n.type === "chord" && n.chord_index === chordIndex);
+    if (!note) return;
+    const chordDuration =
+      result && result.chords[chordIndex]
+        ? result.chords[chordIndex].end - result.chords[chordIndex].start
+        : 2;
+    setNoteModal({
+      open: true,
+      mode: "chord",
+      noteId: note.id,
+      chordIndex,
+      initialText: note.text,
+      initialToastDurationSec: note.toast_duration_sec ?? chordDuration,
+    });
+  }, [notes, result]);
 
   const saveModalNote = useCallback(async ({ text, toastDurationSec }: { text: string; toastDurationSec?: number }) => {
     if (!selectedSongId) return;
@@ -336,6 +378,22 @@ function App() {
       result && result.chords[chordIndex]
         ? result.chords[chordIndex].end - result.chords[chordIndex].start
         : 2;
+
+    if (noteModal.noteId) {
+      const updated = await updateSongNote(noteModal.noteId, {
+        text,
+        toast_duration_sec: toastDurationSec ?? chordDuration,
+      });
+      setNotes((prev) =>
+        prev.map((n) =>
+          n.id === noteModal.noteId
+            ? { ...n, text: updated.text, toast_duration_sec: updated.toast_duration_sec }
+            : n,
+        ),
+      );
+      setNoteModal({ open: false, mode: "time" });
+      return;
+    }
 
     const created = await createSongNote(selectedSongId, {
       type: "chord",
@@ -414,6 +472,7 @@ function App() {
               noteChordIndexes={noteChordIndexes}
               onChordClick={handleChordClick}
               onChordNoteRequest={openChordNoteModal}
+              onChordNoteEdit={openChordNoteEditModal}
               onSeek={player.seek}
             />
           ) : null}
@@ -429,7 +488,7 @@ function App() {
             playing={player.playing}
             volume={player.volume}
             speedPercent={prefs.speed_percent}
-            timeNoteMarkers={timeNoteMarkers}
+            timeNoteMarkers={[...timeNoteMarkers, ...chordNoteMarkers]}
             loopActive={loopStartIdx !== null && loopEndIdx !== null}
             loopLabel={loopLabel}
             onTogglePlay={player.togglePlay}
@@ -441,7 +500,7 @@ function App() {
             }}
             onSeekRelative={player.seekRelative}
             onNoteLaneClick={openTimedNoteModal}
-            onNoteMarkerClick={openTimedNoteEditModal}
+            onNoteMarkerClick={openNoteEditModalById}
             onVolumeChange={(v) => setPrefs((p) => ({ ...p, volume: v }))}
             onSpeedChange={(speedPercent) => setPrefs((p) => ({ ...p, speed_percent: speedPercent }))}
             onClearLoop={clearLoop}
