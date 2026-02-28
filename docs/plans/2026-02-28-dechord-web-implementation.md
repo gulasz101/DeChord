@@ -1821,9 +1821,9 @@ refs: docs/plans/2026-02-28-dechord-web-implementation.md"
 
 ## Task 16: Dockerfile for Future Deployment
 
-- [ ] Step 1: Create Dockerfile (multi-stage)
+- [x] Step 1: Create Dockerfile (multi-stage)
 - [ ] Step 2: Test build
-- [ ] Step 3: Commit
+- [x] Step 3: Commit
 
 **Files:**
 - Create: `Dockerfile`

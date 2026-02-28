@@ -1,4 +1,5 @@
 # backend/app/main.py
+import os
 import uuid
 import shutil
 from pathlib import Path
@@ -7,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.analysis import analyze_audio, AnalysisResult
 
@@ -100,3 +102,8 @@ async def audio(job_id: str):
         raise HTTPException(404, "Job not found")
     audio_path = jobs[job_id]["audio_path"]
     return FileResponse(audio_path, media_type="audio/mpeg")
+
+
+# Serve frontend static files in production
+if os.path.exists("static"):
+    app.mount("/", StaticFiles(directory="static", html=True), name="static")
