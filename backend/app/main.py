@@ -203,10 +203,13 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                 )
                 asyncio.run(_persist_stems(song_id, stems))
                 jobs[job_id]["stems_status"] = "complete"
-            except Exception:
+                jobs[job_id]["stems_error"] = None
+            except Exception as exc:
                 jobs[job_id]["stems_status"] = "failed"
+                jobs[job_id]["stems_error"] = str(exc)
         else:
             jobs[job_id]["stems_status"] = "not_requested"
+            jobs[job_id]["stems_error"] = None
 
         set_stage(
             "persisting",
@@ -271,6 +274,7 @@ async def analyze(file: UploadFile, process_mode: ProcessMode = Form("analysis_o
         "stage_progress_pct": 0,
         "process_mode": process_mode,
         "stems_status": "queued" if process_mode == "analysis_and_stems" else "not_requested",
+        "stems_error": None,
         "audio_path": str(audio_path),
         "song_id": song_id,
         "error": None,
@@ -293,6 +297,7 @@ async def status(job_id: str):
         "message": job.get("message", ""),
         "stage_history": job.get("stage_history", []),
         "stems_status": job.get("stems_status", "not_requested"),
+        "stems_error": job.get("stems_error"),
         "progress": job.get("progress"),
         "error": job.get("error"),
     }

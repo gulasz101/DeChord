@@ -200,6 +200,7 @@ def test_analyze_with_stems_failure_keeps_analysis_complete(tmp_path, monkeypatc
     assert payload["status"] == "complete"
     assert payload["stems_status"] == "failed"
     assert payload["error"] is None
+    assert payload["stems_error"] == "stem split failed"
 
     result = client.get(f"/api/result/{job_id}")
     assert result.status_code == 200

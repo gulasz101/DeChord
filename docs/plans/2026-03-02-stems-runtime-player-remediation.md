@@ -24,11 +24,11 @@
 - Modify: `backend/tests/test_api.py`
 - Modify: `backend/app/main.py`
 
-- [ ] Step 1: Add failing test asserting `/api/status/{job_id}` includes non-empty `stems_error` when stem splitting fails.
-- [ ] Step 2: Run targeted backend tests and confirm RED.
-- [ ] Step 3: Implement minimal backend changes to store and expose `stems_error`.
-- [ ] Step 4: Re-run targeted tests and confirm GREEN.
-- [ ] Step 5: Mark task done and commit with plan reference.
+- [x] Step 1: Add failing test asserting `/api/status/{job_id}` includes non-empty `stems_error` when stem splitting fails.
+- [x] Step 2: Run targeted backend tests and confirm RED.
+- [x] Step 3: Implement minimal backend changes to store and expose `stems_error`.
+- [x] Step 4: Re-run targeted tests and confirm GREEN.
+- [x] Step 5: Mark task done and commit with plan reference.
 
 ### Task 3: Backend stem runtime readiness + dependencies (TDD)
 
