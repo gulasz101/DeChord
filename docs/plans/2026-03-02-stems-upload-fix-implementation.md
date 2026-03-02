@@ -372,7 +372,7 @@ plan: docs/plans/2026-03-02-stems-upload-fix-implementation.md task 4"
 
 ---
 
-### Task 5: Run full test suite and verify
+### Task 5: Run full test suite and verify [x]
 
 **Step 1: Run backend tests**
 
@@ -395,7 +395,7 @@ plan: docs/plans/2026-03-02-stems-upload-fix-implementation.md task 5"
 
 ---
 
-### Task 6: Reset, start app, and verify end-to-end
+### Task 6: Reset, start app, and verify end-to-end [x]
 
 **Step 1: Reset state**
 
