@@ -260,6 +260,7 @@ The repository now includes a browser-based DeChord practice app (FastAPI backen
 Use tmux-managed targets from the root `Makefile`:
 
 ```bash
+npm install -g portless
 make install
 make up
 make status
@@ -267,8 +268,8 @@ make status
 
 Open:
 
-- Frontend: [http://localhost:5173](http://localhost:5173)
-- Backend API: [http://localhost:8000/api/health](http://localhost:8000/api/health)
+- Frontend: [http://dechord.localhost:1355](http://dechord.localhost:1355)
+- Backend API: [http://api.dechord.localhost:1355/api/health](http://api.dechord.localhost:1355/api/health)
 
 ### Upload Workflow (Web App)
 
@@ -298,6 +299,9 @@ make up
 make down
 make status
 make logs
+make portless-routes
+make portless-proxy-up
+make portless-proxy-down
 ```
 
 ### Test Commands

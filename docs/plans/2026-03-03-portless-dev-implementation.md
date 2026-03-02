@@ -34,18 +34,18 @@
 - [x] Step 5: Re-run `make -n up` and `make -n portless-routes` to confirm commands are wired.
 - [x] Step 6: Commit with message referencing this plan path and task number.
 
-### Task 3: Update docs and run full verification [ ]
+### Task 3: Update docs and run full verification [x]
 
 **Files:**
 - Modify: `README.md`
 - Modify: `docs/plans/2026-03-03-portless-dev-implementation.md`
 
-- [ ] Step 1: Update local-start README section with Portless prerequisite and stable URLs.
-- [ ] Step 2: Replace outdated localhost links in web app startup documentation block.
-- [ ] Step 3: Run required reset workflow: `make reset`.
-- [ ] Step 4: Run verification commands:
+- [x] Step 1: Update local-start README section with Portless prerequisite and stable URLs.
+- [x] Step 2: Replace outdated localhost links in web app startup documentation block.
+- [x] Step 3: Run required reset workflow: `make reset`.
+- [x] Step 4: Run verification commands:
   - `cd backend && uv run pytest tests/ -v`
   - `cd frontend && bun run test`
   - `cd frontend && bun run build`
-- [ ] Step 5: Mark all completed tasks in this plan file as `[x]`.
-- [ ] Step 6: Commit with message referencing this plan path and task number.
+- [x] Step 5: Mark all completed tasks in this plan file as `[x]`.
+- [x] Step 6: Commit with message referencing this plan path and task number.
