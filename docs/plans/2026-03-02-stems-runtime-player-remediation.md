@@ -122,9 +122,9 @@
 **Files:**
 - No code changes expected
 
-- [ ] Step 1: Run `make reset`.
-- [ ] Step 2: Confirm backend runtime state is fresh (`backend/dechord.db` recreated on startup, empty song/stem data pre-upload).
-- [ ] Step 3: Mark task done in plan.
+- [x] Step 1: Run `make reset`.
+- [x] Step 2: Confirm backend runtime state is fresh (`backend/dechord.db` recreated on startup, empty song/stem data pre-upload).
+- [x] Step 3: Mark task done in plan.
 
 ### Task 11: MCP E2E verification with provided MP3
 
