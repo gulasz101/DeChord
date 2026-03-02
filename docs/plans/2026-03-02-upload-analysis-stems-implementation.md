@@ -157,12 +157,12 @@
 - Modify: `frontend/src/App.tsx`
 - Modify: `frontend/src/__tests__/App.integration.test.tsx`
 
-- [ ] Step 1: Write failing integration tests for songs with no stems (single-track fallback).
-- [ ] Step 2: Write failing integration tests for songs with stems (mixer visible + stems used).
-- [ ] Step 3: Run integration tests and confirm fail.
-- [ ] Step 4: Implement fallback routing logic and conditional UI.
-- [ ] Step 5: Re-run integration tests and confirm pass.
-- [ ] Step 6: Commit with plan reference.
+- [x] Step 1: Write failing integration tests for songs with no stems (single-track fallback).
+- [x] Step 2: Write failing integration tests for songs with stems (mixer visible + stems used).
+- [x] Step 3: Run integration tests and confirm fail.
+- [x] Step 4: Implement fallback routing logic and conditional UI.
+- [x] Step 5: Re-run integration tests and confirm pass.
+- [x] Step 6: Commit with plan reference.
 
 ### Task 12: Backend and frontend full verification
 

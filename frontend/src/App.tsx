@@ -13,8 +13,6 @@ import { useChordSync } from "./hooks/useChordSync";
 import {
   uploadAudio,
   pollUntilComplete,
-  getAudioUrl,
-  getStemAudioUrl,
   listSongs,
   getSong,
   listSongStems,
@@ -23,6 +21,7 @@ import {
   deleteSongNote,
   savePlaybackPrefs,
 } from "./lib/api";
+import { resolvePlaybackSources } from "./lib/playbackSources";
 import type { AnalysisResult, JobStatus, PlaybackPrefs, ProcessMode, SongNote, SongSummary } from "./lib/types";
 import type { StemInfo } from "./lib/types";
 
@@ -73,15 +72,11 @@ function App() {
   const [activeToasts, setActiveToasts] = useState<ActiveToast[]>([]);
   const [isScrubbing, setIsScrubbing] = useState(false);
 
-  const audioSrc = selectedSongId ? getAudioUrl(selectedSongId) : null;
-  const stemSources =
-    selectedSongId && stems.length > 0
-      ? stems.map((stem) => ({
-          key: stem.stem_key,
-          url: getStemAudioUrl(selectedSongId, stem.stem_key),
-          enabled: enabledByStem[stem.stem_key] ?? true,
-        }))
-      : [];
+  const { audioSrc, stemSources } = resolvePlaybackSources({
+    songId: selectedSongId,
+    stems,
+    enabledByStem,
+  });
   const player = useAudioPlayer(audioSrc, stemSources);
   const { currentIndex, currentChord } = useChordSync(result?.chords ?? [], player.currentTime);
 
