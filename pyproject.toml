@@ -1,0 +1,16 @@
+[project]
+name = "dechord"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "madmom",
+    "pyqt5==5.15.10",
+]
+
+[tool.uv.sources]
+madmom = { git = "https://github.com/CPJKU/madmom" }
+
+[project.scripts]
+dechord = "main:main"

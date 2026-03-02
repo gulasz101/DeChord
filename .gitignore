@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Runtime / generated
+backend/dechord.db
+backend/test_libsql.db
+backend/tmp_libsql.db
+backend/uploads/
+backend/stems/
+backend/cache/
+cache/
+export/
+
+# Dependencies
+node_modules/
+
+# Reference repos
+Demucs-Gui/
+
+# Legacy
+requirements.txt
