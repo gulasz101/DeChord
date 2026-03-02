@@ -99,10 +99,12 @@ def _separate_with_demucs(
     _, separated = separator.separate_audio_file(input_audio)
     progress_callback(0.9, "Saving stems...")
 
+    import torchaudio
+
     outputs: dict[str, Path] = {}
     for stem_key, tensor in separated.items():
         out_path = output_dir / f"{stem_key}.wav"
-        separator.save_audio(tensor, str(out_path))
+        torchaudio.save(str(out_path), tensor.cpu(), sample_rate=separator.samplerate)
         logger.info("Demucs: saved stem %s -> %s", stem_key, out_path)
         outputs[stem_key] = out_path
 
