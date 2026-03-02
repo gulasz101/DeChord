@@ -54,12 +54,12 @@
 - Create: `backend/tests/test_stems.py`
 - Modify: `backend/pyproject.toml`
 
-- [ ] Step 1: Write failing unit tests for `split_to_stems(audio_path, on_progress)` contract with mocked Demucs adapter.
-- [ ] Step 2: Run `cd backend && uv run pytest tests/test_stems.py -v` and confirm fail.
-- [ ] Step 3: Add minimal `stems.py` service with Demucs wrapper and callback-based progress events.
-- [ ] Step 4: Add backend dependency entries needed for Demucs integration.
-- [ ] Step 5: Re-run targeted tests and confirm pass.
-- [ ] Step 6: Commit with plan reference.
+- [x] Step 1: Write failing unit tests for `split_to_stems(audio_path, on_progress)` contract with mocked Demucs adapter.
+- [x] Step 2: Run `cd backend && uv run pytest tests/test_stems.py -v` and confirm fail.
+- [x] Step 3: Add minimal `stems.py` service with Demucs wrapper and callback-based progress events.
+- [x] Step 4: Add backend dependency entries needed for Demucs integration.
+- [x] Step 5: Re-run targeted tests and confirm pass.
+- [x] Step 6: Commit with plan reference.
 
 ### Task 4: Implement staged progress engine in analyze job runner
 

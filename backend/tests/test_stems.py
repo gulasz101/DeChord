@@ -1,0 +1,40 @@
+from pathlib import Path
+
+from app.stems import split_to_stems
+
+
+def test_split_to_stems_uses_adapter_and_reports_progress(tmp_path: Path):
+    audio_path = tmp_path / "track.wav"
+    audio_path.write_bytes(b"fake-audio")
+    out_dir = tmp_path / "stems"
+
+    progress_events: list[tuple[float, str]] = []
+
+    def fake_separate(
+        input_audio: str,
+        output_dir: Path,
+        progress_callback,
+    ) -> dict[str, Path]:
+        assert input_audio == str(audio_path)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        vocals = output_dir / "vocals.wav"
+        drums = output_dir / "drums.wav"
+        vocals.write_bytes(b"vocals")
+        drums.write_bytes(b"drums")
+        progress_callback(0.25, "loading model")
+        progress_callback(0.75, "running separation")
+        return {"vocals": vocals, "drums": drums}
+
+    stems = split_to_stems(
+        audio_path=str(audio_path),
+        output_dir=out_dir,
+        on_progress=lambda pct, msg: progress_events.append((pct, msg)),
+        separate_fn=fake_separate,
+    )
+
+    assert [stem.stem_key for stem in stems] == ["drums", "vocals"]
+    assert all(stem.relative_path.endswith(".wav") for stem in stems)
+    assert all(stem.mime_type == "audio/x-wav" for stem in stems)
+
+    assert progress_events[0] == (0.0, "Preparing stem separation...")
+    assert progress_events[-1] == (100.0, "Stem separation complete")

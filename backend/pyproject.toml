@@ -13,6 +13,11 @@ dependencies = [
 [tool.uv.sources]
 madmom = { git = "https://github.com/CPJKU/madmom" }
 
+[project.optional-dependencies]
+stems = [
+    "demucs; python_version < '3.10'",
+]
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
