@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: "http://api.dechord.localhost:1355",
         changeOrigin: true,
       },
     },
