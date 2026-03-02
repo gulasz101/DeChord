@@ -81,11 +81,11 @@
 - Modify: `backend/app/main.py`
 - Modify: `backend/tests/test_api.py`
 
-- [ ] Step 1: Write failing tests for `GET /api/songs/{song_id}/stems` and stream endpoint `GET /api/audio/{song_id}/stems/{stem_key}`.
-- [ ] Step 2: Run targeted tests and confirm fail.
-- [ ] Step 3: Implement metadata persistence and both endpoints.
-- [ ] Step 4: Re-run tests and confirm pass.
-- [ ] Step 5: Commit with plan reference.
+- [x] Step 1: Write failing tests for `GET /api/songs/{song_id}/stems` and stream endpoint `GET /api/audio/{song_id}/stems/{stem_key}`.
+- [x] Step 2: Run targeted tests and confirm fail.
+- [x] Step 3: Implement metadata persistence and both endpoints.
+- [x] Step 4: Re-run tests and confirm pass.
+- [x] Step 5: Commit with plan reference.
 
 ### Task 6: Frontend API/type expansion for upload mode and staged status
 

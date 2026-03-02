@@ -204,3 +204,38 @@ def test_analyze_with_stems_failure_keeps_analysis_complete(tmp_path, monkeypatc
     result = client.get(f"/api/result/{job_id}")
     assert result.status_code == 200
     assert result.json()["tempo"] == 120
+
+
+def test_stems_are_persisted_and_streamed(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+
+    import app.main as main
+    from app.stems import StemResult
+
+    def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
+        output_dir.mkdir(parents=True, exist_ok=True)
+        drums = output_dir / "drums.wav"
+        vocals = output_dir / "vocals.wav"
+        drums.write_bytes(b"drums-bytes")
+        vocals.write_bytes(b"vocals-bytes")
+        return [
+            StemResult(stem_key="drums", relative_path=str(drums), mime_type="audio/x-wav"),
+            StemResult(stem_key="vocals", relative_path=str(vocals), mime_type="audio/x-wav"),
+        ]
+
+    monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
+
+    files = {"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")}
+    response = client.post("/api/analyze", files=files, data={"process_mode": "analysis_and_stems"})
+    assert response.status_code == 200
+    song_id = response.json()["song_id"]
+
+    stems_response = client.get(f"/api/songs/{song_id}/stems")
+    assert stems_response.status_code == 200
+    stems = stems_response.json()["stems"]
+    assert len(stems) == 2
+    assert {s["stem_key"] for s in stems} == {"drums", "vocals"}
+
+    drums_audio = client.get(f"/api/audio/{song_id}/stems/drums")
+    assert drums_audio.status_code == 200
+    assert drums_audio.content == b"drums-bytes"

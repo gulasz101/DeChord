@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from app.analysis import AnalysisResult, analyze_audio
 from app.db import close_db, execute, get_default_user, init_db
 from app.models import ProcessMode
-from app.stems import split_to_stems
+from app.stems import StemResult, split_to_stems
 
 app = FastAPI(title="DeChord API")
 
@@ -103,6 +103,18 @@ async def _persist_analysis(song_id: int, result: AnalysisResult) -> None:
         )
 
 
+async def _persist_stems(song_id: int, stems: list[StemResult]) -> None:
+    await execute("DELETE FROM song_stems WHERE song_id = ?", [song_id])
+    for stem in stems:
+        await execute(
+            """
+            INSERT INTO song_stems (song_id, stem_key, relative_path, mime_type, duration)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            [song_id, stem.stem_key, stem.relative_path, stem.mime_type, stem.duration],
+        )
+
+
 async def _load_latest_analysis(song_id: int) -> dict | None:
     analysis_rs = await execute(
         """
@@ -179,7 +191,7 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                     progress_pct=45,
                     stage_progress_pct=0,
                 )
-                split_to_stems(
+                stems = split_to_stems(
                     audio_path=audio_path,
                     output_dir=STEMS_DIR / str(song_id),
                     on_progress=lambda stage_pct, msg: set_stage(
@@ -189,6 +201,7 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                         stage_progress_pct=stage_pct,
                     ),
                 )
+                asyncio.run(_persist_stems(song_id, stems))
                 jobs[job_id]["stems_status"] = "complete"
             except Exception:
                 jobs[job_id]["stems_status"] = "failed"
@@ -418,6 +431,29 @@ async def get_song(song_id: int):
     }
 
 
+@app.get("/api/songs/{song_id}/stems")
+async def get_song_stems(song_id: int):
+    stems_rs = await execute(
+        """
+        SELECT stem_key, relative_path, mime_type, duration
+        FROM song_stems
+        WHERE song_id = ?
+        ORDER BY stem_key ASC
+        """,
+        [song_id],
+    )
+    stems = [
+        {
+            "stem_key": row[0],
+            "relative_path": row[1],
+            "mime_type": row[2],
+            "duration": row[3],
+        }
+        for row in stems_rs.rows
+    ]
+    return {"stems": stems}
+
+
 @app.get("/api/audio/{audio_id}")
 async def audio(audio_id: str):
     # Backward compatible path: if this is an in-memory job id, serve uploaded file path.
@@ -439,6 +475,26 @@ async def audio(audio_id: str):
 
     blob, mime_type = rs.rows[0][0], rs.rows[0][1] or "audio/mpeg"
     return Response(content=blob, media_type=mime_type)
+
+
+@app.get("/api/audio/{song_id}/stems/{stem_key}")
+async def stem_audio(song_id: int, stem_key: str):
+    rs = await execute(
+        """
+        SELECT relative_path, mime_type
+        FROM song_stems
+        WHERE song_id = ? AND stem_key = ?
+        LIMIT 1
+        """,
+        [song_id, stem_key],
+    )
+    if not rs.rows:
+        raise HTTPException(404, "Stem not found")
+
+    path = Path(rs.rows[0][0])
+    if not path.exists():
+        raise HTTPException(404, "Stem file missing")
+    return FileResponse(path, media_type=rs.rows[0][1] or "audio/mpeg")
 
 
 @app.post("/api/songs/{song_id}/notes")
