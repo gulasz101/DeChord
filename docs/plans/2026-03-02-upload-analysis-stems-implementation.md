@@ -10,6 +10,18 @@
 
 ---
 
+### Task 0: Fix frontend test runner baseline (blocker)
+
+**Files:**
+- Modify: `Makefile`
+- Modify: `README.md`
+
+- [x] Step 1: Reproduce frontend failure with `cd frontend && bun test` and capture error.
+- [x] Step 2: Verify `cd frontend && bun run test` passes to confirm runner mismatch root cause.
+- [x] Step 3: Replace project references from `bun test` to `bun run test` in actionable docs/scripts.
+- [x] Step 4: Re-run `cd frontend && bun run test` and `make test` to verify the runner path is stable.
+- [x] Step 5: Commit with plan reference.
+
 ### Task 1: Backend contracts for staged job status and process mode
 
 **Files:**

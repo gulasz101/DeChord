@@ -284,6 +284,6 @@ make logs
 
 ```bash
 cd backend && uv run pytest tests/ -v
-cd frontend && bun test
+cd frontend && bun run test
 cd frontend && bun run build
 ```

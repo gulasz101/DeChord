@@ -27,7 +27,7 @@ frontend:
 
 test:
 	cd backend && uv run pytest tests/ -v
-	cd frontend && bun test
+	cd frontend && bun run test
 
 backend-up:
 	@if $(TMUX) has-session -t "$(BACKEND_SESSION)" 2>/dev/null; then \
