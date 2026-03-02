@@ -1,6 +1,8 @@
 from pathlib import Path
 
-from app.stems import split_to_stems
+import pytest
+
+from app.stems import check_stem_runtime_ready, split_to_stems
 
 
 def test_split_to_stems_uses_adapter_and_reports_progress(tmp_path: Path):
@@ -38,3 +40,27 @@ def test_split_to_stems_uses_adapter_and_reports_progress(tmp_path: Path):
 
     assert progress_events[0] == (0.0, "Preparing stem separation...")
     assert progress_events[-1] == (100.0, "Stem separation complete")
+
+
+def test_check_stem_runtime_ready_reports_missing_dependency():
+    def fake_import(_name: str):
+        raise ModuleNotFoundError("No module named 'lameenc'")
+
+    with pytest.raises(RuntimeError, match="lameenc"):
+        check_stem_runtime_ready(import_module=fake_import)
+
+
+def test_split_to_stems_wraps_missing_dependency_error(tmp_path: Path):
+    audio_path = tmp_path / "track.wav"
+    audio_path.write_bytes(b"fake-audio")
+    out_dir = tmp_path / "stems"
+
+    def fake_separate(_input_audio: str, _output_dir: Path, _progress_callback):
+        raise ModuleNotFoundError("No module named 'lameenc'")
+
+    with pytest.raises(RuntimeError, match="lameenc"):
+        split_to_stems(
+            audio_path=str(audio_path),
+            output_dir=out_dir,
+            separate_fn=fake_separate,
+        )

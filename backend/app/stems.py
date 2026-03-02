@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import mimetypes
+from importlib import import_module
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -18,11 +19,24 @@ DemucsProgressCallback = Callable[[float, str], None]
 DemucsSeparateFn = Callable[[str, Path, DemucsProgressCallback], dict[str, Path]]
 
 
+def check_stem_runtime_ready(
+    import_module: Callable[[str], object] = import_module,
+) -> None:
+    try:
+        import_module("demucs.api")
+        import_module("lameenc")
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            f"Stem runtime dependency missing: {exc}. Run `cd backend && uv sync`."
+        ) from exc
+
+
 def _separate_with_demucs(
     input_audio: str,
     output_dir: Path,
     progress_callback: DemucsProgressCallback,
 ) -> dict[str, Path]:
+    check_stem_runtime_ready()
     import demucs.api
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -56,7 +70,12 @@ def split_to_stems(
             on_progress(pct, message)
 
     runner = separate_fn or _separate_with_demucs
-    separated = runner(audio_path, output_dir, report)
+    try:
+        separated = runner(audio_path, output_dir, report)
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            f"Stem runtime dependency missing: {exc}. Run `cd backend && uv sync`."
+        ) from exc
 
     stems: list[StemResult] = []
     for stem_key in sorted(separated.keys()):

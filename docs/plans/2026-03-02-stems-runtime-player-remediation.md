@@ -37,12 +37,12 @@
 - Modify: `backend/app/stems.py`
 - Modify: `backend/pyproject.toml`
 
-- [ ] Step 1: Add failing tests for dependency/runtime preflight diagnostics for stems.
-- [ ] Step 2: Run targeted backend tests and confirm RED.
-- [ ] Step 3: Implement preflight check and actionable error propagation for missing runtime modules.
-- [ ] Step 4: Add required runtime dependencies (including `lameenc`) to backend project dependencies.
-- [ ] Step 5: Re-run targeted tests and confirm GREEN.
-- [ ] Step 6: Mark task done and commit with plan reference.
+- [x] Step 1: Add failing tests for dependency/runtime preflight diagnostics for stems.
+- [x] Step 2: Run targeted backend tests and confirm RED.
+- [x] Step 3: Implement preflight check and actionable error propagation for missing runtime modules.
+- [x] Step 4: Add required runtime dependencies (including `lameenc`) to backend project dependencies.
+- [x] Step 5: Re-run targeted tests and confirm GREEN.
+- [x] Step 6: Mark task done and commit with plan reference.
 
 ### Task 4: Frontend upload mode selector parity in Song Library (TDD)
 

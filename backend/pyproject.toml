@@ -8,15 +8,12 @@ dependencies = [
     "python-multipart",
     "madmom",
     "libsql-client>=0.3.1",
+    "demucs; python_version < '3.14'",
+    "lameenc; python_version < '3.14'",
 ]
 
 [tool.uv.sources]
 madmom = { git = "https://github.com/CPJKU/madmom" }
-
-[project.optional-dependencies]
-stems = [
-    "demucs; python_version < '3.10'",
-]
 
 [dependency-groups]
 dev = [
