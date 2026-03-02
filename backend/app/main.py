@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from app.analysis import AnalysisResult, analyze_audio
 from app.db import close_db, execute, get_default_user, init_db
 from app.models import ProcessMode
+from app.stems import split_to_stems
 
 app = FastAPI(title="DeChord API")
 
@@ -28,6 +29,8 @@ app.add_middleware(
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
+STEMS_DIR = Path("stems")
+STEMS_DIR.mkdir(exist_ok=True)
 
 # In-memory job store (single-user local)
 jobs: dict[str, dict] = {}
@@ -141,29 +144,81 @@ async def _load_latest_analysis(song_id: int) -> dict | None:
 
 
 def _run_analysis(job_id: str, audio_path: str, song_id: int):
+    def set_stage(
+        stage: str,
+        *,
+        message: str,
+        progress_pct: float,
+        stage_progress_pct: float,
+    ) -> None:
+        job = jobs[job_id]
+        job["stage"] = stage
+        job["message"] = message
+        job["progress"] = message
+        job["progress_pct"] = progress_pct
+        job["stage_progress_pct"] = stage_progress_pct
+        history = job.setdefault("stage_history", [])
+        if not history or history[-1] != stage:
+            history.append(stage)
+
     try:
         jobs[job_id]["status"] = "processing"
-        jobs[job_id]["stage"] = "analyzing_chords"
-        jobs[job_id]["progress"] = "Analyzing audio..."
-        jobs[job_id]["message"] = "Analyzing audio..."
-        jobs[job_id]["progress_pct"] = 50
-        jobs[job_id]["stage_progress_pct"] = 50
+        set_stage(
+            "analyzing_chords",
+            message="Analyzing audio...",
+            progress_pct=40,
+            stage_progress_pct=50,
+        )
         result = analyze_audio(audio_path)
-        jobs[job_id]["stage"] = "persisting"
-        jobs[job_id]["message"] = "Saving analysis..."
-        jobs[job_id]["progress_pct"] = 95
-        jobs[job_id]["stage_progress_pct"] = 100
+
+        if jobs[job_id].get("process_mode") == "analysis_and_stems":
+            try:
+                set_stage(
+                    "splitting_stems",
+                    message="Splitting stems...",
+                    progress_pct=45,
+                    stage_progress_pct=0,
+                )
+                split_to_stems(
+                    audio_path=audio_path,
+                    output_dir=STEMS_DIR / str(song_id),
+                    on_progress=lambda stage_pct, msg: set_stage(
+                        "splitting_stems",
+                        message=msg,
+                        progress_pct=min(45 + stage_pct * 0.5, 95),
+                        stage_progress_pct=stage_pct,
+                    ),
+                )
+                jobs[job_id]["stems_status"] = "complete"
+            except Exception:
+                jobs[job_id]["stems_status"] = "failed"
+        else:
+            jobs[job_id]["stems_status"] = "not_requested"
+
+        set_stage(
+            "persisting",
+            message="Saving analysis...",
+            progress_pct=95,
+            stage_progress_pct=100,
+        )
         asyncio.run(_persist_analysis(song_id, result))
         jobs[job_id]["status"] = "complete"
-        jobs[job_id]["stage"] = "complete"
-        jobs[job_id]["message"] = "Completed"
-        jobs[job_id]["progress_pct"] = 100
-        jobs[job_id]["stage_progress_pct"] = 100
+        set_stage(
+            "complete",
+            message="Completed",
+            progress_pct=100,
+            stage_progress_pct=100,
+        )
         jobs[job_id]["result"] = result
+        jobs[job_id]["error"] = None
     except Exception as e:
         jobs[job_id]["status"] = "error"
-        jobs[job_id]["stage"] = "error"
-        jobs[job_id]["message"] = "Failed"
+        set_stage(
+            "error",
+            message="Failed",
+            progress_pct=100,
+            stage_progress_pct=100,
+        )
         jobs[job_id]["error"] = str(e)
 
 
@@ -197,12 +252,15 @@ async def analyze(file: UploadFile, process_mode: ProcessMode = Form("analysis_o
     jobs[job_id] = {
         "status": "queued",
         "stage": "queued",
+        "stage_history": ["queued"],
         "message": "Queued",
         "progress_pct": 0,
         "stage_progress_pct": 0,
         "process_mode": process_mode,
+        "stems_status": "queued" if process_mode == "analysis_and_stems" else "not_requested",
         "audio_path": str(audio_path),
         "song_id": song_id,
+        "error": None,
     }
 
     executor.submit(_run_analysis, job_id, str(audio_path), song_id)
@@ -220,6 +278,8 @@ async def status(job_id: str):
         "progress_pct": job.get("progress_pct", 0),
         "stage_progress_pct": job.get("stage_progress_pct", 0),
         "message": job.get("message", ""),
+        "stage_history": job.get("stage_history", []),
+        "stems_status": job.get("stems_status", "not_requested"),
         "progress": job.get("progress"),
         "error": job.get("error"),
     }

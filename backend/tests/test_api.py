@@ -150,3 +150,57 @@ def test_result_not_found(tmp_path, monkeypatch):
     client = _build_client(tmp_path, monkeypatch)
     response = client.get("/api/result/nonexistent")
     assert response.status_code == 404
+
+
+def test_analyze_with_stems_reports_split_stage(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+
+    import app.main as main
+
+    def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
+        if on_progress:
+            on_progress(10, "warmup")
+            on_progress(100, "done")
+        return []
+
+    monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
+
+    files = {"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")}
+    response = client.post("/api/analyze", files=files, data={"process_mode": "analysis_and_stems"})
+    assert response.status_code == 200
+    job_id = response.json()["job_id"]
+
+    status = client.get(f"/api/status/{job_id}")
+    assert status.status_code == 200
+    payload = status.json()
+    assert payload["status"] == "complete"
+    assert payload["stage"] == "complete"
+    assert payload["stems_status"] == "complete"
+    assert "splitting_stems" in payload["stage_history"]
+
+
+def test_analyze_with_stems_failure_keeps_analysis_complete(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+
+    import app.main as main
+
+    def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
+        raise RuntimeError("stem split failed")
+
+    monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
+
+    files = {"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")}
+    response = client.post("/api/analyze", files=files, data={"process_mode": "analysis_and_stems"})
+    assert response.status_code == 200
+    job_id = response.json()["job_id"]
+
+    status = client.get(f"/api/status/{job_id}")
+    assert status.status_code == 200
+    payload = status.json()
+    assert payload["status"] == "complete"
+    assert payload["stems_status"] == "failed"
+    assert payload["error"] is None
+
+    result = client.get(f"/api/result/{job_id}")
+    assert result.status_code == 200
+    assert result.json()["tempo"] == 120

@@ -67,13 +67,13 @@
 - Modify: `backend/app/main.py`
 - Modify: `backend/tests/test_api.py`
 
-- [ ] Step 1: Add failing API tests asserting stage transitions for `analysis_only` and `analysis_and_stems`.
-- [ ] Step 2: Run `cd backend && uv run pytest tests/test_api.py -v` and confirm fail.
-- [ ] Step 3: Refactor `_run_analysis` into stage helpers updating `progress_pct` and `stage_progress_pct`.
-- [ ] Step 4: Wire stem stage to call `split_to_stems` only when requested.
-- [ ] Step 5: Ensure partial success behavior: analysis success + stems failure still returns analysis.
-- [ ] Step 6: Re-run tests and confirm pass.
-- [ ] Step 7: Commit with plan reference.
+- [x] Step 1: Add failing API tests asserting stage transitions for `analysis_only` and `analysis_and_stems`.
+- [x] Step 2: Run `cd backend && uv run pytest tests/test_api.py -v` and confirm fail.
+- [x] Step 3: Refactor `_run_analysis` into stage helpers updating `progress_pct` and `stage_progress_pct`.
+- [x] Step 4: Wire stem stage to call `split_to_stems` only when requested.
+- [x] Step 5: Ensure partial success behavior: analysis success + stems failure still returns analysis.
+- [x] Step 6: Re-run tests and confirm pass.
+- [x] Step 7: Commit with plan reference.
 
 ### Task 5: Persist and expose stems via API
 
