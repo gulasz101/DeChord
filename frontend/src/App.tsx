@@ -76,6 +76,7 @@ function App() {
 
   const { audioSrc, stemSources } = resolvePlaybackSources({
     songId: selectedSongId,
+    playbackMode,
     stems,
     enabledByStem,
   });

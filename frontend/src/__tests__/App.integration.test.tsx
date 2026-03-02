@@ -12,6 +12,7 @@ describe("App integration", () => {
   it("falls back to single-track playback when no stems", () => {
     const resolved = resolvePlaybackSources({
       songId: 5,
+      playbackMode: "stems",
       stems: [],
       enabledByStem: {},
     });
@@ -24,6 +25,7 @@ describe("App integration", () => {
   it("uses stems playback when stems exist", () => {
     const resolved = resolvePlaybackSources({
       songId: 5,
+      playbackMode: "stems",
       stems: [
         { stem_key: "drums", relative_path: "stems/5/drums.wav", mime_type: "audio/x-wav", duration: null },
       ],

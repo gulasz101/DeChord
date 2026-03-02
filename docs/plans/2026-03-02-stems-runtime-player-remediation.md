@@ -77,14 +77,14 @@
 - Modify: `frontend/src/__tests__/App.integration.test.tsx`
 - Create: `frontend/src/lib/__tests__/playbackSources.mode.test.ts`
 
-- [ ] Step 1: Add failing tests for routing rules:
+- [x] Step 1: Add failing tests for routing rules:
   - `Full Mix` -> mixed source only
   - `Stems` + selected stems -> stem sources only
   - `Stems` + no selected stems -> auto-fallback to full mix
-- [ ] Step 2: Run targeted frontend tests and confirm RED.
-- [ ] Step 3: Implement routing logic with explicit playback mode input.
-- [ ] Step 4: Re-run targeted frontend tests and confirm GREEN.
-- [ ] Step 5: Mark task done and commit with plan reference.
+- [x] Step 2: Run targeted frontend tests and confirm RED.
+- [x] Step 3: Implement routing logic with explicit playback mode input.
+- [x] Step 4: Re-run targeted frontend tests and confirm GREEN.
+- [x] Step 5: Mark task done and commit with plan reference.
 
 ### Task 7: Visible frontend warning for stem split failure
 
