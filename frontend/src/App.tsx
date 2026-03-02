@@ -8,6 +8,7 @@ import { TransportBar } from "./components/TransportBar";
 import { NoteEditorModal } from "./components/NoteEditorModal";
 import { ToastCueLayer } from "./components/ToastCueLayer";
 import { StemMixerPanel } from "./components/StemMixerPanel";
+import type { PlaybackMode } from "./components/StemMixerPanel";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
 import { useChordSync } from "./hooks/useChordSync";
 import {
@@ -57,6 +58,7 @@ function App() {
   const [prefs, setPrefs] = useState<PlaybackPrefs>(DEFAULT_PREFS);
   const [stems, setStems] = useState<StemInfo[]>([]);
   const [enabledByStem, setEnabledByStem] = useState<Record<string, boolean>>({});
+  const [playbackMode, setPlaybackMode] = useState<PlaybackMode>("full_mix");
 
   const [loading, setLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<JobStatus | null>(null);
@@ -104,6 +106,7 @@ function App() {
     setPrefs(data.playback_prefs);
     setStems(stemsData.stems);
     setEnabledByStem(defaultEnabled);
+    setPlaybackMode(stemsData.stems.length > 0 ? "stems" : "full_mix");
     setLoopStartIdx(data.playback_prefs.loop_start_index);
     setLoopEndIdx(data.playback_prefs.loop_end_index);
     firedTimeNotesRef.current = new Set();
@@ -436,6 +439,8 @@ function App() {
       <main className="flex flex-1 flex-col gap-3 overflow-hidden p-3">
         {stems.length > 0 ? (
           <StemMixerPanel
+            playbackMode={playbackMode}
+            onModeChange={setPlaybackMode}
             stems={stems}
             enabledByStem={enabledByStem}
             onToggle={(stemKey, enabled) =>

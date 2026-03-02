@@ -64,11 +64,11 @@
 - Modify: `frontend/src/components/__tests__/StemMixerPanel.test.tsx`
 - Modify: `frontend/src/App.tsx`
 
-- [ ] Step 1: Add failing tests for `Full Mix`/`Stems` mode controls and stem checkbox behavior.
-- [ ] Step 2: Run targeted frontend tests and confirm RED.
-- [ ] Step 3: Implement sidebar-style mixer panel with radio mode switch and stem checkboxes.
-- [ ] Step 4: Re-run targeted frontend tests and confirm GREEN.
-- [ ] Step 5: Mark task done and commit with plan reference.
+- [x] Step 1: Add failing tests for `Full Mix`/`Stems` mode controls and stem checkbox behavior.
+- [x] Step 2: Run targeted frontend tests and confirm RED.
+- [x] Step 3: Implement sidebar-style mixer panel with radio mode switch and stem checkboxes.
+- [x] Step 4: Re-run targeted frontend tests and confirm GREEN.
+- [x] Step 5: Mark task done and commit with plan reference.
 
 ### Task 6: Playback routing logic for mix/stems/fallback behavior (TDD)
 
