@@ -86,10 +86,26 @@ def test_split_to_stems_falls_back_when_demucs_runner_fails(tmp_path: Path, monk
     monkeypatch.setattr(stems_mod, "_separate_with_demucs", fake_demucs)
     monkeypatch.setattr(stems_mod, "_split_with_ffmpeg_fallback", fake_fallback)
 
-    stems = split_to_stems(
-        audio_path=str(audio_path),
-        output_dir=out_dir,
-    )
+    monkeypatch.setenv("DECHORD_STEM_FALLBACK_ON_ERROR", "1")
+    monkeypatch.delenv("DECHORD_STEM_ENGINE", raising=False)
+
+    stems = split_to_stems(audio_path=str(audio_path), output_dir=out_dir)
 
     assert len(stems) == 1
     assert stems[0].stem_key == "drums"
+
+
+def test_split_to_stems_raises_when_demucs_fails_without_fallback_opt_in(tmp_path: Path, monkeypatch):
+    audio_path = tmp_path / "track.wav"
+    audio_path.write_bytes(b"fake-audio")
+    out_dir = tmp_path / "stems"
+
+    def fake_demucs(_input_audio: str, _output_dir: Path, _progress_callback):
+        raise RuntimeError("model download failed")
+
+    monkeypatch.setattr(stems_mod, "_separate_with_demucs", fake_demucs)
+    monkeypatch.delenv("DECHORD_STEM_FALLBACK_ON_ERROR", raising=False)
+    monkeypatch.delenv("DECHORD_STEM_ENGINE", raising=False)
+
+    with pytest.raises(RuntimeError, match="Demucs stem separation failed"):
+        split_to_stems(audio_path=str(audio_path), output_dir=out_dir)

@@ -110,7 +110,10 @@ def split_to_stems(
             pct = max(0.0, min(progress * 100.0, 100.0))
             on_progress(pct, message)
 
-    if separate_fn is None and os.getenv("DECHORD_STEM_ENGINE", "fallback").lower() != "demucs":
+    engine = os.getenv("DECHORD_STEM_ENGINE", "demucs").lower()
+    fallback_on_error = os.getenv("DECHORD_STEM_FALLBACK_ON_ERROR", "0") == "1"
+
+    if separate_fn is None and engine == "fallback":
         separated = _split_with_ffmpeg_fallback(audio_path, output_dir, report)
     else:
         runner = separate_fn or _separate_with_demucs
@@ -123,9 +126,12 @@ def split_to_stems(
         except Exception as exc:
             if separate_fn is not None:
                 raise
-            if on_progress:
-                on_progress(2.0, f"Demucs unavailable ({exc}). Using fallback stem extraction...")
-            separated = _split_with_ffmpeg_fallback(audio_path, output_dir, report)
+            if fallback_on_error:
+                if on_progress:
+                    on_progress(2.0, f"Demucs unavailable ({exc}). Using fallback stem extraction...")
+                separated = _split_with_ffmpeg_fallback(audio_path, output_dir, report)
+            else:
+                raise RuntimeError(f"Demucs stem separation failed: {exc}") from exc
 
     stems: list[StemResult] = []
     for stem_key in sorted(separated.keys()):

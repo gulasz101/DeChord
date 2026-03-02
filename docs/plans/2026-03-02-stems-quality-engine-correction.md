@@ -13,13 +13,13 @@
 - Modify: `backend/tests/test_stems.py`
 - Modify: `backend/app/stems.py`
 
-- [ ] Step 1: Add RED tests proving default path prefers demucs and fallback requires explicit opt-in.
-- [ ] Step 2: Run targeted tests and confirm RED.
-- [ ] Step 3: Implement default demucs engine and opt-in fallback-on-error behavior.
-- [ ] Step 4: Run targeted tests and confirm GREEN.
-- [ ] Step 5: Commit with plan reference.
+- [x] Step 1: Add RED tests proving default path prefers demucs and fallback requires explicit opt-in.
+- [x] Step 2: Run targeted tests and confirm RED.
+- [x] Step 3: Implement default demucs engine and opt-in fallback-on-error behavior.
+- [x] Step 4: Run targeted tests and confirm GREEN.
+- [x] Step 5: Commit with plan reference.
 
 ### Task 3: Verification and plan completion
 
-- [ ] Step 1: Run `cd backend && uv run pytest tests/test_stems.py -q`.
-- [ ] Step 2: Mark all plan tasks complete.
+- [x] Step 1: Run `cd backend && uv run pytest tests/test_stems.py -q`.
+- [x] Step 2: Mark all plan tasks complete.
