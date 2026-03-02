@@ -51,11 +51,11 @@
 - Modify: `frontend/src/components/__tests__/DropZoneUploadMode.test.tsx`
 - Modify: `frontend/src/App.tsx`
 
-- [ ] Step 1: Add failing tests for mode selection availability in Song Library upload flow.
-- [ ] Step 2: Run targeted frontend tests and confirm RED.
-- [ ] Step 3: Implement mode selector + callback wiring to upload API path.
-- [ ] Step 4: Re-run targeted frontend tests and confirm GREEN.
-- [ ] Step 5: Mark task done and commit with plan reference.
+- [x] Step 1: Add failing tests for mode selection availability in Song Library upload flow.
+- [x] Step 2: Run targeted frontend tests and confirm RED.
+- [x] Step 3: Implement mode selector + callback wiring to upload API path.
+- [x] Step 4: Re-run targeted frontend tests and confirm GREEN.
+- [x] Step 5: Mark task done and commit with plan reference.
 
 ### Task 5: Frontend player mode switch + sidebar mixer UX (TDD)
 

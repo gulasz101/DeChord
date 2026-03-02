@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DropZone } from "../DropZone";
+import { SongLibraryPanel } from "../SongLibraryPanel";
 
 describe("DropZone upload mode", () => {
   it("renders both upload mode options", () => {
@@ -11,5 +12,20 @@ describe("DropZone upload mode", () => {
     expect(html).toContain("Analyze chords only");
     expect(html).toContain("Analyze + split stems");
     expect(html).toContain('name="process-mode"');
+  });
+
+  it("renders upload mode options in Song Library upload flow", () => {
+    const html = renderToStaticMarkup(
+      <SongLibraryPanel
+        songs={[]}
+        selectedSongId={null}
+        onSelect={() => {}}
+        onUpload={() => {}}
+      />,
+    );
+
+    expect(html).toContain("Analyze chords only");
+    expect(html).toContain("Analyze + split stems");
+    expect(html).toContain('name="library-process-mode"');
   });
 });

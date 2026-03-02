@@ -450,7 +450,7 @@ function App() {
               selectedSongId={selectedSongId}
               loading={loading}
               onSelect={(songId) => void loadSong(songId)}
-              onUpload={(file) => void handleFile(file, "analysis_only")}
+              onUpload={(file, mode) => void handleFile(file, mode)}
             />
           </div>
           <section className="flex shrink-0 flex-row items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 sm:flex-col sm:items-start sm:gap-1.5 sm:py-3">
