@@ -1,6 +1,6 @@
 # Makefile
 .PHONY: \
-	install test \
+	install test reset \
 	backend frontend dev \
 	backend-up backend-down backend-attach backend-status backend-logs \
 	frontend-up frontend-down frontend-attach frontend-status frontend-logs \
@@ -28,6 +28,13 @@ frontend:
 test:
 	cd backend && uv run pytest tests/ -v
 	cd frontend && bun run test
+
+reset:
+	@$(MAKE) down
+	rm -f backend/dechord.db backend/test_libsql.db backend/tmp_libsql.db
+	rm -rf backend/uploads backend/stems backend/cache
+	mkdir -p backend/uploads backend/stems
+	@echo "Local backend state reset."
 
 backend-up:
 	@if $(TMUX) has-session -t "$(BACKEND_SESSION)" 2>/dev/null; then \

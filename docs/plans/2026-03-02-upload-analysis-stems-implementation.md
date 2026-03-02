@@ -176,6 +176,17 @@
 - [x] Step 5: Re-run affected tests after docs/code touch if needed.
 - [x] Step 6: Commit with plan reference.
 
+### Task 13: Add local reset workflow target
+
+**Files:**
+- Modify: `Makefile`
+- Modify: `docs/plans/2026-03-02-upload-analysis-stems-implementation.md`
+
+- [x] Step 1: Confirm `make reset` fails before implementation.
+- [x] Step 2: Add `reset` target to stop services and remove local backend runtime state (DB, uploads, stems, cache).
+- [x] Step 3: Run `make reset` and verify it succeeds.
+- [x] Step 4: Commit with plan reference.
+
 ---
 
 ## Verification Commands
