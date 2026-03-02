@@ -4,7 +4,6 @@ import { deriveStemWarning } from "../lib/uploadWarnings";
 describe("upload warning integration", () => {
   it("returns warning when stems split failed with explicit error", () => {
     const warning = deriveStemWarning({
-      status: "complete",
       stems_status: "failed",
       stems_error: "Stem runtime dependency missing: lameenc",
     });
@@ -15,7 +14,6 @@ describe("upload warning integration", () => {
 
   it("returns no warning when stems are complete", () => {
     const warning = deriveStemWarning({
-      status: "complete",
       stems_status: "complete",
       stems_error: null,
     });

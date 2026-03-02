@@ -112,10 +112,10 @@
 **Files:**
 - No code changes expected
 
-- [ ] Step 1: Run `cd backend && uv run pytest tests/ -v`.
-- [ ] Step 2: Run `cd frontend && bun test`.
-- [ ] Step 3: Run `cd frontend && bun run build`.
-- [ ] Step 4: Mark task done and commit with plan reference if artifacts/documentation changes are made.
+- [x] Step 1: Run `cd backend && uv run pytest tests/ -v`.
+- [x] Step 2: Run `cd frontend && bun test`.
+- [x] Step 3: Run `cd frontend && bun run build`.
+- [x] Step 4: Mark task done and commit with plan reference if artifacts/documentation changes are made.
 
 ### Task 10: Fresh-state runtime reset gate
 
