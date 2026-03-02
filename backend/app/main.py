@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Response, UploadFile
+from fastapi import FastAPI, Form, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 from app.analysis import AnalysisResult, analyze_audio
 from app.db import close_db, execute, get_default_user, init_db
+from app.models import ProcessMode
 
 app = FastAPI(title="DeChord API")
 
@@ -142,13 +143,27 @@ async def _load_latest_analysis(song_id: int) -> dict | None:
 def _run_analysis(job_id: str, audio_path: str, song_id: int):
     try:
         jobs[job_id]["status"] = "processing"
+        jobs[job_id]["stage"] = "analyzing_chords"
         jobs[job_id]["progress"] = "Analyzing audio..."
+        jobs[job_id]["message"] = "Analyzing audio..."
+        jobs[job_id]["progress_pct"] = 50
+        jobs[job_id]["stage_progress_pct"] = 50
         result = analyze_audio(audio_path)
+        jobs[job_id]["stage"] = "persisting"
+        jobs[job_id]["message"] = "Saving analysis..."
+        jobs[job_id]["progress_pct"] = 95
+        jobs[job_id]["stage_progress_pct"] = 100
         asyncio.run(_persist_analysis(song_id, result))
         jobs[job_id]["status"] = "complete"
+        jobs[job_id]["stage"] = "complete"
+        jobs[job_id]["message"] = "Completed"
+        jobs[job_id]["progress_pct"] = 100
+        jobs[job_id]["stage_progress_pct"] = 100
         jobs[job_id]["result"] = result
     except Exception as e:
         jobs[job_id]["status"] = "error"
+        jobs[job_id]["stage"] = "error"
+        jobs[job_id]["message"] = "Failed"
         jobs[job_id]["error"] = str(e)
 
 
@@ -168,7 +183,7 @@ async def health():
 
 
 @app.post("/api/analyze")
-async def analyze(file: UploadFile):
+async def analyze(file: UploadFile, process_mode: ProcessMode = Form("analysis_only")):
     job_id = uuid.uuid4().hex[:12]
     ext = Path(file.filename).suffix if file.filename else ".mp3"
     audio_path = UPLOAD_DIR / f"{job_id}{ext}"
@@ -181,6 +196,11 @@ async def analyze(file: UploadFile):
 
     jobs[job_id] = {
         "status": "queued",
+        "stage": "queued",
+        "message": "Queued",
+        "progress_pct": 0,
+        "stage_progress_pct": 0,
+        "process_mode": process_mode,
         "audio_path": str(audio_path),
         "song_id": song_id,
     }
@@ -196,6 +216,10 @@ async def status(job_id: str):
     job = jobs[job_id]
     return {
         "status": job["status"],
+        "stage": job.get("stage", job["status"]),
+        "progress_pct": job.get("progress_pct", 0),
+        "stage_progress_pct": job.get("stage_progress_pct", 0),
+        "message": job.get("message", ""),
         "progress": job.get("progress"),
         "error": job.get("error"),
     }

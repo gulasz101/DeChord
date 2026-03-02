@@ -51,7 +51,7 @@ def test_analyze_persists_song_and_analysis(tmp_path, monkeypatch):
     client = _build_client(tmp_path, monkeypatch)
 
     files = {"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")}
-    response = client.post("/api/analyze", files=files)
+    response = client.post("/api/analyze", files=files, data={"process_mode": "analysis_only"})
     assert response.status_code == 200
     body = response.json()
     assert "job_id" in body
@@ -59,7 +59,14 @@ def test_analyze_persists_song_and_analysis(tmp_path, monkeypatch):
 
     status = client.get(f"/api/status/{body['job_id']}")
     assert status.status_code == 200
-    assert status.json()["status"] == "complete"
+    status_payload = status.json()
+    assert status_payload["status"] == "complete"
+    assert status_payload["stage"] == "complete"
+    assert isinstance(status_payload["progress_pct"], (int, float))
+    assert status_payload["progress_pct"] == 100
+    assert isinstance(status_payload["stage_progress_pct"], (int, float))
+    assert status_payload["stage_progress_pct"] == 100
+    assert isinstance(status_payload["message"], str)
 
     result = client.get(f"/api/result/{body['job_id']}")
     assert result.status_code == 200

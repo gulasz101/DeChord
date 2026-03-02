@@ -28,12 +28,12 @@
 - Modify: `backend/tests/test_api.py`
 - Modify: `backend/app/models.py`
 
-- [ ] Step 1: Write failing backend tests for `POST /api/analyze` accepting `process_mode` (`analysis_only`, `analysis_and_stems`).
-- [ ] Step 2: Write failing tests asserting `/api/status/{job_id}` returns `stage`, `progress_pct`, `stage_progress_pct`, and `message`.
-- [ ] Step 3: Run `cd backend && uv run pytest tests/test_api.py -v` and confirm failures.
-- [ ] Step 4: Add/adjust request and response models minimally to satisfy schema.
-- [ ] Step 5: Re-run tests and ensure these contract tests pass.
-- [ ] Step 6: Commit with message referencing `docs/plans/2026-03-02-upload-analysis-stems-implementation.md`.
+- [x] Step 1: Write failing backend tests for `POST /api/analyze` accepting `process_mode` (`analysis_only`, `analysis_and_stems`).
+- [x] Step 2: Write failing tests asserting `/api/status/{job_id}` returns `stage`, `progress_pct`, `stage_progress_pct`, and `message`.
+- [x] Step 3: Run `cd backend && uv run pytest tests/test_api.py -v` and confirm failures.
+- [x] Step 4: Add/adjust request and response models minimally to satisfy schema.
+- [x] Step 5: Re-run tests and ensure these contract tests pass.
+- [x] Step 6: Commit with message referencing `docs/plans/2026-03-02-upload-analysis-stems-implementation.md`.
 
 ### Task 2: DB schema for stems metadata
 

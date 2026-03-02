@@ -1,4 +1,7 @@
 from dataclasses import dataclass
+from typing import Literal
+
+ProcessMode = Literal["analysis_only", "analysis_and_stems"]
 
 
 @dataclass
