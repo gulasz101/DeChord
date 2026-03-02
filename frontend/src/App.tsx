@@ -20,7 +20,7 @@ import {
   deleteSongNote,
   savePlaybackPrefs,
 } from "./lib/api";
-import type { AnalysisResult, PlaybackPrefs, ProcessMode, SongNote, SongSummary } from "./lib/types";
+import type { AnalysisResult, JobStatus, PlaybackPrefs, ProcessMode, SongNote, SongSummary } from "./lib/types";
 
 interface NoteModalState {
   open: boolean;
@@ -54,7 +54,7 @@ function App() {
   const [prefs, setPrefs] = useState<PlaybackPrefs>(DEFAULT_PREFS);
 
   const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState("");
+  const [uploadStatus, setUploadStatus] = useState<JobStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [loopStartIdx, setLoopStartIdx] = useState<number | null>(null);
@@ -197,7 +197,7 @@ function App() {
     try {
       const upload = await uploadAudio(file, processMode);
       const analysisResult = await pollUntilComplete(upload.job_id, (s) => {
-        setProgress(s.progress || "Processing...");
+        setUploadStatus(s);
       });
 
       await loadSongs();
@@ -207,7 +207,7 @@ function App() {
       setError(e instanceof Error ? e.message : "Analysis failed");
     } finally {
       setLoading(false);
-      setProgress("");
+      setUploadStatus(null);
     }
   }, [loadSong, loadSongs]);
 
@@ -451,7 +451,14 @@ function App() {
 
           {loading ? (
             <div className="flex h-full items-center justify-center">
-              <DropZone onFile={() => {}} loading progress={progress} />
+              <DropZone
+                onFile={() => {}}
+                loading
+                progressText={uploadStatus?.message || uploadStatus?.progress || "Processing..."}
+                progressPct={uploadStatus?.progress_pct}
+                stageProgressPct={uploadStatus?.stage_progress_pct}
+                stage={uploadStatus?.stage}
+              />
             </div>
           ) : null}
 

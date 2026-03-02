@@ -1,15 +1,25 @@
 import { useCallback, useState, useRef } from "react";
-import type { ProcessMode } from "../lib/types";
+import type { JobStage, ProcessMode } from "../lib/types";
 
 interface DropZoneProps {
   onFile: (file: File, mode: ProcessMode) => void;
   loading?: boolean;
-  progress?: string;
+  progressText?: string;
+  progressPct?: number;
+  stageProgressPct?: number;
+  stage?: JobStage;
 }
 
 const ACCEPTED = [".mp3", ".wav", ".m4a", ".aac", ".mp4"];
 
-export function DropZone({ onFile, loading, progress }: DropZoneProps) {
+export function DropZone({
+  onFile,
+  loading,
+  progressText,
+  progressPct,
+  stageProgressPct,
+  stage,
+}: DropZoneProps) {
   const [dragOver, setDragOver] = useState(false);
   const [mode, setMode] = useState<ProcessMode>("analysis_only");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -33,10 +43,36 @@ export function DropZone({ onFile, loading, progress }: DropZoneProps) {
   );
 
   if (loading) {
+    const overallPct = Math.round(progressPct ?? 0);
+    const currentStagePct = Math.round(stageProgressPct ?? 0);
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
+      <div className="flex w-full max-w-md flex-col items-center justify-center gap-4 rounded-xl border border-slate-700 bg-slate-900/70 p-4">
         <div className="w-8 h-8 border-2 border-gray-400 border-t-white rounded-full animate-spin" />
-        <p className="text-gray-400 text-sm">{progress || "Analyzing..."}</p>
+        <p className="text-gray-300 text-sm">{progressText || "Processing..."}</p>
+        <div className="w-full">
+          <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
+            <span>Overall</span>
+            <span>{overallPct}%</span>
+          </div>
+          <div className="h-2 rounded bg-slate-800">
+            <div
+              className="h-2 rounded bg-blue-500 transition-all"
+              style={{ width: `${Math.max(0, Math.min(overallPct, 100))}%` }}
+            />
+          </div>
+        </div>
+        <div className="w-full">
+          <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
+            <span>{stage || "stage"}</span>
+            <span>{currentStagePct}%</span>
+          </div>
+          <div className="h-2 rounded bg-slate-800">
+            <div
+              className="h-2 rounded bg-emerald-500 transition-all"
+              style={{ width: `${Math.max(0, Math.min(currentStagePct, 100))}%` }}
+            />
+          </div>
+        </div>
       </div>
     );
   }

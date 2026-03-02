@@ -120,11 +120,11 @@
 - Modify: `frontend/src/App.tsx`
 - Create: `frontend/src/components/__tests__/UploadProgressStages.test.tsx`
 
-- [ ] Step 1: Write failing tests for overall progress bar and stage text rendering.
-- [ ] Step 2: Run targeted tests and confirm fail.
-- [ ] Step 3: Implement progress bar UI bound to `progress_pct` and `stage_progress_pct`.
-- [ ] Step 4: Re-run tests and confirm pass.
-- [ ] Step 5: Commit with plan reference.
+- [x] Step 1: Write failing tests for overall progress bar and stage text rendering.
+- [x] Step 2: Run targeted tests and confirm fail.
+- [x] Step 3: Implement progress bar UI bound to `progress_pct` and `stage_progress_pct`.
+- [x] Step 4: Re-run tests and confirm pass.
+- [x] Step 5: Commit with plan reference.
 
 ### Task 9: Multi-stem playback hook support
 
