@@ -132,11 +132,11 @@
 - Modify: `frontend/src/hooks/useAudioPlayer.ts`
 - Create: `frontend/src/hooks/__tests__/useAudioPlayerStems.test.ts`
 
-- [ ] Step 1: Write failing hook tests for synchronized play/pause/seek/rate across multiple audio elements.
-- [ ] Step 2: Run targeted tests and confirm fail.
-- [ ] Step 3: Refactor hook to support either single source or multiple stem sources.
-- [ ] Step 4: Re-run tests and confirm pass.
-- [ ] Step 5: Commit with plan reference.
+- [x] Step 1: Write failing hook tests for synchronized play/pause/seek/rate across multiple audio elements.
+- [x] Step 2: Run targeted tests and confirm fail.
+- [x] Step 3: Refactor hook to support either single source or multiple stem sources.
+- [x] Step 4: Re-run tests and confirm pass.
+- [x] Step 5: Commit with plan reference.
 
 ### Task 10: Stem mixer UI (checkbox mute controls)
 
