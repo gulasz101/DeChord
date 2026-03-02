@@ -1,6 +1,6 @@
 # Makefile
 .PHONY: \
-	install test reset \
+	install download-models test reset \
 	backend frontend dev \
 	backend-up backend-down backend-attach backend-status backend-logs \
 	frontend-up frontend-down frontend-attach frontend-status frontend-logs \
@@ -15,6 +15,10 @@ FRONTEND_CMD = cd "$(CURDIR)/frontend" && bun dev
 install:
 	cd backend && uv sync
 	cd frontend && bun install
+
+download-models:
+	cd backend && uv run python -c "from demucs.api import Separator; Separator(model='htdemucs_ft'); print('htdemucs_ft downloaded'); Separator(model='htdemucs'); print('htdemucs downloaded')"
+	@echo "Models downloaded successfully."
 
 dev:
 	@$(MAKE) up

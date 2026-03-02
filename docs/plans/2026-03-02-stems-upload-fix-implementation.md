@@ -338,7 +338,7 @@ plan: docs/plans/2026-03-02-stems-upload-fix-implementation.md task 3"
 
 ---
 
-### Task 4: Add `make download-models` Makefile target
+### Task 4: Add `make download-models` Makefile target [x]
 
 **Files:**
 - Modify: `Makefile`
