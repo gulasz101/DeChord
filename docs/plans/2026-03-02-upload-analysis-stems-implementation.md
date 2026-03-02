@@ -41,11 +41,11 @@
 - Modify: `backend/app/db_schema.sql`
 - Modify: `backend/tests/test_db_bootstrap.py`
 
-- [ ] Step 1: Write failing DB bootstrap test for new `song_stems` table and required indexes.
-- [ ] Step 2: Run `cd backend && uv run pytest tests/test_db_bootstrap.py -v` and confirm failure.
-- [ ] Step 3: Add `song_stems` schema (`song_id`, `stem_key`, `relative_path`, `mime_type`, `duration`, timestamps).
-- [ ] Step 4: Re-run DB bootstrap test and confirm pass.
-- [ ] Step 5: Commit with plan reference in commit body.
+- [x] Step 1: Write failing DB bootstrap test for new `song_stems` table and required indexes.
+- [x] Step 2: Run `cd backend && uv run pytest tests/test_db_bootstrap.py -v` and confirm failure.
+- [x] Step 3: Add `song_stems` schema (`song_id`, `stem_key`, `relative_path`, `mime_type`, `duration`, timestamps).
+- [x] Step 4: Re-run DB bootstrap test and confirm pass.
+- [x] Step 5: Commit with plan reference in commit body.
 
 ### Task 3: Create stem separation service (Demucs-based)
 

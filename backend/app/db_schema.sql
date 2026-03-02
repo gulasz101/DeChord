@@ -60,7 +60,21 @@ CREATE TABLE IF NOT EXISTS notes (
     FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS song_stems (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    song_id INTEGER NOT NULL,
+    stem_key TEXT NOT NULL,
+    relative_path TEXT NOT NULL,
+    mime_type TEXT,
+    duration REAL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(song_id, stem_key),
+    FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS idx_songs_user_id ON songs(user_id);
 CREATE INDEX IF NOT EXISTS idx_analyses_song_id ON analyses(song_id);
 CREATE INDEX IF NOT EXISTS idx_chords_analysis_id ON analysis_chords(analysis_id);
 CREATE INDEX IF NOT EXISTS idx_notes_song_id ON notes(song_id);
+CREATE INDEX IF NOT EXISTS idx_song_stems_song_id ON song_stems(song_id);
