@@ -30,6 +30,7 @@ export interface JobStatus {
   stage_progress_pct?: number;
   message?: string;
   stems_status?: "queued" | "complete" | "failed" | "not_requested";
+  stems_error?: string | null;
   progress?: string;
   error?: string;
 }

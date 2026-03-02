@@ -23,6 +23,7 @@ import {
   savePlaybackPrefs,
 } from "./lib/api";
 import { resolvePlaybackSources } from "./lib/playbackSources";
+import { deriveStemWarning } from "./lib/uploadWarnings";
 import type { AnalysisResult, JobStatus, PlaybackPrefs, ProcessMode, SongNote, SongSummary } from "./lib/types";
 import type { StemInfo } from "./lib/types";
 
@@ -63,6 +64,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<JobStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [stemWarning, setStemWarning] = useState<string | null>(null);
 
   const [loopStartIdx, setLoopStartIdx] = useState<number | null>(null);
   const [loopEndIdx, setLoopEndIdx] = useState<number | null>(null);
@@ -108,6 +110,7 @@ function App() {
     setStems(stemsData.stems);
     setEnabledByStem(defaultEnabled);
     setPlaybackMode(stemsData.stems.length > 0 ? "stems" : "full_mix");
+    setStemWarning(null);
     setLoopStartIdx(data.playback_prefs.loop_start_index);
     setLoopEndIdx(data.playback_prefs.loop_end_index);
     firedTimeNotesRef.current = new Set();
@@ -213,11 +216,14 @@ function App() {
   const handleFile = useCallback(async (file: File, processMode: ProcessMode = "analysis_only") => {
     setLoading(true);
     setError(null);
+    setStemWarning(null);
 
     try {
       const upload = await uploadAudio(file, processMode);
       const analysisResult = await pollUntilComplete(upload.job_id, (s) => {
         setUploadStatus(s);
+        const warning = deriveStemWarning(s);
+        if (warning) setStemWarning(warning);
       });
 
       await loadSongs();
@@ -450,6 +456,11 @@ function App() {
           />
         ) : null}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+          {stemWarning ? (
+            <section className="rounded-xl border border-amber-500/60 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+              {stemWarning}
+            </section>
+          ) : null}
           <div className="min-w-0 flex-1">
             <SongLibraryPanel
               songs={songs}

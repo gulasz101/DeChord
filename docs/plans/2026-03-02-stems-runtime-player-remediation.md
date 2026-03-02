@@ -93,11 +93,11 @@
 - Modify: `frontend/src/App.tsx`
 - Create: `frontend/src/__tests__/UploadWarning.integration.test.tsx`
 
-- [ ] Step 1: Add failing test asserting warning visibility when `stems_status=failed` and `stems_error` is present.
-- [ ] Step 2: Run targeted frontend tests and confirm RED.
-- [ ] Step 3: Implement warning surface in upload/progress UX.
-- [ ] Step 4: Re-run targeted frontend tests and confirm GREEN.
-- [ ] Step 5: Mark task done and commit with plan reference.
+- [x] Step 1: Add failing test asserting warning visibility when `stems_status=failed` and `stems_error` is present.
+- [x] Step 2: Run targeted frontend tests and confirm RED.
+- [x] Step 3: Implement warning surface in upload/progress UX.
+- [x] Step 4: Re-run targeted frontend tests and confirm GREEN.
+- [x] Step 5: Mark task done and commit with plan reference.
 
 ### Task 8: Update AGENTS.md with mandatory post-development reset rule
 
