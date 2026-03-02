@@ -7,20 +7,24 @@ import { Fretboard } from "./components/Fretboard";
 import { TransportBar } from "./components/TransportBar";
 import { NoteEditorModal } from "./components/NoteEditorModal";
 import { ToastCueLayer } from "./components/ToastCueLayer";
+import { StemMixerPanel } from "./components/StemMixerPanel";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
 import { useChordSync } from "./hooks/useChordSync";
 import {
   uploadAudio,
   pollUntilComplete,
   getAudioUrl,
+  getStemAudioUrl,
   listSongs,
   getSong,
+  listSongStems,
   createSongNote,
   updateSongNote,
   deleteSongNote,
   savePlaybackPrefs,
 } from "./lib/api";
 import type { AnalysisResult, JobStatus, PlaybackPrefs, ProcessMode, SongNote, SongSummary } from "./lib/types";
+import type { StemInfo } from "./lib/types";
 
 interface NoteModalState {
   open: boolean;
@@ -52,6 +56,8 @@ function App() {
   const [fileName, setFileName] = useState("");
   const [notes, setNotes] = useState<SongNote[]>([]);
   const [prefs, setPrefs] = useState<PlaybackPrefs>(DEFAULT_PREFS);
+  const [stems, setStems] = useState<StemInfo[]>([]);
+  const [enabledByStem, setEnabledByStem] = useState<Record<string, boolean>>({});
 
   const [loading, setLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<JobStatus | null>(null);
@@ -68,7 +74,15 @@ function App() {
   const [isScrubbing, setIsScrubbing] = useState(false);
 
   const audioSrc = selectedSongId ? getAudioUrl(selectedSongId) : null;
-  const player = useAudioPlayer(audioSrc);
+  const stemSources =
+    selectedSongId && stems.length > 0
+      ? stems.map((stem) => ({
+          key: stem.stem_key,
+          url: getStemAudioUrl(selectedSongId, stem.stem_key),
+          enabled: enabledByStem[stem.stem_key] ?? true,
+        }))
+      : [];
+  const player = useAudioPlayer(audioSrc, stemSources);
   const { currentIndex, currentChord } = useChordSync(result?.chords ?? [], player.currentTime);
 
   const firedTimeNotesRef = useRef<Set<number>>(new Set());
@@ -83,11 +97,18 @@ function App() {
 
   const loadSong = useCallback(async (songId: number) => {
     const data = await getSong(songId);
+    const stemsData = await listSongStems(songId);
+    const defaultEnabled: Record<string, boolean> = {};
+    for (const stem of stemsData.stems) {
+      defaultEnabled[stem.stem_key] = true;
+    }
     setSelectedSongId(songId);
     setFileName(data.song.title);
     setResult(data.analysis);
     setNotes(data.notes);
     setPrefs(data.playback_prefs);
+    setStems(stemsData.stems);
+    setEnabledByStem(defaultEnabled);
     setLoopStartIdx(data.playback_prefs.loop_start_index);
     setLoopEndIdx(data.playback_prefs.loop_end_index);
     firedTimeNotesRef.current = new Set();
@@ -418,6 +439,15 @@ function App() {
       <ToastCueLayer toasts={activeToasts} />
 
       <main className="flex flex-1 flex-col gap-3 overflow-hidden p-3">
+        {stems.length > 0 ? (
+          <StemMixerPanel
+            stems={stems}
+            enabledByStem={enabledByStem}
+            onToggle={(stemKey, enabled) =>
+              setEnabledByStem((prev) => ({ ...prev, [stemKey]: enabled }))
+            }
+          />
+        ) : null}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
           <div className="min-w-0 flex-1">
             <SongLibraryPanel

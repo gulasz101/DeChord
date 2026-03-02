@@ -145,11 +145,11 @@
 - Modify: `frontend/src/App.tsx`
 - Create: `frontend/src/components/__tests__/StemMixerPanel.test.tsx`
 
-- [ ] Step 1: Write failing tests for rendering detected stems and default all-checked state.
-- [ ] Step 2: Run targeted tests and confirm fail.
-- [ ] Step 3: Implement mixer panel with checkbox toggles and integrate with player state.
-- [ ] Step 4: Re-run tests and confirm pass.
-- [ ] Step 5: Commit with plan reference.
+- [x] Step 1: Write failing tests for rendering detected stems and default all-checked state.
+- [x] Step 2: Run targeted tests and confirm fail.
+- [x] Step 3: Implement mixer panel with checkbox toggles and integrate with player state.
+- [x] Step 4: Re-run tests and confirm pass.
+- [x] Step 5: Commit with plan reference.
 
 ### Task 11: Fallback behavior and mixed-track compatibility
 
