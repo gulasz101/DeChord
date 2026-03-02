@@ -155,7 +155,7 @@ plan: docs/plans/2026-03-02-stems-upload-fix-implementation.md task 2"
 
 ---
 
-### Task 3: Upgrade Demucs separation to DemucsGUI quality
+### Task 3: Upgrade Demucs separation to DemucsGUI quality [x]
 
 **Files:**
 - Modify: `backend/app/stems.py:36-57` (rewrite `_separate_with_demucs`)

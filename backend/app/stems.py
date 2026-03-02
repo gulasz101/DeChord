@@ -9,7 +9,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+import torch
+
 logger = logging.getLogger(__name__)
+
+# Model preference order: fine-tuned first, then standard
+DEMUCS_MODEL = os.getenv("DECHORD_DEMUCS_MODEL", "htdemucs_ft")
+DEMUCS_FALLBACK_MODEL = "htdemucs"
 
 
 @dataclass
@@ -36,6 +42,26 @@ def check_stem_runtime_ready(
         ) from exc
 
 
+def _detect_device() -> str:
+    """Auto-detect best available compute device."""
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        logger.info("Demucs: using MPS (Apple Silicon)")
+        return "mps"
+    if torch.cuda.is_available():
+        logger.info("Demucs: using CUDA")
+        return "cuda"
+    logger.info("Demucs: using CPU")
+    return "cpu"
+
+
+def _get_model_params(model_name: str) -> dict:
+    """Return DemucsGUI-quality separation parameters."""
+    return {
+        "overlap": 0.25,
+        "shifts": 1,  # 1 shift improves SDR ~0.2 points
+    }
+
+
 def _separate_with_demucs(
     input_audio: str,
     output_dir: Path,
@@ -47,13 +73,31 @@ def _separate_with_demucs(
     import demucs.api
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    logger.info("Demucs: creating separator with model=htdemucs")
-    separator = demucs.api.Separator(model="htdemucs")
+    device = _detect_device()
+    model_name = DEMUCS_MODEL
 
-    # Demucs callback is surfaced in later tasks with richer stage composition.
-    progress_callback(0.05, "Loaded model")
+    logger.info("Demucs: initializing separator model=%s device=%s", model_name, device)
+    try:
+        separator = demucs.api.Separator(model=model_name, device=device)
+    except Exception:
+        logger.warning(
+            "Demucs: model %s unavailable, falling back to %s",
+            model_name, DEMUCS_FALLBACK_MODEL,
+        )
+        model_name = DEMUCS_FALLBACK_MODEL
+        separator = demucs.api.Separator(model=model_name, device=device)
+
+    params = _get_model_params(model_name)
+    separator.update_parameter(
+        overlap=params["overlap"],
+        shifts=params["shifts"],
+    )
+
+    progress_callback(0.05, f"Loaded model {model_name} on {device}")
     logger.info("Demucs: separating audio file %s", input_audio)
+
     _, separated = separator.separate_audio_file(input_audio)
+    progress_callback(0.9, "Saving stems...")
 
     outputs: dict[str, Path] = {}
     for stem_key, tensor in separated.items():
@@ -61,6 +105,7 @@ def _separate_with_demucs(
         separator.save_audio(tensor, str(out_path))
         logger.info("Demucs: saved stem %s -> %s", stem_key, out_path)
         outputs[stem_key] = out_path
+
     progress_callback(1.0, "Separated stems")
     return outputs
 

@@ -1,9 +1,10 @@
+import os
 from pathlib import Path
 
 import pytest
 
 import app.stems as stems_mod
-from app.stems import check_stem_runtime_ready, split_to_stems
+from app.stems import check_stem_runtime_ready, split_to_stems, StemResult
 
 
 def test_split_to_stems_uses_adapter_and_reports_progress(tmp_path: Path):
@@ -109,3 +110,50 @@ def test_split_to_stems_raises_when_demucs_fails_without_fallback_opt_in(tmp_pat
 
     with pytest.raises(RuntimeError, match="Demucs stem separation failed"):
         split_to_stems(audio_path=str(audio_path), output_dir=out_dir)
+
+
+def test_detect_device_returns_valid_string():
+    """Device detection must return a valid device string."""
+    from app.stems import _detect_device
+    device = _detect_device()
+    assert device in ("mps", "cuda", "cpu")
+
+
+def test_get_model_params_returns_expected_keys():
+    """Model params must include overlap and shifts."""
+    from app.stems import _get_model_params
+    params = _get_model_params("htdemucs_ft")
+    assert "overlap" in params
+    assert "shifts" in params
+    assert params["overlap"] == 0.25
+    assert params["shifts"] >= 1
+
+
+def test_split_to_stems_with_injected_separator(tmp_path):
+    """split_to_stems with injected separate_fn skips real demucs."""
+    audio_file = tmp_path / "test.mp3"
+    audio_file.write_bytes(b"fake-audio")
+    output_dir = tmp_path / "stems"
+
+    def fake_separate(audio_path, out_dir, progress_callback):
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for stem in ("vocals", "drums", "bass", "other"):
+            (out_dir / f"{stem}.wav").write_bytes(b"wav-data")
+        progress_callback(1.0, "done")
+        return {s: out_dir / f"{s}.wav" for s in ("vocals", "drums", "bass", "other")}
+
+    results = split_to_stems(
+        audio_path=str(audio_file),
+        output_dir=output_dir,
+        separate_fn=fake_separate,
+    )
+    assert len(results) == 4
+    assert all(isinstance(r, StemResult) for r in results)
+    keys = {r.stem_key for r in results}
+    assert keys == {"vocals", "drums", "bass", "other"}
+
+
+def test_default_engine_is_demucs(monkeypatch):
+    """Default engine should be demucs, not fallback."""
+    monkeypatch.delenv("DECHORD_STEM_ENGINE", raising=False)
+    assert os.getenv("DECHORD_STEM_ENGINE", "demucs") == "demucs"
