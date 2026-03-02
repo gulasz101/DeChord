@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import mimetypes
+import subprocess
 from importlib import import_module
 from dataclasses import dataclass
 from pathlib import Path
@@ -55,6 +56,45 @@ def _separate_with_demucs(
     return outputs
 
 
+def _split_with_ffmpeg_fallback(
+    input_audio: str,
+    output_dir: Path,
+    progress_callback: DemucsProgressCallback,
+) -> dict[str, Path]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    stems_and_filters = [
+        ("bass", "lowpass=f=220"),
+        ("drums", "highpass=f=120,lowpass=f=5000"),
+        ("vocals", "highpass=f=300"),
+        ("other", "anull"),
+    ]
+
+    outputs: dict[str, Path] = {}
+    total = len(stems_and_filters)
+    for idx, (stem_key, audio_filter) in enumerate(stems_and_filters, start=1):
+        out_path = output_dir / f"{stem_key}.wav"
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            input_audio,
+            "-vn",
+            "-af",
+            audio_filter,
+            "-acodec",
+            "pcm_s16le",
+            str(out_path),
+        ]
+        try:
+            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as exc:
+            raise RuntimeError(f"Fallback stem extraction failed for '{stem_key}': {exc}") from exc
+        outputs[stem_key] = out_path
+        progress_callback(idx / total, f"Fallback extracting {stem_key}...")
+    progress_callback(1.0, "Fallback stem split complete")
+    return outputs
+
+
 def split_to_stems(
     audio_path: str,
     output_dir: Path,
@@ -76,6 +116,12 @@ def split_to_stems(
         raise RuntimeError(
             f"Stem runtime dependency missing: {exc}. Run `cd backend && uv sync`."
         ) from exc
+    except Exception as exc:
+        if separate_fn is not None:
+            raise
+        if on_progress:
+            on_progress(2.0, f"Demucs unavailable ({exc}). Using fallback stem extraction...")
+        separated = _split_with_ffmpeg_fallback(audio_path, output_dir, report)
 
     stems: list[StemResult] = []
     for stem_key in sorted(separated.keys()):
