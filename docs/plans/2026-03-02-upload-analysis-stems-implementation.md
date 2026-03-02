@@ -169,12 +169,12 @@
 **Files:**
 - Modify: `README.md`
 
-- [ ] Step 1: Run `cd backend && uv run pytest tests/ -v`.
-- [ ] Step 2: Run `cd frontend && bun test`.
-- [ ] Step 3: Run `cd frontend && bun run build`.
-- [ ] Step 4: Update README upload/stem workflow documentation and troubleshooting notes.
-- [ ] Step 5: Re-run affected tests after docs/code touch if needed.
-- [ ] Step 6: Commit with plan reference.
+- [x] Step 1: Run `cd backend && uv run pytest tests/ -v`.
+- [x] Step 2: Run `cd frontend && bun test`.
+- [x] Step 3: Run `cd frontend && bun run build`.
+- [x] Step 4: Update README upload/stem workflow documentation and troubleshooting notes.
+- [x] Step 5: Re-run affected tests after docs/code touch if needed.
+- [x] Step 6: Commit with plan reference.
 
 ---
 

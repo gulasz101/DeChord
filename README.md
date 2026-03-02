@@ -238,11 +238,22 @@ The repository now includes a browser-based DeChord practice app (FastAPI backen
 - Persistent song library (single-user localhost mode)
 - Audio files stored as BLOB in local LibSQL database
 - Saved analysis (key/tempo/chords) per song
+- Upload modes:
+  - `Analyze chords only`
+  - `Analyze + split stems`
+- Stage-based upload processing status with real progress values:
+  - overall progress (`progress_pct`)
+  - current stage progress (`stage_progress_pct`)
+  - stage label/message (`queued`, `analyzing_chords`, `splitting_stems`, `persisting`)
 - Playback speed control from `40%` to `200%`
 - Timeline looping and chord sync
 - Fretboard current + next chord highlighting
 - Timestamp notes and chord notes with playback toasts
 - Note markers on playback progress and chord timeline
+- Stem-aware playback:
+  - automatic fallback to single mixed track when no stems are available
+  - stem mixer checkboxes (all stems enabled by default)
+  - per-stem stream endpoints (`/api/songs/{song_id}/stems`, `/api/audio/{song_id}/stems/{stem_key}`)
 
 ### Start Locally
 
@@ -258,6 +269,15 @@ Open:
 
 - Frontend: [http://localhost:5173](http://localhost:5173)
 - Backend API: [http://localhost:8000/api/health](http://localhost:8000/api/health)
+
+### Upload Workflow (Web App)
+
+1. Drag/drop or browse an audio file.
+2. Choose mode in the upload card:
+   - `Analyze chords only` for fastest processing.
+   - `Analyze + split stems` to also generate stem tracks.
+3. Watch staged progress while processing (overall + current stage).
+4. If stems are generated, use the Stem Mixer panel to mute/unmute stems during playback.
 
 ### tmux Controls
 
