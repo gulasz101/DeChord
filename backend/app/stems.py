@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import mimetypes
+import os
 import subprocess
 from importlib import import_module
 from dataclasses import dataclass
@@ -109,19 +110,22 @@ def split_to_stems(
             pct = max(0.0, min(progress * 100.0, 100.0))
             on_progress(pct, message)
 
-    runner = separate_fn or _separate_with_demucs
-    try:
-        separated = runner(audio_path, output_dir, report)
-    except ModuleNotFoundError as exc:
-        raise RuntimeError(
-            f"Stem runtime dependency missing: {exc}. Run `cd backend && uv sync`."
-        ) from exc
-    except Exception as exc:
-        if separate_fn is not None:
-            raise
-        if on_progress:
-            on_progress(2.0, f"Demucs unavailable ({exc}). Using fallback stem extraction...")
+    if separate_fn is None and os.getenv("DECHORD_STEM_ENGINE", "fallback").lower() != "demucs":
         separated = _split_with_ffmpeg_fallback(audio_path, output_dir, report)
+    else:
+        runner = separate_fn or _separate_with_demucs
+        try:
+            separated = runner(audio_path, output_dir, report)
+        except ModuleNotFoundError as exc:
+            raise RuntimeError(
+                f"Stem runtime dependency missing: {exc}. Run `cd backend && uv sync`."
+            ) from exc
+        except Exception as exc:
+            if separate_fn is not None:
+                raise
+            if on_progress:
+                on_progress(2.0, f"Demucs unavailable ({exc}). Using fallback stem extraction...")
+            separated = _split_with_ffmpeg_fallback(audio_path, output_dir, report)
 
     stems: list[StemResult] = []
     for stem_key in sorted(separated.keys()):

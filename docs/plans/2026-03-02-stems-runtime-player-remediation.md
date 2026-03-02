@@ -131,9 +131,9 @@
 **Files:**
 - No code changes expected
 
-- [ ] Step 1: Start backend/frontend services.
-- [ ] Step 2: Use MCP browser flow to upload `/Users/wojciechgula/Downloads/Clara Luciani - La grenade (Clip officiel) [85m-Qgo9_nE].mp3` with `Analyze + split stems`.
-- [ ] Step 3: Verify completion payload shows successful stem split.
-- [ ] Step 4: Verify DB has persisted rows in `song_stems` for uploaded song.
-- [ ] Step 5: Verify sidebar player controls allow `Full Mix` vs `Stems`, and one/few/all stems playback behavior.
-- [ ] Step 6: Mark task done in plan.
+- [x] Step 1: Start backend/frontend services.
+- [x] Step 2: Use MCP browser flow to upload `/Users/wojciechgula/Downloads/Clara Luciani - La grenade (Clip officiel) [85m-Qgo9_nE].mp3` with `Analyze + split stems`.
+- [x] Step 3: Verify completion payload shows successful stem split.
+- [x] Step 4: Verify DB has persisted rows in `song_stems` for uploaded song.
+- [x] Step 5: Verify sidebar player controls allow `Full Mix` vs `Stems`, and one/few/all stems playback behavior.
+- [x] Step 6: Mark task done in plan.
