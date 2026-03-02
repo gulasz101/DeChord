@@ -4,15 +4,21 @@ import type {
   UploadResponse,
   SongDetailResponse,
   SongsListResponse,
+  SongStemsResponse,
   SongNote,
   PlaybackPrefs,
+  ProcessMode,
 } from "./types";
 
 const BASE = "";
 
-export async function uploadAudio(file: File): Promise<UploadResponse> {
+export async function uploadAudio(
+  file: File,
+  processMode: ProcessMode = "analysis_only",
+): Promise<UploadResponse> {
   const form = new FormData();
   form.append("file", file);
+  form.append("process_mode", processMode);
   const res = await fetch(`${BASE}/api/analyze`, { method: "POST", body: form });
   if (!res.ok) throw new Error("Upload failed");
   return res.json();
@@ -32,6 +38,10 @@ export async function getResult(jobId: string): Promise<AnalysisResult> {
 
 export function getAudioUrl(songId: number): string {
   return `${BASE}/api/audio/${songId}`;
+}
+
+export function getStemAudioUrl(songId: number, stemKey: string): string {
+  return `${BASE}/api/audio/${songId}/stems/${encodeURIComponent(stemKey)}`;
 }
 
 export async function pollUntilComplete(
@@ -61,6 +71,12 @@ export async function listSongs(): Promise<SongsListResponse> {
 export async function getSong(songId: number): Promise<SongDetailResponse> {
   const res = await fetch(`${BASE}/api/songs/${songId}`);
   if (!res.ok) throw new Error("Failed to fetch song");
+  return res.json();
+}
+
+export async function listSongStems(songId: number): Promise<SongStemsResponse> {
+  const res = await fetch(`${BASE}/api/songs/${songId}/stems`);
+  if (!res.ok) throw new Error("Failed to fetch stems");
   return res.json();
 }
 

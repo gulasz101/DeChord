@@ -12,8 +12,24 @@ export interface AnalysisResult {
   chords: Chord[];
 }
 
+export type ProcessMode = "analysis_only" | "analysis_and_stems";
+
+export type JobStage =
+  | "queued"
+  | "analyzing_chords"
+  | "splitting_stems"
+  | "persisting"
+  | "complete"
+  | "error";
+
 export interface JobStatus {
   status: "queued" | "processing" | "complete" | "error";
+  stage?: JobStage;
+  stage_history?: JobStage[];
+  progress_pct?: number;
+  stage_progress_pct?: number;
+  message?: string;
+  stems_status?: "queued" | "complete" | "failed" | "not_requested";
   progress?: string;
   error?: string;
 }
@@ -66,4 +82,15 @@ export interface SongDetailResponse {
 
 export interface SongsListResponse {
   songs: SongSummary[];
+}
+
+export interface StemInfo {
+  stem_key: string;
+  relative_path: string;
+  mime_type: string | null;
+  duration: number | null;
+}
+
+export interface SongStemsResponse {
+  stems: StemInfo[];
 }

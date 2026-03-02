@@ -94,11 +94,11 @@
 - Modify: `frontend/src/lib/api.ts`
 - Create: `frontend/src/lib/__tests__/api.stems-status.test.ts`
 
-- [ ] Step 1: Write failing frontend tests for upload call including `process_mode` and status shape parsing.
-- [ ] Step 2: Run `cd frontend && bun test frontend/src/lib/__tests__/api.stems-status.test.ts` (or project test command) and confirm fail.
-- [ ] Step 3: Update API client/types for staged status and stem list fetch.
-- [ ] Step 4: Re-run tests and confirm pass.
-- [ ] Step 5: Commit with plan reference.
+- [x] Step 1: Write failing frontend tests for upload call including `process_mode` and status shape parsing.
+- [x] Step 2: Run `cd frontend && bun test frontend/src/lib/__tests__/api.stems-status.test.ts` (or project test command) and confirm fail.
+- [x] Step 3: Update API client/types for staged status and stem list fetch.
+- [x] Step 4: Re-run tests and confirm pass.
+- [x] Step 5: Commit with plan reference.
 
 ### Task 7: Upload mode selection UI
 
