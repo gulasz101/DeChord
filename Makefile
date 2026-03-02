@@ -2,6 +2,7 @@
 .PHONY: \
 	install download-models test reset \
 	backend frontend dev \
+	portless-proxy-up portless-proxy-down portless-routes \
 	backend-up backend-down backend-attach backend-status backend-logs \
 	frontend-up frontend-down frontend-attach frontend-status frontend-logs \
 	up down status logs
@@ -9,8 +10,8 @@
 TMUX ?= tmux
 BACKEND_SESSION ?= dechord-backend
 FRONTEND_SESSION ?= dechord-frontend
-BACKEND_CMD = cd "$(CURDIR)/backend" && uv run fastapi dev app/main.py --port 8000
-FRONTEND_CMD = cd "$(CURDIR)/frontend" && bun dev
+BACKEND_CMD = cd "$(CURDIR)/backend" && portless api.dechord uv run fastapi dev app/main.py --host "$${HOST:-127.0.0.1}" --port "$${PORT:-8000}"
+FRONTEND_CMD = cd "$(CURDIR)/frontend" && portless dechord bun dev
 
 install:
 	cd backend && uv sync
@@ -39,6 +40,15 @@ reset:
 	rm -rf backend/uploads backend/stems backend/cache
 	mkdir -p backend/uploads backend/stems
 	@echo "Local backend state reset."
+
+portless-proxy-up:
+	@portless proxy start
+
+portless-proxy-down:
+	@portless proxy stop
+
+portless-routes:
+	@portless list
 
 backend-up:
 	@if $(TMUX) has-session -t "$(BACKEND_SESSION)" 2>/dev/null; then \

@@ -22,17 +22,17 @@
 - [x] Step 4: Re-run `cd frontend && bun run test -- vite.config.test.ts` and confirm pass.
 - [x] Step 5: Commit with message referencing this plan path and task number.
 
-### Task 2: Switch Makefile dev commands to Portless wrappers [ ]
+### Task 2: Switch Makefile dev commands to Portless wrappers [x]
 
 **Files:**
 - Modify: `Makefile`
 
-- [ ] Step 1: Add a failing Makefile validation check via `make -n up | rg portless` expectation script (recorded command evidence in execution notes).
-- [ ] Step 2: Update backend/frontend command variables to run under `portless api.dechord` and `portless dechord`.
-- [ ] Step 3: Ensure backend command consumes `PORT` and `HOST` env vars if injected by Portless.
-- [ ] Step 4: Add `portless-proxy-up`, `portless-proxy-down`, and `portless-routes` targets for explicit proxy lifecycle/inspection.
-- [ ] Step 5: Re-run `make -n up` and `make -n portless-routes` to confirm commands are wired.
-- [ ] Step 6: Commit with message referencing this plan path and task number.
+- [x] Step 1: Add a failing Makefile validation check via `make -n up | rg portless` expectation script (recorded command evidence in execution notes).
+- [x] Step 2: Update backend/frontend command variables to run under `portless api.dechord` and `portless dechord`.
+- [x] Step 3: Ensure backend command consumes `PORT` and `HOST` env vars if injected by Portless.
+- [x] Step 4: Add `portless-proxy-up`, `portless-proxy-down`, and `portless-routes` targets for explicit proxy lifecycle/inspection.
+- [x] Step 5: Re-run `make -n up` and `make -n portless-routes` to confirm commands are wired.
+- [x] Step 6: Commit with message referencing this plan path and task number.
 
 ### Task 3: Update docs and run full verification [ ]
 
