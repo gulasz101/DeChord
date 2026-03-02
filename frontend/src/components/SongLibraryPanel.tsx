@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { SongSummary } from "../lib/types";
 import type { ProcessMode } from "../lib/types";
 
@@ -18,6 +18,7 @@ export function SongLibraryPanel({
   onUpload,
 }: SongLibraryPanelProps) {
   const [mode, setMode] = useState<ProcessMode>("analysis_only");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
     <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
@@ -33,19 +34,25 @@ export function SongLibraryPanel({
             <option value="analysis_only">Analyze chords only</option>
             <option value="analysis_and_stems">Analyze + split stems</option>
           </select>
-          <label className="cursor-pointer rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-500">
+          <button
+            type="button"
+            className="cursor-pointer rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-500"
+            disabled={loading}
+            onClick={() => fileInputRef.current?.click()}
+          >
             {loading ? "Processing..." : "Upload"}
-            <input
-              type="file"
-              accept=".mp3,.wav,.m4a,.aac,.mp4"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) onUpload(file, mode);
-              }}
-              disabled={loading}
-            />
-          </label>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".mp3,.wav,.m4a,.aac,.mp4"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onUpload(file, mode);
+            }}
+            disabled={loading}
+          />
         </div>
       </div>
 
