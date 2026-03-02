@@ -20,7 +20,7 @@ import {
   deleteSongNote,
   savePlaybackPrefs,
 } from "./lib/api";
-import type { AnalysisResult, PlaybackPrefs, SongNote, SongSummary } from "./lib/types";
+import type { AnalysisResult, PlaybackPrefs, ProcessMode, SongNote, SongSummary } from "./lib/types";
 
 interface NoteModalState {
   open: boolean;
@@ -190,12 +190,12 @@ function App() {
     lastTimeRef.current = currentTime;
   }, [player.currentTime, currentIndex, notes, addToast, result, isScrubbing]);
 
-  const handleFile = useCallback(async (file: File) => {
+  const handleFile = useCallback(async (file: File, processMode: ProcessMode = "analysis_only") => {
     setLoading(true);
     setError(null);
 
     try {
-      const upload = await uploadAudio(file);
+      const upload = await uploadAudio(file, processMode);
       const analysisResult = await pollUntilComplete(upload.job_id, (s) => {
         setProgress(s.progress || "Processing...");
       });
@@ -425,7 +425,7 @@ function App() {
               selectedSongId={selectedSongId}
               loading={loading}
               onSelect={(songId) => void loadSong(songId)}
-              onUpload={(file) => void handleFile(file)}
+              onUpload={(file) => void handleFile(file, "analysis_only")}
             />
           </div>
           <section className="flex shrink-0 flex-row items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 sm:flex-col sm:items-start sm:gap-1.5 sm:py-3">

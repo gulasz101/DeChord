@@ -1,7 +1,8 @@
 import { useCallback, useState, useRef } from "react";
+import type { ProcessMode } from "../lib/types";
 
 interface DropZoneProps {
-  onFile: (file: File) => void;
+  onFile: (file: File, mode: ProcessMode) => void;
   loading?: boolean;
   progress?: string;
 }
@@ -10,6 +11,7 @@ const ACCEPTED = [".mp3", ".wav", ".m4a", ".aac", ".mp4"];
 
 export function DropZone({ onFile, loading, progress }: DropZoneProps) {
   const [dragOver, setDragOver] = useState(false);
+  const [mode, setMode] = useState<ProcessMode>("analysis_only");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleDrop = useCallback(
@@ -17,17 +19,17 @@ export function DropZone({ onFile, loading, progress }: DropZoneProps) {
       e.preventDefault();
       setDragOver(false);
       const file = e.dataTransfer.files[0];
-      if (file) onFile(file);
+      if (file) onFile(file, mode);
     },
-    [onFile],
+    [onFile, mode],
   );
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (file) onFile(file);
+      if (file) onFile(file, mode);
     },
-    [onFile],
+    [onFile, mode],
   );
 
   if (loading) {
@@ -56,6 +58,20 @@ export function DropZone({ onFile, loading, progress }: DropZoneProps) {
     >
       <p className="text-gray-400 mb-2">Drop audio file here or click to browse</p>
       <p className="text-gray-600 text-sm">MP3, WAV, M4A, AAC</p>
+      <div className="mt-3 flex items-center gap-2 text-sm text-gray-300">
+        <label htmlFor="process-mode" className="text-gray-400">Mode</label>
+        <select
+          id="process-mode"
+          name="process-mode"
+          value={mode}
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => setMode(e.target.value as ProcessMode)}
+          className="rounded border border-gray-600 bg-slate-900 px-2 py-1 text-gray-200"
+        >
+          <option value="analysis_only">Analyze chords only</option>
+          <option value="analysis_and_stems">Analyze + split stems</option>
+        </select>
+      </div>
       <input
         ref={inputRef}
         type="file"

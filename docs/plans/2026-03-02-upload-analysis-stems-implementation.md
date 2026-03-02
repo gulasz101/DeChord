@@ -107,11 +107,11 @@
 - Modify: `frontend/src/App.tsx`
 - Create: `frontend/src/components/__tests__/DropZoneUploadMode.test.tsx`
 
-- [ ] Step 1: Write failing UI tests for mode selector with two options and correct callback payload.
-- [ ] Step 2: Run targeted frontend tests and confirm fail.
-- [ ] Step 3: Implement mode selector and pass selected mode into `uploadAudio`.
-- [ ] Step 4: Re-run tests and confirm pass.
-- [ ] Step 5: Commit with plan reference.
+- [x] Step 1: Write failing UI tests for mode selector with two options and correct callback payload.
+- [x] Step 2: Run targeted frontend tests and confirm fail.
+- [x] Step 3: Implement mode selector and pass selected mode into `uploadAudio`.
+- [x] Step 4: Re-run tests and confirm pass.
+- [x] Step 5: Commit with plan reference.
 
 ### Task 8: Real progress visualization in upload UI
 
