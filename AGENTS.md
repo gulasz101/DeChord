@@ -18,4 +18,8 @@
 - All tasks and activities (including research) MUST use subagent-driven development and test-driven development (TDD).
 - If subagent-driven development or TDD cannot be applied in a specific case, explicitly inform the user and explain why.
 
+## Reset and Verification Rules
+
+- After finishing development work and before final verification/handoff, run the local reset workflow (`make reset`) so testing starts from a fresh runtime state.
+
 end of AGENTS.md

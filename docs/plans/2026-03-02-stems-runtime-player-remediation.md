@@ -104,8 +104,8 @@
 **Files:**
 - Modify: `AGENTS.md`
 
-- [ ] Step 1: Add explicit rule requiring runtime reset after development and before final verification/handoff.
-- [ ] Step 2: Mark task done and commit with plan reference.
+- [x] Step 1: Add explicit rule requiring runtime reset after development and before final verification/handoff.
+- [x] Step 2: Mark task done and commit with plan reference.
 
 ### Task 9: Full verification gate
 
