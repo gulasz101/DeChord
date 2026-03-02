@@ -1,11 +1,14 @@
 # backend/app/main.py
 import asyncio
+import logging
 import os
 import shutil
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Literal
+
+logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI, Form, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -184,6 +187,7 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
         result = analyze_audio(audio_path)
 
         if jobs[job_id].get("process_mode") == "analysis_and_stems":
+            logger.info("Job %s: starting stem splitting for song %s", job_id, song_id)
             try:
                 set_stage(
                     "splitting_stems",
@@ -204,10 +208,13 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                 asyncio.run(_persist_stems(song_id, stems))
                 jobs[job_id]["stems_status"] = "complete"
                 jobs[job_id]["stems_error"] = None
+                logger.info("Job %s: stem splitting complete", job_id)
             except Exception as exc:
+                logger.error("Job %s: stem splitting failed: %s", job_id, exc, exc_info=True)
                 jobs[job_id]["stems_status"] = "failed"
                 jobs[job_id]["stems_error"] = str(exc)
         else:
+            logger.info("Job %s: stems not requested (mode=%s)", job_id, jobs[job_id].get("process_mode"))
             jobs[job_id]["stems_status"] = "not_requested"
             jobs[job_id]["stems_error"] = None
 

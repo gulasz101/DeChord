@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import mimetypes
 import os
 import subprocess
@@ -7,6 +8,8 @@ from importlib import import_module
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -38,20 +41,25 @@ def _separate_with_demucs(
     output_dir: Path,
     progress_callback: DemucsProgressCallback,
 ) -> dict[str, Path]:
+    logger.info("Demucs: checking runtime dependencies")
     check_stem_runtime_ready()
+    logger.info("Demucs: importing demucs.api")
     import demucs.api
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    logger.info("Demucs: creating separator with model=htdemucs")
     separator = demucs.api.Separator(model="htdemucs")
 
     # Demucs callback is surfaced in later tasks with richer stage composition.
     progress_callback(0.05, "Loaded model")
+    logger.info("Demucs: separating audio file %s", input_audio)
     _, separated = separator.separate_audio_file(input_audio)
 
     outputs: dict[str, Path] = {}
     for stem_key, tensor in separated.items():
         out_path = output_dir / f"{stem_key}.wav"
         separator.save_audio(tensor, str(out_path))
+        logger.info("Demucs: saved stem %s -> %s", stem_key, out_path)
         outputs[stem_key] = out_path
     progress_callback(1.0, "Separated stems")
     return outputs
@@ -112,6 +120,7 @@ def split_to_stems(
 
     engine = os.getenv("DECHORD_STEM_ENGINE", "demucs").lower()
     fallback_on_error = os.getenv("DECHORD_STEM_FALLBACK_ON_ERROR", "0") == "1"
+    logger.info("split_to_stems: engine=%s, fallback_on_error=%s", engine, fallback_on_error)
 
     if separate_fn is None and engine == "fallback":
         separated = _split_with_ffmpeg_fallback(audio_path, output_dir, report)

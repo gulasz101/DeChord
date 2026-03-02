@@ -97,7 +97,7 @@ plan: docs/plans/2026-03-02-stems-upload-fix-implementation.md task 1"
 
 ---
 
-### Task 2: Add backend logging for stem splitting path
+### Task 2: Add backend logging for stem splitting path [x]
 
 **Files:**
 - Modify: `backend/app/main.py:186-212`
