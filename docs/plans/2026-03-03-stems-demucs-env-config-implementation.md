@@ -23,9 +23,9 @@
 **Files:**
 - Modify: `README.md`
 
-- [ ] Step 1: Add `Stem Separation Configuration (Environment)` section listing all supported backend env variables and defaults.
-- [ ] Step 2: Include `.env` usage example for local laptop tinkering and Linux host CPU deployment example.
-- [ ] Step 3: Commit with message referencing this plan path.
+- [x] Step 1: Add `Stem Separation Configuration (Environment)` section listing all supported backend env variables and defaults.
+- [x] Step 2: Include `.env` usage example for local laptop tinkering and Linux host CPU deployment example.
+- [x] Step 3: Commit with message referencing this plan path.
 
 ### Task 3: Add RED tests for configurable Demucs params and defaults (TDD)
 
