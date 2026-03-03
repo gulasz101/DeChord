@@ -24,6 +24,7 @@ import {
   deleteSongNote,
   savePlaybackPrefs,
   getTabFileUrl,
+  getTabDownloadUrl,
 } from "./lib/api";
 import { resolvePlaybackSources } from "./lib/playbackSources";
 import { deriveStemWarning } from "./lib/uploadWarnings";
@@ -448,13 +449,11 @@ function App() {
   const downloadCurrentTab = useCallback(() => {
     if (!selectedSongId || !tabSourceUrl) return;
     const link = document.createElement("a");
-    const safeTitle = (fileName || `song-${selectedSongId}`).replace(/[^a-z0-9._-]+/gi, "_");
-    link.href = getTabFileUrl(selectedSongId);
-    link.download = `${safeTitle}.gp5`;
+    link.href = getTabDownloadUrl(selectedSongId);
     document.body.appendChild(link);
     link.click();
     link.remove();
-  }, [selectedSongId, tabSourceUrl, fileName]);
+  }, [selectedSongId, tabSourceUrl]);
 
   return (
     <div className="flex h-screen flex-col bg-slate-950 text-slate-100">

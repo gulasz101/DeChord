@@ -53,6 +53,10 @@ export function getTabFileUrl(songId: number): string {
   return `${BASE}/api/songs/${songId}/tabs/file`;
 }
 
+export function getTabDownloadUrl(songId: number): string {
+  return `${BASE}/api/songs/${songId}/tabs/download`;
+}
+
 export async function pollUntilComplete(
   jobId: string,
   onProgress?: (status: JobStatus) => void,

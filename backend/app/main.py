@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import os
+import re
 import shutil
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -647,6 +648,37 @@ async def get_song_tabs_file(song_id: int):
     if not rs.rows:
         raise HTTPException(404, "Tabs not found")
     return Response(content=rs.rows[0][0], media_type="application/octet-stream")
+
+
+@app.get("/api/songs/{song_id}/tabs/download")
+async def download_song_tabs_file(song_id: int):
+    rs = await execute(
+        """
+        SELECT s.title, t.tab_blob, t.tab_format
+        FROM song_tabs t
+        JOIN songs s ON s.id = t.song_id
+        WHERE t.song_id = ?
+        ORDER BY t.updated_at DESC, t.id DESC
+        LIMIT 1
+        """,
+        [song_id],
+    )
+    if not rs.rows:
+        raise HTTPException(404, "Tabs not found")
+
+    title, tab_blob, tab_format = rs.rows[0][0], rs.rows[0][1], (rs.rows[0][2] or "gp5").lower()
+    safe_title = re.sub(r"[^a-zA-Z0-9._-]+", "_", title or f"song-{song_id}").strip("._-") or f"song-{song_id}"
+    extension = "gp5" if tab_format not in {"gp3", "gp4", "gp5", "gpx"} else tab_format
+    filename = f"{safe_title}.{extension}"
+
+    return Response(
+        content=tab_blob,
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(tab_blob)),
+        },
+    )
 
 
 @app.get("/api/audio/{audio_id}")

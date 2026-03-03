@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { getMidiFileUrl, getSongTabs, getTabFileUrl } from "../api";
+import { getMidiFileUrl, getSongTabs, getTabDownloadUrl, getTabFileUrl } from "../api";
 
 describe("api tab artifact urls", () => {
   it("builds midi file endpoint url", () => {
@@ -8,6 +8,10 @@ describe("api tab artifact urls", () => {
 
   it("builds tab file endpoint url", () => {
     expect(getTabFileUrl(7)).toBe("/api/songs/7/tabs/file");
+  });
+
+  it("builds tab download endpoint url", () => {
+    expect(getTabDownloadUrl(7)).toBe("/api/songs/7/tabs/download");
   });
 
   it("fetches song tab metadata", async () => {
