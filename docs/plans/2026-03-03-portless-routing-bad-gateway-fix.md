@@ -12,11 +12,11 @@
 **Files:**
 - Modify: `Makefile`
 
-- [ ] Step 1: Confirm RED by reproducing `502` on `http://dechord.localhost:1355` and `http://api.dechord.localhost:1355/api/health`.
-- [ ] Step 2: Update backend command to defer `$HOST/$PORT` expansion to child shell so portless env is honored.
-- [ ] Step 3: Update frontend command to pass `--host "$HOST" --port "$PORT"` to Vite.
-- [ ] Step 4: Restart stack and confirm GREEN with successful HTTP responses.
-- [ ] Step 5: Commit with plan path reference.
+- [x] Step 1: Confirm RED by reproducing `502` on `http://dechord.localhost:1355` and `http://api.dechord.localhost:1355/api/health`.
+- [x] Step 2: Update backend command to defer `$HOST/$PORT` expansion to child shell so portless env is honored.
+- [x] Step 3: Update frontend command to pass `--host "$HOST" --port "$PORT"` to Vite.
+- [x] Step 4: Restart stack and confirm GREEN with successful HTTP responses.
+- [x] Step 5: Commit with plan path reference.
 
 ### Task 3: Final verification and completion
 

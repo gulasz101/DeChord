@@ -10,8 +10,8 @@
 TMUX ?= tmux
 BACKEND_SESSION ?= dechord-backend
 FRONTEND_SESSION ?= dechord-frontend
-BACKEND_CMD = cd "$(CURDIR)/backend" && portless api.dechord uv run fastapi dev app/main.py --host "$${HOST:-127.0.0.1}" --port "$${PORT:-8000}"
-FRONTEND_CMD = cd "$(CURDIR)/frontend" && portless dechord bun dev
+BACKEND_CMD = cd "$(CURDIR)/backend" && portless api.dechord ./scripts/run-fastapi-portless.sh
+FRONTEND_CMD = cd "$(CURDIR)/frontend" && portless dechord ./scripts/run-vite-portless.sh
 
 install:
 	cd backend && uv sync
