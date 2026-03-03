@@ -32,10 +32,10 @@
 **Files:**
 - Modify: `backend/tests/test_stems.py`
 
-- [ ] Step 1: Add failing tests asserting screenshot defaults (`segment=7.8`, `overlap=0.25`, `shifts=0`, gains `0.0`, device auto).
-- [ ] Step 2: Add failing tests for env overrides, including forced CPU and `.env` loading behavior.
-- [ ] Step 3: Run `cd backend && uv run pytest tests/test_stems.py -q` and confirm RED.
-- [ ] Step 4: Commit RED tests with plan reference.
+- [x] Step 1: Add failing tests asserting screenshot defaults (`segment=7.8`, `overlap=0.25`, `shifts=0`, gains `0.0`, device auto).
+- [x] Step 2: Add failing tests for env overrides, including forced CPU and `.env` loading behavior.
+- [x] Step 3: Run `cd backend && uv run pytest tests/test_stems.py -q` and confirm RED.
+- [x] Step 4: Commit RED tests with plan reference.
 
 ### Task 4: Implement env/.env-driven stem parameter logic (GREEN)
 

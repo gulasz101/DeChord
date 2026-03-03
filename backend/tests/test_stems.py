@@ -120,13 +120,21 @@ def test_detect_device_returns_valid_string():
 
 
 def test_get_model_params_returns_expected_keys():
-    """Model params must include overlap and shifts."""
+    """Model params must match screenshot defaults."""
     from app.stems import _get_model_params
     params = _get_model_params("htdemucs_ft")
+    assert "segment" in params
     assert "overlap" in params
     assert "shifts" in params
+    assert "input_gain_db" in params
+    assert "output_gain_db" in params
+    assert "device" in params
+    assert params["segment"] == pytest.approx(7.8)
     assert params["overlap"] == 0.25
-    assert params["shifts"] >= 1
+    assert params["shifts"] == 0
+    assert params["input_gain_db"] == 0.0
+    assert params["output_gain_db"] == 0.0
+    assert params["device"] == "auto"
 
 
 def test_split_to_stems_with_injected_separator(tmp_path):
@@ -157,3 +165,48 @@ def test_default_engine_is_demucs(monkeypatch):
     """Default engine should be demucs, not fallback."""
     monkeypatch.delenv("DECHORD_STEM_ENGINE", raising=False)
     assert os.getenv("DECHORD_STEM_ENGINE", "demucs") == "demucs"
+
+
+def test_get_separation_config_reads_env_overrides(monkeypatch):
+    from app.stems import _get_separation_config
+
+    monkeypatch.setenv("DECHORD_STEM_DEVICE", "cpu")
+    monkeypatch.setenv("DECHORD_STEM_SEGMENT", "11.2")
+    monkeypatch.setenv("DECHORD_STEM_OVERLAP", "0.4")
+    monkeypatch.setenv("DECHORD_STEM_SHIFTS", "2")
+    monkeypatch.setenv("DECHORD_STEM_INPUT_GAIN_DB", "1.5")
+    monkeypatch.setenv("DECHORD_STEM_OUTPUT_GAIN_DB", "-2.0")
+    monkeypatch.setenv("DECHORD_STEM_JOBS", "3")
+
+    config = _get_separation_config()
+    assert config.device == "cpu"
+    assert config.segment == pytest.approx(11.2)
+    assert config.overlap == pytest.approx(0.4)
+    assert config.shifts == 2
+    assert config.input_gain_db == pytest.approx(1.5)
+    assert config.output_gain_db == pytest.approx(-2.0)
+    assert config.jobs == 3
+
+
+def test_load_dotenv_settings_for_separation(tmp_path, monkeypatch):
+    from app.stems import _get_separation_config
+
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "DECHORD_STEM_DEVICE=cpu\n"
+        "DECHORD_STEM_SEGMENT=9.5\n"
+        "DECHORD_STEM_OVERLAP=0.30\n"
+        "DECHORD_STEM_SHIFTS=1\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("DECHORD_STEM_DEVICE", raising=False)
+    monkeypatch.delenv("DECHORD_STEM_SEGMENT", raising=False)
+    monkeypatch.delenv("DECHORD_STEM_OVERLAP", raising=False)
+    monkeypatch.delenv("DECHORD_STEM_SHIFTS", raising=False)
+
+    config = _get_separation_config()
+    assert config.device == "cpu"
+    assert config.segment == pytest.approx(9.5)
+    assert config.overlap == pytest.approx(0.30)
+    assert config.shifts == 1
