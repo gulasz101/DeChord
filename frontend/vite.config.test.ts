@@ -6,6 +6,6 @@ import config from "./vite.config";
 describe("vite dev proxy", () => {
   it("routes /api traffic to portless backend host", () => {
     const target = (config.server?.proxy as Record<string, { target: string }>)?.["/api"]?.target;
-    expect(target).toBe("http://api.dechord.localhost:1355");
+    expect(target).toBe("http://api.dechord.localhost");
   });
 });
