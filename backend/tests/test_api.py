@@ -170,8 +170,12 @@ def test_analyze_with_stems_reports_split_stage(tmp_path, monkeypatch):
     def fake_transcribe_bass_stem_to_midi(_stem_path):
         return b"MThd\x00\x00\x00\x06"
 
+    def fake_generate_gp5_from_midi(_midi_blob: bytes):
+        return b"FICHIER GUITAR PRO v5.10"
+
     monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
     monkeypatch.setattr(main, "transcribe_bass_stem_to_midi", fake_transcribe_bass_stem_to_midi)
+    monkeypatch.setattr(main, "_generate_gp5_from_midi", fake_generate_gp5_from_midi)
 
     files = {"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")}
     response = client.post("/api/analyze", files=files, data={"process_mode": "analysis_and_stems"})
@@ -187,13 +191,24 @@ def test_analyze_with_stems_reports_split_stage(tmp_path, monkeypatch):
     assert payload["stems_status"] == "complete"
     assert payload["midi_status"] == "complete"
     assert payload["midi_error"] is None
+    assert payload["tab_status"] == "complete"
+    assert payload["tab_error"] is None
     assert "splitting_stems" in payload["stage_history"]
     assert "transcribing_bass_midi" in payload["stage_history"]
+    assert "generating_tabs" in payload["stage_history"]
 
     persisted = asyncio.run(
         main.execute("SELECT COUNT(*) FROM song_midis WHERE song_id = ?", [song_id])
     )
     assert persisted.rows[0][0] == 1
+
+    midi_file = client.get(f"/api/songs/{song_id}/midi/file")
+    assert midi_file.status_code == 200
+    assert midi_file.content.startswith(b"MThd")
+
+    tab_file = client.get(f"/api/songs/{song_id}/tabs/file")
+    assert tab_file.status_code == 200
+    assert tab_file.content.startswith(b"FICHIER GUITAR PRO")
 
 
 def test_analyze_with_stems_failure_keeps_analysis_complete(tmp_path, monkeypatch):
@@ -218,6 +233,8 @@ def test_analyze_with_stems_failure_keeps_analysis_complete(tmp_path, monkeypatc
     assert payload["stems_status"] == "failed"
     assert payload["midi_status"] == "not_requested"
     assert payload["midi_error"] is None
+    assert payload["tab_status"] == "not_requested"
+    assert payload["tab_error"] is None
     assert payload["error"] is None
     assert payload["stems_error"] == "stem split failed"
 

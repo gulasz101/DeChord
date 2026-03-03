@@ -159,26 +159,26 @@
 - Modify: `backend/app/main.py`
 - Modify: `backend/tests/test_api.py`
 
-- [ ] **Step 1: Write failing tests for tab status and file endpoints**
+- [x] **Step 1: Write failing tests for tab status and file endpoints**
   - Add tests for:
     - `tab_status`, `tab_error` in status payload
     - `GET /api/songs/{song_id}/midi/file`
     - `GET /api/songs/{song_id}/tabs/file`
 
-- [ ] **Step 2: Run RED test**
+- [x] **Step 2: Run RED test**
   - Run: `cd backend && uv run pytest tests/test_api.py -q`
   - Expected: `FAIL`.
 
-- [ ] **Step 3: Implement minimal backend changes**
+- [x] **Step 3: Implement minimal backend changes**
   - Run tabs generation after MIDI stage.
   - Persist GP5 artifact.
   - Add metadata/file stream endpoints.
 
-- [ ] **Step 4: Run GREEN test**
+- [x] **Step 4: Run GREEN test**
   - Run: `cd backend && uv run pytest tests/test_api.py -q`
   - Expected: `PASS`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   - Run:
   ```bash
   git add backend/app/main.py backend/tests/test_api.py
