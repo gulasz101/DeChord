@@ -16,24 +16,24 @@
 - Modify: `backend/app/db_schema.sql`
 - Modify: `backend/tests/test_db_bootstrap.py`
 
-- [ ] **Step 1: Write failing DB test for new tables and constraints**
+- [x] **Step 1: Write failing DB test for new tables and constraints**
   - Add assertions for existence of `song_midis` and `song_tabs` with required columns and indexes.
   - Include constraints:
     - unique latest per source (`UNIQUE(song_id, source_stem_key)` for midi)
     - `FOREIGN KEY(source_midi_id) REFERENCES song_midis(id) ON DELETE CASCADE`
 
-- [ ] **Step 2: Run RED test**
+- [x] **Step 2: Run RED test**
   - Run: `cd backend && uv run pytest tests/test_db_bootstrap.py -q`
   - Expected: `FAIL` because tables do not yet exist.
 
-- [ ] **Step 3: Implement schema changes**
+- [x] **Step 3: Implement schema changes**
   - Add table definitions and indexes in `backend/app/db_schema.sql`.
 
-- [ ] **Step 4: Run GREEN test**
+- [x] **Step 4: Run GREEN test**
   - Run: `cd backend && uv run pytest tests/test_db_bootstrap.py -q`
   - Expected: `PASS`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   - Run:
   ```bash
   git add backend/app/db_schema.sql backend/tests/test_db_bootstrap.py

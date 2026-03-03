@@ -73,8 +73,43 @@ CREATE TABLE IF NOT EXISTS song_stems (
     FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS song_midis (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    song_id INTEGER NOT NULL,
+    source_stem_key TEXT NOT NULL,
+    midi_blob BLOB NOT NULL,
+    midi_format TEXT NOT NULL DEFAULT 'mid',
+    engine TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'complete',
+    error_message TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(song_id, source_stem_key),
+    FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS song_tabs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    song_id INTEGER NOT NULL,
+    source_midi_id INTEGER NOT NULL,
+    tab_blob BLOB NOT NULL,
+    tab_format TEXT NOT NULL DEFAULT 'gp5',
+    tuning TEXT NOT NULL,
+    strings INTEGER NOT NULL,
+    generator_version TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'complete',
+    error_message TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(song_id, source_midi_id),
+    FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE,
+    FOREIGN KEY (source_midi_id) REFERENCES song_midis(id) ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS idx_songs_user_id ON songs(user_id);
 CREATE INDEX IF NOT EXISTS idx_analyses_song_id ON analyses(song_id);
 CREATE INDEX IF NOT EXISTS idx_chords_analysis_id ON analysis_chords(analysis_id);
 CREATE INDEX IF NOT EXISTS idx_notes_song_id ON notes(song_id);
 CREATE INDEX IF NOT EXISTS idx_song_stems_song_id ON song_stems(song_id);
+CREATE INDEX IF NOT EXISTS idx_song_midis_song_id ON song_midis(song_id);
+CREATE INDEX IF NOT EXISTS idx_song_tabs_song_id ON song_tabs(song_id);
