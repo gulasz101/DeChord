@@ -47,7 +47,7 @@
 - Create: `backend/tests/test_midi.py`
 - Modify: `backend/pyproject.toml`
 
-- [ ] **Step 1: Write failing tests for transcription contract**
+- [x] **Step 1: Write failing tests for transcription contract**
   - Add tests for:
     - successful generation returns non-empty MIDI bytes
     - missing bass stem path raises descriptive runtime error
@@ -61,23 +61,24 @@
       assert midi.startswith(b"MThd")
   ```
 
-- [ ] **Step 2: Run RED test**
+- [x] **Step 2: Run RED test**
   - Run: `cd backend && uv run pytest tests/test_midi.py -q`
   - Expected: `FAIL` (`ModuleNotFoundError` / missing implementation).
 
-- [ ] **Step 3: Implement minimal service + adapter**
+- [x] **Step 3: Implement minimal service + adapter**
   - `midi.py`:
     - `transcribe_bass_stem_to_midi(input_wav: Path, transcribe_fn: ... | None = None) -> bytes`
     - default engine path uses `basic-pitch` (wrapper function) and writes temporary midi file, returns bytes.
 
-- [ ] **Step 4: Add dependency**
-  - Add `basic-pitch` in backend dependencies and lockfile update via `uv sync`.
+- [x] **Step 4: Add dependency compatibility gate**
+  - Attempted to add `basic-pitch`, but lock resolution is unsatisfiable for project-supported Python `3.13+` because TensorFlow wheels for `cp313` are unavailable.
+  - Kept engine adapter optional-runtime (lazy import) so dependency can be enabled later when compatible.
 
-- [ ] **Step 5: Run GREEN tests**
+- [x] **Step 5: Run GREEN tests**
   - Run: `cd backend && uv run pytest tests/test_midi.py -q`
   - Expected: `PASS`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
   - Run:
   ```bash
   git add backend/app/midi.py backend/tests/test_midi.py backend/pyproject.toml backend/uv.lock
