@@ -41,6 +41,12 @@ export function TabViewerPanel({ tabSourceUrl, currentTime, isPlaying, onSyncTim
         if (!AlphaTabApi) return;
         const api = new AlphaTabApi(containerRef.current, {
           file: tabSourceUrl,
+          display: {
+            layoutMode: "Page",
+            barsPerRow: 2,
+            scale: 1.4,
+            stretchForce: 0.9,
+          },
           player: {
             playerMode: "EnabledExternalMedia",
             enableCursor: true,
@@ -85,7 +91,7 @@ export function TabViewerPanel({ tabSourceUrl, currentTime, isPlaying, onSyncTim
       <div
         ref={scrollHostRef}
         data-testid="tab-viewer-scrollhost"
-        className="max-h-72 overflow-y-auto rounded bg-slate-950/60 p-2"
+        className="max-h-96 overflow-y-auto rounded bg-white p-3 text-black"
       >
         <div ref={containerRef} data-testid="tab-viewer-canvas" className="min-h-24" />
       </div>

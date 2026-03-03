@@ -14,7 +14,9 @@ describe("TabViewerPanel", () => {
       <TabViewerPanel tabSourceUrl="/api/songs/2/tabs/file" currentTime={0} isPlaying={false} onSyncTime={onSyncTime} />,
     );
     expect(screen.getByText("Tab Viewer")).toBeTruthy();
-    expect(screen.getByTestId("tab-viewer-scrollhost").className).toContain("overflow-y-auto");
+    const hostClass = screen.getByTestId("tab-viewer-scrollhost").className;
+    expect(hostClass).toContain("overflow-y-auto");
+    expect(hostClass).toContain("bg-white");
 
     rerender(
       <TabViewerPanel tabSourceUrl="/api/songs/2/tabs/file" currentTime={12.5} isPlaying={true} onSyncTime={onSyncTime} />,

@@ -46,3 +46,31 @@ def test_build_gp5_from_tab_positions_returns_non_empty_bytes():
 
     assert isinstance(gp_bytes, bytes)
     assert len(gp_bytes) > 16
+
+
+def test_build_gp5_from_tab_positions_splits_into_multiple_measures():
+    import tempfile
+    from pathlib import Path
+
+    import guitarpro
+
+    tab_notes = []
+    for idx in range(24):
+        tab_notes.append(
+            TabNote(
+                string=4,
+                fret=(idx % 8),
+                start=idx * 0.25,
+                end=(idx * 0.25) + 0.25,
+                midi_note=40 + (idx % 12),
+            )
+        )
+
+    gp_bytes = build_gp5_from_tab_positions(tab_notes)
+    with tempfile.TemporaryDirectory(prefix="dechord-tabs-test-") as tmp_dir:
+        gp_path = Path(tmp_dir) / "test.gp5"
+        gp_path.write_bytes(gp_bytes)
+        parsed = guitarpro.parse(gp_path)
+
+    assert len(parsed.measureHeaders) > 1
+    assert len(parsed.tracks[0].measures) > 1

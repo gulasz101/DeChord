@@ -17,6 +17,8 @@ EADG_OPEN_NOTES: dict[int, int] = {
     1: 55,  # G2
 }
 MAX_FRET = 24
+MEASURE_BEATS = 4.0
+TICKS_PER_QUARTER = 960
 
 
 @dataclass(frozen=True)
@@ -126,6 +128,18 @@ def _duration_value(note: TabNote) -> int:
     return 16
 
 
+def _duration_in_quarter_beats(duration_value: int) -> float:
+    if duration_value == 1:
+        return 4.0
+    if duration_value == 2:
+        return 2.0
+    if duration_value == 4:
+        return 1.0
+    if duration_value == 8:
+        return 0.5
+    return 0.25
+
+
 def build_gp5_from_tab_positions(tab_notes: list[TabNote]) -> bytes:
     import guitarpro
     from guitarpro import models
@@ -140,15 +154,35 @@ def build_gp5_from_tab_positions(tab_notes: list[TabNote]) -> bytes:
         models.GuitarString(3, EADG_OPEN_NOTES[3]),
         models.GuitarString(4, EADG_OPEN_NOTES[4]),
     ]
-    voice = track.measures[0].voices[0]
+    current_measure = track.measures[0]
+    current_voice = current_measure.voices[0]
+    used_beats = 0.0
+    measure_number = 1
+    header_start = song.measureHeaders[0].start
 
     for tab_note in tab_notes:
+        duration_value = _duration_value(tab_note)
+        duration_beats = _duration_in_quarter_beats(duration_value)
+
+        if used_beats + duration_beats > MEASURE_BEATS:
+            measure_number += 1
+            header_start += int(TICKS_PER_QUARTER * MEASURE_BEATS)
+            header = models.MeasureHeader(
+                number=measure_number,
+                start=header_start,
+            )
+            song.measureHeaders.append(header)
+            current_measure = models.Measure(track=track, header=header)
+            track.measures.append(current_measure)
+            current_voice = current_measure.voices[0]
+            used_beats = 0.0
+
         beat = models.Beat(
-            voice=voice,
-            duration=models.Duration(value=_duration_value(tab_note)),
+            voice=current_voice,
+            duration=models.Duration(value=duration_value),
             status=models.BeatStatus.normal,
         )
-        voice.beats.append(beat)
+        current_voice.beats.append(beat)
         note = models.Note(
             beat=beat,
             value=tab_note.fret,
@@ -156,6 +190,7 @@ def build_gp5_from_tab_positions(tab_notes: list[TabNote]) -> bytes:
             type=models.NoteType.normal,
         )
         beat.notes.append(note)
+        used_beats += duration_beats
 
     with TemporaryDirectory(prefix="dechord-gp5-") as tmp_dir:
         output = Path(tmp_dir) / "tab.gp5"
