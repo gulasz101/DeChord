@@ -8,6 +8,7 @@ describe("App integration", () => {
     const html = renderToStaticMarkup(<App />);
     expect(html).toContain("Drop audio file here or click to browse");
     expect(html).toContain("Show Tabs");
+    expect(html).toContain("Download Tab");
   });
 
   it("falls back to single-track playback when no stems", () => {

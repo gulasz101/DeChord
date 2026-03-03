@@ -445,6 +445,17 @@ function App() {
     setNoteModal({ open: false, mode: "time" });
   }, [noteModal.noteId]);
 
+  const downloadCurrentTab = useCallback(() => {
+    if (!selectedSongId || !tabSourceUrl) return;
+    const link = document.createElement("a");
+    const safeTitle = (fileName || `song-${selectedSongId}`).replace(/[^a-z0-9._-]+/gi, "_");
+    link.href = getTabFileUrl(selectedSongId);
+    link.download = `${safeTitle}.gp5`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }, [selectedSongId, tabSourceUrl, fileName]);
+
   return (
     <div className="flex h-screen flex-col bg-slate-950 text-slate-100">
       <Header songKey={result?.key} tempo={result?.tempo} fileName={fileName || undefined} />
@@ -494,6 +505,14 @@ function App() {
               onClick={() => setShowTabs((v) => !v)}
             >
               {showTabs ? "Hide Tabs" : "Show Tabs"}
+            </button>
+            <button
+              type="button"
+              className="rounded border border-slate-600 px-2 py-1 text-[11px] font-semibold text-slate-200 enabled:hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={downloadCurrentTab}
+              disabled={!selectedSongId || !tabSourceUrl}
+            >
+              Download Tab
             </button>
           </section>
         </div>
