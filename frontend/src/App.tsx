@@ -18,6 +18,7 @@ import {
   listSongs,
   getSong,
   listSongStems,
+  getSongTabs,
   createSongNote,
   updateSongNote,
   deleteSongNote,
@@ -101,6 +102,7 @@ function App() {
   const loadSong = useCallback(async (songId: number) => {
     const data = await getSong(songId);
     const stemsData = await listSongStems(songId);
+    const tabsData = await getSongTabs(songId);
     const defaultEnabled: Record<string, boolean> = {};
     for (const stem of stemsData.stems) {
       defaultEnabled[stem.stem_key] = true;
@@ -113,7 +115,7 @@ function App() {
     setStems(stemsData.stems);
     setEnabledByStem(defaultEnabled);
     setPlaybackMode(stemsData.stems.length > 0 ? "stems" : "full_mix");
-    setTabSourceUrl(getTabFileUrl(songId));
+    setTabSourceUrl(tabsData.tab ? getTabFileUrl(songId) : null);
     setStemWarning(null);
     setLoopStartIdx(data.playback_prefs.loop_start_index);
     setLoopEndIdx(data.playback_prefs.loop_end_index);

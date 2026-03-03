@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { getMidiFileUrl, getTabFileUrl } from "../api";
+import { describe, expect, it, vi } from "vitest";
+import { getMidiFileUrl, getSongTabs, getTabFileUrl } from "../api";
 
 describe("api tab artifact urls", () => {
   it("builds midi file endpoint url", () => {
@@ -8,5 +8,22 @@ describe("api tab artifact urls", () => {
 
   it("builds tab file endpoint url", () => {
     expect(getTabFileUrl(7)).toBe("/api/songs/7/tabs/file");
+  });
+
+  it("fetches song tab metadata", async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ tab: null }),
+    });
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      const res = await getSongTabs(9);
+      expect(fetchMock).toHaveBeenCalledWith("/api/songs/9/tabs");
+      expect(res.tab).toBeNull();
+    } finally {
+      (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
+    }
   });
 });

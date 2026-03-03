@@ -5,6 +5,7 @@ import type {
   SongDetailResponse,
   SongsListResponse,
   SongStemsResponse,
+  SongTabsResponse,
   SongNote,
   PlaybackPrefs,
   ProcessMode,
@@ -85,6 +86,12 @@ export async function getSong(songId: number): Promise<SongDetailResponse> {
 export async function listSongStems(songId: number): Promise<SongStemsResponse> {
   const res = await fetch(`${BASE}/api/songs/${songId}/stems`);
   if (!res.ok) throw new Error("Failed to fetch stems");
+  return res.json();
+}
+
+export async function getSongTabs(songId: number): Promise<SongTabsResponse> {
+  const res = await fetch(`${BASE}/api/songs/${songId}/tabs`);
+  if (!res.ok) throw new Error("Failed to fetch tabs metadata");
   return res.json();
 }
 

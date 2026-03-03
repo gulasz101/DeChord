@@ -101,3 +101,20 @@ export interface StemInfo {
 export interface SongStemsResponse {
   stems: StemInfo[];
 }
+
+export interface SongTabMeta {
+  id: number;
+  source_midi_id: number;
+  tab_format: string;
+  tuning: string;
+  strings: number;
+  generator_version: string;
+  status: string;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SongTabsResponse {
+  tab: SongTabMeta | null;
+}

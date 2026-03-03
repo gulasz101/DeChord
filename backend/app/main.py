@@ -583,6 +583,38 @@ async def get_song_stems(song_id: int):
     return {"stems": stems}
 
 
+@app.get("/api/songs/{song_id}/tabs")
+async def get_song_tabs(song_id: int):
+    rs = await execute(
+        """
+        SELECT id, source_midi_id, tab_format, tuning, strings, generator_version, status, error_message, created_at, updated_at
+        FROM song_tabs
+        WHERE song_id = ?
+        ORDER BY updated_at DESC, id DESC
+        LIMIT 1
+        """,
+        [song_id],
+    )
+    if not rs.rows:
+        return {"tab": None}
+
+    row = rs.rows[0]
+    return {
+        "tab": {
+            "id": row[0],
+            "source_midi_id": row[1],
+            "tab_format": row[2],
+            "tuning": row[3],
+            "strings": row[4],
+            "generator_version": row[5],
+            "status": row[6],
+            "error_message": row[7],
+            "created_at": row[8],
+            "updated_at": row[9],
+        }
+    }
+
+
 @app.get("/api/songs/{song_id}/midi/file")
 async def get_song_midi_file(song_id: int):
     rs = await execute(

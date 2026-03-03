@@ -92,6 +92,10 @@ def test_analyze_persists_song_and_analysis(tmp_path, monkeypatch):
     assert audio.status_code == 200
     assert audio.content == b"audio-bytes"
 
+    tabs_meta = client.get(f"/api/songs/{body['song_id']}/tabs")
+    assert tabs_meta.status_code == 200
+    assert tabs_meta.json() == {"tab": None}
+
 
 def test_notes_and_playback_prefs_crud(tmp_path, monkeypatch):
     client = _build_client(tmp_path, monkeypatch)
@@ -276,3 +280,46 @@ def test_stems_are_persisted_and_streamed(tmp_path, monkeypatch):
     drums_audio = client.get(f"/api/audio/{song_id}/stems/drums")
     assert drums_audio.status_code == 200
     assert drums_audio.content == b"drums-bytes"
+
+
+def test_tabs_metadata_endpoint_returns_latest_tab(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    inserted = asyncio.run(
+        main.execute(
+            """
+            INSERT INTO songs (user_id, title, original_filename, mime_type, audio_blob)
+            VALUES (1, 'demo', 'demo.mp3', 'audio/mpeg', x'00')
+            RETURNING id
+            """
+        )
+    )
+    song_id = int(inserted.rows[0][0])
+    midi_inserted = asyncio.run(
+        main.execute(
+            """
+            INSERT INTO song_midis (song_id, source_stem_key, midi_blob, midi_format, engine, status, error_message)
+            VALUES (?, 'bass', x'4D546864', 'mid', 'test', 'complete', NULL)
+            RETURNING id
+            """,
+            [song_id],
+        )
+    )
+    midi_id = int(midi_inserted.rows[0][0])
+    asyncio.run(
+        main.execute(
+            """
+            INSERT INTO song_tabs (song_id, source_midi_id, tab_blob, tab_format, tuning, strings, generator_version, status, error_message)
+            VALUES (?, ?, x'46494348494552', 'gp5', 'E1,A1,D2,G2', 4, 'v1', 'complete', NULL)
+            """,
+            [song_id, midi_id],
+        )
+    )
+
+    tabs_meta = client.get(f"/api/songs/{song_id}/tabs")
+    assert tabs_meta.status_code == 200
+    payload = tabs_meta.json()
+    assert payload["tab"] is not None
+    assert payload["tab"]["tab_format"] == "gp5"
+    assert payload["tab"]["strings"] == 4
