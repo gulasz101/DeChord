@@ -124,29 +124,29 @@
 - Create: `backend/tests/test_tabs.py`
 - Modify: `backend/pyproject.toml`
 
-- [ ] **Step 1: Write failing tests for EADG mapping and GP export**
+- [x] **Step 1: Write failing tests for EADG mapping and GP export**
   - Validate mapped notes stay within 4-string EADG valid fret range.
   - Validate deterministic mapping for repeated input.
   - Validate exported bytes are parseable GP5 payload.
 
-- [ ] **Step 2: Run RED test**
+- [x] **Step 2: Run RED test**
   - Run: `cd backend && uv run pytest tests/test_tabs.py -q`
   - Expected: `FAIL` (module missing).
 
-- [ ] **Step 3: Implement minimal mapper + exporter**
+- [x] **Step 3: Implement minimal mapper + exporter**
   - Add:
     - `map_midi_to_eadg_positions(midi_bytes) -> list[TabNote]`
     - `build_gp5_from_tab_positions(tab_notes) -> bytes`
   - Use `PyGuitarPro` writer for GP5 output.
 
-- [ ] **Step 4: Add dependency**
+- [x] **Step 4: Add dependency**
   - Add `pyguitarpro` package, sync lockfile.
 
-- [ ] **Step 5: Run GREEN test**
+- [x] **Step 5: Run GREEN test**
   - Run: `cd backend && uv run pytest tests/test_tabs.py -q`
   - Expected: `PASS`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
   - Run:
   ```bash
   git add backend/app/tabs.py backend/tests/test_tabs.py backend/pyproject.toml backend/uv.lock
