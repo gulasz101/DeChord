@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+@font-face {
+  font-family: "Bravura";
+  src: url("./assets/alphatab/Bravura.woff2") format("woff2"),
+    url("./assets/alphatab/Bravura.woff") format("woff");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}

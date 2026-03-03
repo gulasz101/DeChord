@@ -46,5 +46,6 @@ describe("TabViewerPanel", () => {
     expect(settings.display.barCount).toBe(-1);
     expect(settings.display.scale).toBe(1.35);
     expect(settings.player.scrollMode).toBe("Continuous");
+    expect(settings.core.smuflFontSources instanceof Map).toBe(true);
   });
 });

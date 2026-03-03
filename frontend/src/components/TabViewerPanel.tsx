@@ -1,4 +1,7 @@
 import { useEffect, useRef } from "react";
+import bravuraWoffUrl from "../assets/alphatab/Bravura.woff?url";
+import bravuraWoff2Url from "../assets/alphatab/Bravura.woff2?url";
+import bravuraOtfUrl from "../assets/alphatab/Bravura.otf?url";
 
 interface TabViewerPanelProps {
   tabSourceUrl: string | null;
@@ -12,6 +15,13 @@ const BAR_WINDOW_SIZE = 4;
 export function createTabViewerSettings(tabSourceUrl: string, scrollElement: string | HTMLElement) {
   return {
     file: tabSourceUrl,
+    core: {
+      smuflFontSources: new Map([
+        ["Woff2", bravuraWoff2Url],
+        ["Woff", bravuraWoffUrl],
+        ["OpenType", bravuraOtfUrl],
+      ]),
+    },
     display: {
       layoutMode: "Horizontal",
       staveProfile: "Tab",
