@@ -64,6 +64,7 @@ function App() {
   const [enabledByStem, setEnabledByStem] = useState<Record<string, boolean>>({});
   const [playbackMode, setPlaybackMode] = useState<PlaybackMode>("full_mix");
   const [tabSourceUrl, setTabSourceUrl] = useState<string | null>(null);
+  const [showTabs, setShowTabs] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<JobStatus | null>(null);
@@ -461,7 +462,6 @@ function App() {
             }
           />
         ) : null}
-        <TabViewerPanel tabSourceUrl={tabSourceUrl} currentTime={player.currentTime} isPlaying={player.playing} />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
           {stemWarning ? (
             <section className="rounded-xl border border-amber-500/60 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
@@ -488,6 +488,13 @@ function App() {
             <div className="flex items-center gap-2">
               <span className="inline-block rounded bg-fuchsia-500 px-1.5 py-0.5 text-[11px] font-semibold text-white">Overlap</span>
             </div>
+            <button
+              type="button"
+              className="rounded border border-slate-600 px-2 py-1 text-[11px] font-semibold text-slate-200 hover:border-slate-500"
+              onClick={() => setShowTabs((v) => !v)}
+            >
+              {showTabs ? "Hide Tabs" : "Show Tabs"}
+            </button>
           </section>
         </div>
 
@@ -533,6 +540,9 @@ function App() {
             />
           ) : null}
         </section>
+        {showTabs ? (
+          <TabViewerPanel tabSourceUrl={tabSourceUrl} currentTime={player.currentTime} isPlaying={player.playing} />
+        ) : null}
       </main>
 
       {result ? (
