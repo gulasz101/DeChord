@@ -461,7 +461,7 @@ function App() {
             }
           />
         ) : null}
-        <TabViewerPanel tabSourceUrl={tabSourceUrl} currentTime={player.currentTime} />
+        <TabViewerPanel tabSourceUrl={tabSourceUrl} currentTime={player.currentTime} isPlaying={player.playing} />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
           {stemWarning ? (
             <section className="rounded-xl border border-amber-500/60 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">

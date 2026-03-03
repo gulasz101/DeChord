@@ -3,17 +3,32 @@ import { useEffect, useRef } from "react";
 interface TabViewerPanelProps {
   tabSourceUrl: string | null;
   currentTime: number;
+  isPlaying: boolean;
   onSyncTime?: (currentTime: number) => void;
 }
 
-export function TabViewerPanel({ tabSourceUrl, currentTime, onSyncTime }: TabViewerPanelProps) {
+export function TabViewerPanel({ tabSourceUrl, currentTime, isPlaying, onSyncTime }: TabViewerPanelProps) {
+  const scrollHostRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const alphaTabRef = useRef<any>(null);
+  const renderReadyRef = useRef(false);
 
   useEffect(() => {
     onSyncTime?.(currentTime);
-    alphaTabRef.current?.player?.seek?.(currentTime * 1000);
-  }, [currentTime, onSyncTime]);
+    const api = alphaTabRef.current;
+    if (!api || !renderReadyRef.current) return;
+    try {
+      api.timePosition = currentTime * 1000;
+      api.scrollToCursor?.();
+      if (isPlaying) {
+        api.play?.();
+      } else {
+        api.pause?.();
+      }
+    } catch {
+      // Keep the app usable even if alphaTab state sync fails transiently.
+    }
+  }, [currentTime, isPlaying, onSyncTime]);
 
   useEffect(() => {
     let disposed = false;
@@ -24,8 +39,23 @@ export function TabViewerPanel({ tabSourceUrl, currentTime, onSyncTime }: TabVie
         if (disposed || !containerRef.current) return;
         const AlphaTabApi = alphaTabModule.AlphaTabApi;
         if (!AlphaTabApi) return;
-        alphaTabRef.current = new AlphaTabApi(containerRef.current, {
+        const api = new AlphaTabApi(containerRef.current, {
           file: tabSourceUrl,
+          player: {
+            playerMode: "EnabledExternalMedia",
+            enableCursor: true,
+            enableUserInteraction: false,
+            scrollMode: "Continuous",
+            scrollElement: scrollHostRef.current ?? "html,body",
+            nativeBrowserSmoothScroll: true,
+          },
+        });
+        alphaTabRef.current = api;
+        api.renderFinished.on(() => {
+          if (disposed) return;
+          renderReadyRef.current = true;
+          api.timePosition = currentTime * 1000;
+          api.scrollToCursor?.();
         });
       } catch {
         alphaTabRef.current = null;
@@ -35,10 +65,11 @@ export function TabViewerPanel({ tabSourceUrl, currentTime, onSyncTime }: TabVie
 
     return () => {
       disposed = true;
+      renderReadyRef.current = false;
       alphaTabRef.current?.destroy?.();
       alphaTabRef.current = null;
     };
-  }, [tabSourceUrl]);
+  }, [tabSourceUrl, currentTime]);
 
   if (!tabSourceUrl) {
     return (
@@ -51,7 +82,13 @@ export function TabViewerPanel({ tabSourceUrl, currentTime, onSyncTime }: TabVie
   return (
     <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
       <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-300">Tab Viewer</h2>
-      <div ref={containerRef} data-testid="tab-viewer-canvas" className="min-h-24 rounded bg-slate-950/60" />
+      <div
+        ref={scrollHostRef}
+        data-testid="tab-viewer-scrollhost"
+        className="max-h-72 overflow-y-auto rounded bg-slate-950/60 p-2"
+      >
+        <div ref={containerRef} data-testid="tab-viewer-canvas" className="min-h-24" />
+      </div>
     </section>
   );
 }

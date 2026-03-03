@@ -4,18 +4,21 @@ import { TabViewerPanel } from "../TabViewerPanel";
 
 describe("TabViewerPanel", () => {
   it("shows fallback message when tab url is unavailable", () => {
-    render(<TabViewerPanel tabSourceUrl={null} currentTime={0} />);
+    render(<TabViewerPanel tabSourceUrl={null} currentTime={0} isPlaying={false} />);
     expect(screen.getByText("Tabs are not available for this song yet.")).toBeTruthy();
   });
 
   it("renders panel and syncs with playback time", () => {
     const onSyncTime = vi.fn();
     const { rerender } = render(
-      <TabViewerPanel tabSourceUrl="/api/songs/2/tabs/file" currentTime={0} onSyncTime={onSyncTime} />,
+      <TabViewerPanel tabSourceUrl="/api/songs/2/tabs/file" currentTime={0} isPlaying={false} onSyncTime={onSyncTime} />,
     );
     expect(screen.getByText("Tab Viewer")).toBeTruthy();
+    expect(screen.getByTestId("tab-viewer-scrollhost").className).toContain("overflow-y-auto");
 
-    rerender(<TabViewerPanel tabSourceUrl="/api/songs/2/tabs/file" currentTime={12.5} onSyncTime={onSyncTime} />);
+    rerender(
+      <TabViewerPanel tabSourceUrl="/api/songs/2/tabs/file" currentTime={12.5} isPlaying={true} onSyncTime={onSyncTime} />,
+    );
     expect(onSyncTime).toHaveBeenCalledWith(12.5);
   });
 });
