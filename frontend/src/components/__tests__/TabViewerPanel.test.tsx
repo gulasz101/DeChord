@@ -15,7 +15,7 @@ describe("TabViewerPanel", () => {
     );
     expect(screen.getByText("Tab Viewer")).toBeTruthy();
     const hostClass = screen.getByTestId("tab-viewer-scrollhost").className;
-    expect(hostClass).toContain("overflow-y-auto");
+    expect(hostClass).toContain("overflow-hidden");
     expect(hostClass).toContain("bg-white");
 
     rerender(
@@ -43,5 +43,7 @@ describe("TabViewerPanel", () => {
     const settings = createTabViewerSettings("/api/songs/2/tabs/file", "html,body");
     expect(settings.display.staveProfile).toBe("Tab");
     expect(settings.display.barCount).toBe(4);
+    expect(settings.display.scale).toBe(1.8);
+    expect(settings.player.scrollMode).toBe("Off");
   });
 });

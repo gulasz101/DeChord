@@ -16,7 +16,7 @@ export function createTabViewerSettings(tabSourceUrl: string, scrollElement: str
       layoutMode: "Page",
       staveProfile: "Tab",
       barsPerRow: BAR_WINDOW_SIZE,
-      scale: 1.4,
+      scale: 1.8,
       stretchForce: 0.9,
       startBar: 1,
       barCount: BAR_WINDOW_SIZE,
@@ -25,7 +25,7 @@ export function createTabViewerSettings(tabSourceUrl: string, scrollElement: str
       playerMode: "EnabledExternalMedia",
       enableCursor: true,
       enableUserInteraction: false,
-      scrollMode: "Continuous",
+      scrollMode: "Off",
       scrollElement,
       nativeBrowserSmoothScroll: true,
     },
@@ -94,9 +94,6 @@ export function TabViewerPanel({ tabSourceUrl, currentTime, isPlaying, onSyncTim
     if (!api || !renderReadyRef.current) return;
     try {
       api.timePosition = currentTime * 1000;
-      if (isPlaying) {
-        api.scrollToCursor?.();
-      }
       const currentTick = typeof api.tickPosition === "number" ? api.tickPosition : 0;
       const currentBarIndex = findCurrentBarIndex(barStartTicksRef.current, currentTick);
       updateVisibleWindow(api, currentBarIndex);
@@ -131,7 +128,6 @@ export function TabViewerPanel({ tabSourceUrl, currentTime, isPlaying, onSyncTim
             const currentBarIndex = findCurrentBarIndex(barStartTicksRef.current, currentTick);
             updateVisibleWindow(api, currentBarIndex);
             api.timePosition = currentTime * 1000;
-            api.scrollToCursor?.();
           }),
         );
 
@@ -186,9 +182,10 @@ export function TabViewerPanel({ tabSourceUrl, currentTime, isPlaying, onSyncTim
       <div
         ref={scrollHostRef}
         data-testid="tab-viewer-scrollhost"
-        className="max-h-96 overflow-y-auto rounded bg-white p-3 text-black"
+        className="relative h-64 overflow-hidden rounded bg-white p-3 text-black"
       >
         <div ref={containerRef} data-testid="tab-viewer-canvas" className="min-h-24" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-5 bg-white" />
       </div>
     </section>
   );
