@@ -18,6 +18,8 @@ export type JobStage =
   | "queued"
   | "analyzing_chords"
   | "splitting_stems"
+  | "transcribing_bass_midi"
+  | "generating_tabs"
   | "persisting"
   | "complete"
   | "error";
@@ -31,6 +33,10 @@ export interface JobStatus {
   message?: string;
   stems_status?: "queued" | "complete" | "failed" | "not_requested";
   stems_error?: string | null;
+  midi_status?: "queued" | "complete" | "failed" | "not_requested";
+  midi_error?: string | null;
+  tab_status?: "queued" | "complete" | "failed" | "not_requested";
+  tab_error?: string | null;
   progress?: string;
   error?: string;
 }

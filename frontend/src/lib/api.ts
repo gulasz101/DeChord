@@ -44,6 +44,14 @@ export function getStemAudioUrl(songId: number, stemKey: string): string {
   return `${BASE}/api/audio/${songId}/stems/${encodeURIComponent(stemKey)}`;
 }
 
+export function getMidiFileUrl(songId: number): string {
+  return `${BASE}/api/songs/${songId}/midi/file`;
+}
+
+export function getTabFileUrl(songId: number): string {
+  return `${BASE}/api/songs/${songId}/tabs/file`;
+}
+
 export async function pollUntilComplete(
   jobId: string,
   onProgress?: (status: JobStatus) => void,

@@ -196,25 +196,25 @@
 - Create: `frontend/src/components/__tests__/TabViewerPanel.test.tsx`
 - Create: `frontend/src/lib/__tests__/api.tabs.test.ts`
 
-- [ ] **Step 1: Write failing frontend tests**
+- [x] **Step 1: Write failing frontend tests**
   - API client tests for tabs metadata/file URL helpers.
   - Component tests for render/fallback states.
   - Sync test asserting tab cursor updates from player time prop.
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
   - Run: `cd frontend && bun run test`
   - Expected: `FAIL`.
 
-- [ ] **Step 3: Implement minimal alphaTab integration**
+- [x] **Step 3: Implement minimal alphaTab integration**
   - Add alphaTab dependency.
   - Render GP tab panel when tab artifact exists.
   - Use existing transport time to drive tab cursor.
 
-- [ ] **Step 4: Run GREEN tests**
+- [x] **Step 4: Run GREEN tests**
   - Run: `cd frontend && bun run test`
   - Expected: `PASS`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   - Run:
   ```bash
   git add frontend/package.json frontend/bun.lock frontend/src/App.tsx frontend/src/lib/api.ts frontend/src/lib/types.ts frontend/src/components/TabViewerPanel.tsx frontend/src/components/__tests__/TabViewerPanel.test.tsx frontend/src/lib/__tests__/api.tabs.test.ts

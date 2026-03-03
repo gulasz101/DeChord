@@ -8,6 +8,7 @@ import { TransportBar } from "./components/TransportBar";
 import { NoteEditorModal } from "./components/NoteEditorModal";
 import { ToastCueLayer } from "./components/ToastCueLayer";
 import { StemMixerPanel } from "./components/StemMixerPanel";
+import { TabViewerPanel } from "./components/TabViewerPanel";
 import type { PlaybackMode } from "./components/StemMixerPanel";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
 import { useChordSync } from "./hooks/useChordSync";
@@ -21,6 +22,7 @@ import {
   updateSongNote,
   deleteSongNote,
   savePlaybackPrefs,
+  getTabFileUrl,
 } from "./lib/api";
 import { resolvePlaybackSources } from "./lib/playbackSources";
 import { deriveStemWarning } from "./lib/uploadWarnings";
@@ -60,6 +62,7 @@ function App() {
   const [stems, setStems] = useState<StemInfo[]>([]);
   const [enabledByStem, setEnabledByStem] = useState<Record<string, boolean>>({});
   const [playbackMode, setPlaybackMode] = useState<PlaybackMode>("full_mix");
+  const [tabSourceUrl, setTabSourceUrl] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<JobStatus | null>(null);
@@ -110,6 +113,7 @@ function App() {
     setStems(stemsData.stems);
     setEnabledByStem(defaultEnabled);
     setPlaybackMode(stemsData.stems.length > 0 ? "stems" : "full_mix");
+    setTabSourceUrl(getTabFileUrl(songId));
     setStemWarning(null);
     setLoopStartIdx(data.playback_prefs.loop_start_index);
     setLoopEndIdx(data.playback_prefs.loop_end_index);
@@ -455,6 +459,7 @@ function App() {
             }
           />
         ) : null}
+        <TabViewerPanel tabSourceUrl={tabSourceUrl} currentTime={player.currentTime} />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
           {stemWarning ? (
             <section className="rounded-xl border border-amber-500/60 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
