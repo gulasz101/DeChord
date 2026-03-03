@@ -20,5 +20,5 @@
 
 ### Task 3: Final verification and completion
 
-- [ ] Step 1: Run `make status` and `portless list` and confirm both dechord routes are active.
-- [ ] Step 2: Mark plan complete and commit with plan path reference.
+- [x] Step 1: Run `make status` and `portless list` and confirm both dechord routes are active.
+- [x] Step 2: Mark plan complete and commit with plan path reference.
