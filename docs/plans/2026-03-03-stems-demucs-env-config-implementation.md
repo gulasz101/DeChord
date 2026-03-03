@@ -54,9 +54,9 @@
 **Files:**
 - Modify: `docs/plans/2026-03-03-stems-demucs-env-config-implementation.md`
 
-- [ ] Step 1: Run `cd backend && uv run pytest tests/ -q`.
-- [ ] Step 2: Run `make reset` before final handoff.
-- [ ] Step 3: Mark all plan steps complete and commit with plan reference.
+- [x] Step 1: Run `cd backend && uv run pytest tests/ -q`.
+- [x] Step 2: Run `make reset` before final handoff.
+- [x] Step 3: Mark all plan steps complete and commit with plan reference.
 
 ---
 
