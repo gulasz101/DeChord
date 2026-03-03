@@ -6,6 +6,7 @@ requires-python = ">=3.13"
 dependencies = [
     "fastapi[standard]",
     "python-multipart",
+    "python-dotenv",
     "madmom",
     "libsql-client>=0.3.1",
     "demucs; python_version < '3.14'",

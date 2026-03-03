@@ -43,11 +43,11 @@
 - Modify: `backend/app/stems.py`
 - Modify: `backend/pyproject.toml`
 
-- [ ] Step 1: Add `.env` loading support and typed env parsing helpers.
-- [ ] Step 2: Apply configurable `device`, `segment`, `overlap`, `shifts`, `input_gain_db`, `output_gain_db` in Demucs path.
-- [ ] Step 3: Preserve existing engine/fallback behavior and update logs for effective runtime config.
-- [ ] Step 4: Run `cd backend && uv run pytest tests/test_stems.py -q` and confirm GREEN.
-- [ ] Step 5: Commit implementation with plan reference.
+- [x] Step 1: Add `.env` loading support and typed env parsing helpers.
+- [x] Step 2: Apply configurable `device`, `segment`, `overlap`, `shifts`, `input_gain_db`, `output_gain_db` in Demucs path.
+- [x] Step 3: Preserve existing engine/fallback behavior and update logs for effective runtime config.
+- [x] Step 4: Run `cd backend && uv run pytest tests/test_stems.py -q` and confirm GREEN.
+- [x] Step 5: Commit implementation with plan reference.
 
 ### Task 5: Verify end-to-end backend test gate and reset workflow
 

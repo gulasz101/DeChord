@@ -270,6 +270,7 @@ dependencies = [
     { name = "lameenc", marker = "python_full_version < '3.14'" },
     { name = "libsql-client" },
     { name = "madmom" },
+    { name = "python-dotenv" },
     { name = "python-multipart" },
 ]
 
@@ -285,6 +286,7 @@ requires-dist = [
     { name = "lameenc", marker = "python_full_version < '3.14'" },
     { name = "libsql-client", specifier = ">=0.3.1" },
     { name = "madmom", git = "https://github.com/CPJKU/madmom" },
+    { name = "python-dotenv" },
     { name = "python-multipart" },
 ]
 
