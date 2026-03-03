@@ -156,18 +156,27 @@ def test_analyze_with_stems_reports_split_stage(tmp_path, monkeypatch):
     client = _build_client(tmp_path, monkeypatch)
 
     import app.main as main
+    from app.stems import StemResult
 
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
+        output_dir.mkdir(parents=True, exist_ok=True)
+        bass = output_dir / "bass.wav"
+        bass.write_bytes(b"bass-bytes")
         if on_progress:
             on_progress(10, "warmup")
             on_progress(100, "done")
-        return []
+        return [StemResult(stem_key="bass", relative_path=str(bass), mime_type="audio/x-wav")]
+
+    def fake_transcribe_bass_stem_to_midi(_stem_path):
+        return b"MThd\x00\x00\x00\x06"
 
     monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
+    monkeypatch.setattr(main, "transcribe_bass_stem_to_midi", fake_transcribe_bass_stem_to_midi)
 
     files = {"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")}
     response = client.post("/api/analyze", files=files, data={"process_mode": "analysis_and_stems"})
     assert response.status_code == 200
+    song_id = response.json()["song_id"]
     job_id = response.json()["job_id"]
 
     status = client.get(f"/api/status/{job_id}")
@@ -176,7 +185,15 @@ def test_analyze_with_stems_reports_split_stage(tmp_path, monkeypatch):
     assert payload["status"] == "complete"
     assert payload["stage"] == "complete"
     assert payload["stems_status"] == "complete"
+    assert payload["midi_status"] == "complete"
+    assert payload["midi_error"] is None
     assert "splitting_stems" in payload["stage_history"]
+    assert "transcribing_bass_midi" in payload["stage_history"]
+
+    persisted = asyncio.run(
+        main.execute("SELECT COUNT(*) FROM song_midis WHERE song_id = ?", [song_id])
+    )
+    assert persisted.rows[0][0] == 1
 
 
 def test_analyze_with_stems_failure_keeps_analysis_complete(tmp_path, monkeypatch):
@@ -199,6 +216,8 @@ def test_analyze_with_stems_failure_keeps_analysis_complete(tmp_path, monkeypatc
     payload = status.json()
     assert payload["status"] == "complete"
     assert payload["stems_status"] == "failed"
+    assert payload["midi_status"] == "not_requested"
+    assert payload["midi_error"] is None
     assert payload["error"] is None
     assert payload["stems_error"] == "stem split failed"
 

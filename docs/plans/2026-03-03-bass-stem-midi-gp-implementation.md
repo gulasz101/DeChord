@@ -91,26 +91,26 @@
 - Modify: `backend/app/main.py`
 - Modify: `backend/tests/test_api.py`
 
-- [ ] **Step 1: Write failing API tests for new stage/status**
+- [x] **Step 1: Write failing API tests for new stage/status**
   - Assertions:
     - `stage` transitions include `transcribing_bass_midi`
     - status payload includes `midi_status` and `midi_error`
     - successful jobs persist latest midi artifact for song.
 
-- [ ] **Step 2: Run RED test**
+- [x] **Step 2: Run RED test**
   - Run: `cd backend && uv run pytest tests/test_api.py -q`
   - Expected: `FAIL` on missing stage/fields.
 
-- [ ] **Step 3: Implement minimal pipeline changes**
+- [x] **Step 3: Implement minimal pipeline changes**
   - Integrate `transcribe_bass_stem_to_midi` after stems stage.
   - Add `_persist_midi(song_id, midi_bytes, ...)`.
   - Preserve partial success (analysis/stems remain complete even if midi fails).
 
-- [ ] **Step 4: Run GREEN test**
+- [x] **Step 4: Run GREEN test**
   - Run: `cd backend && uv run pytest tests/test_api.py -q`
   - Expected: `PASS`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   - Run:
   ```bash
   git add backend/app/main.py backend/tests/test_api.py

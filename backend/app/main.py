@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from app.analysis import AnalysisResult, analyze_audio
 from app.db import close_db, execute, get_default_user, init_db
+from app.midi import transcribe_bass_stem_to_midi
 from app.models import ProcessMode
 from app.stems import StemResult, split_to_stems
 
@@ -118,6 +119,28 @@ async def _persist_stems(song_id: int, stems: list[StemResult]) -> None:
         )
 
 
+async def _persist_midi(
+    song_id: int,
+    *,
+    source_stem_key: str,
+    midi_blob: bytes,
+    engine: str,
+    status: str = "complete",
+    error_message: str | None = None,
+) -> None:
+    await execute(
+        "DELETE FROM song_midis WHERE song_id = ? AND source_stem_key = ?",
+        [song_id, source_stem_key],
+    )
+    await execute(
+        """
+        INSERT INTO song_midis (song_id, source_stem_key, midi_blob, midi_format, engine, status, error_message)
+        VALUES (?, ?, ?, 'mid', ?, ?, ?)
+        """,
+        [song_id, source_stem_key, midi_blob, engine, status, error_message],
+    )
+
+
 async def _load_latest_analysis(song_id: int) -> dict | None:
     analysis_rs = await execute(
         """
@@ -208,15 +231,46 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                 asyncio.run(_persist_stems(song_id, stems))
                 jobs[job_id]["stems_status"] = "complete"
                 jobs[job_id]["stems_error"] = None
+                bass_stem = next((stem for stem in stems if stem.stem_key == "bass"), None)
+                if bass_stem is None:
+                    jobs[job_id]["midi_status"] = "failed"
+                    jobs[job_id]["midi_error"] = "Bass stem missing; cannot transcribe MIDI."
+                else:
+                    try:
+                        set_stage(
+                            "transcribing_bass_midi",
+                            message="Transcribing bass stem to MIDI...",
+                            progress_pct=90,
+                            stage_progress_pct=0,
+                        )
+                        midi_blob = transcribe_bass_stem_to_midi(Path(bass_stem.relative_path))
+                        asyncio.run(
+                            _persist_midi(
+                                song_id,
+                                source_stem_key="bass",
+                                midi_blob=midi_blob,
+                                engine="basic_pitch",
+                            )
+                        )
+                        jobs[job_id]["midi_status"] = "complete"
+                        jobs[job_id]["midi_error"] = None
+                    except Exception as exc:
+                        logger.error("Job %s: bass MIDI transcription failed: %s", job_id, exc, exc_info=True)
+                        jobs[job_id]["midi_status"] = "failed"
+                        jobs[job_id]["midi_error"] = str(exc)
                 logger.info("Job %s: stem splitting complete", job_id)
             except Exception as exc:
                 logger.error("Job %s: stem splitting failed: %s", job_id, exc, exc_info=True)
                 jobs[job_id]["stems_status"] = "failed"
                 jobs[job_id]["stems_error"] = str(exc)
+                jobs[job_id]["midi_status"] = "not_requested"
+                jobs[job_id]["midi_error"] = None
         else:
             logger.info("Job %s: stems not requested (mode=%s)", job_id, jobs[job_id].get("process_mode"))
             jobs[job_id]["stems_status"] = "not_requested"
             jobs[job_id]["stems_error"] = None
+            jobs[job_id]["midi_status"] = "not_requested"
+            jobs[job_id]["midi_error"] = None
 
         set_stage(
             "persisting",
@@ -282,6 +336,8 @@ async def analyze(file: UploadFile, process_mode: ProcessMode = Form("analysis_o
         "process_mode": process_mode,
         "stems_status": "queued" if process_mode == "analysis_and_stems" else "not_requested",
         "stems_error": None,
+        "midi_status": "queued" if process_mode == "analysis_and_stems" else "not_requested",
+        "midi_error": None,
         "audio_path": str(audio_path),
         "song_id": song_id,
         "error": None,
@@ -305,6 +361,8 @@ async def status(job_id: str):
         "stage_history": job.get("stage_history", []),
         "stems_status": job.get("stems_status", "not_requested"),
         "stems_error": job.get("stems_error"),
+        "midi_status": job.get("midi_status", "not_requested"),
+        "midi_error": job.get("midi_error"),
         "progress": job.get("progress"),
         "error": job.get("error"),
     }
