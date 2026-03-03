@@ -227,10 +227,10 @@
 - Modify: `README.md`
 - Modify: `docs/plans/2026-03-03-bass-stem-midi-gp-implementation.md`
 
-- [ ] **Step 1: Update README**
+- [x] **Step 1: Update README**
   - Add MIDI/tab pipeline, new endpoints, dependency notes (`basic-pitch`, `pyguitarpro`, `alphaTab`).
 
-- [ ] **Step 2: Run full verification**
+- [x] **Step 2: Run full verification**
   - Run:
   ```bash
   cd backend && uv run pytest tests/ -v
@@ -239,11 +239,11 @@
   ```
   - Expected: all pass.
 
-- [ ] **Step 3: Run fresh-state reset before final handoff**
+- [x] **Step 3: Run fresh-state reset before final handoff**
   - Run: `make reset`
   - Expected: runtime state cleaned and recreated for verification flow.
 
-- [ ] **Step 4: Final commit**
+- [x] **Step 4: Final commit**
   - Run:
   ```bash
   git add README.md docs/plans/2026-03-03-bass-stem-midi-gp-implementation.md
