@@ -9,6 +9,29 @@ interface TabViewerPanelProps {
 
 const BAR_WINDOW_SIZE = 4;
 
+export function createTabViewerSettings(tabSourceUrl: string, scrollElement: string | HTMLElement) {
+  return {
+    file: tabSourceUrl,
+    display: {
+      layoutMode: "Page",
+      staveProfile: "Tab",
+      barsPerRow: BAR_WINDOW_SIZE,
+      scale: 1.4,
+      stretchForce: 0.9,
+      startBar: 1,
+      barCount: BAR_WINDOW_SIZE,
+    },
+    player: {
+      playerMode: "EnabledExternalMedia",
+      enableCursor: true,
+      enableUserInteraction: false,
+      scrollMode: "Continuous",
+      scrollElement,
+      nativeBrowserSmoothScroll: true,
+    },
+  };
+}
+
 export function findCurrentBarIndex(barStartTicks: number[], currentTick: number): number {
   if (barStartTicks.length === 0) return 0;
   let lo = 0;
@@ -92,25 +115,10 @@ export function TabViewerPanel({ tabSourceUrl, currentTime, isPlaying, onSyncTim
         if (disposed || !containerRef.current) return;
         const AlphaTabApi = alphaTabModule.AlphaTabApi;
         if (!AlphaTabApi) return;
-        const api = new AlphaTabApi(containerRef.current, {
-          file: tabSourceUrl,
-          display: {
-            layoutMode: "Page",
-            barsPerRow: BAR_WINDOW_SIZE,
-            scale: 1.4,
-            stretchForce: 0.9,
-            startBar: 1,
-            barCount: BAR_WINDOW_SIZE,
-          },
-          player: {
-            playerMode: "EnabledExternalMedia",
-            enableCursor: true,
-            enableUserInteraction: false,
-            scrollMode: "Continuous",
-            scrollElement: scrollHostRef.current ?? "html,body",
-            nativeBrowserSmoothScroll: true,
-          },
-        });
+        const api = new AlphaTabApi(
+          containerRef.current,
+          createTabViewerSettings(tabSourceUrl, scrollHostRef.current ?? "html,body"),
+        );
         alphaTabRef.current = api;
         unsubs.push(
           api.renderFinished.on(() => {

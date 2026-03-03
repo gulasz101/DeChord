@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { TabViewerPanel, findCurrentBarIndex, getDisplayWindowForBar } from "../TabViewerPanel";
+import { TabViewerPanel, createTabViewerSettings, findCurrentBarIndex, getDisplayWindowForBar } from "../TabViewerPanel";
 
 describe("TabViewerPanel", () => {
   it("shows fallback message when tab url is unavailable", () => {
@@ -37,5 +37,11 @@ describe("TabViewerPanel", () => {
     expect(getDisplayWindowForBar(5, 12)).toEqual({ startBar: 6, barCount: 4 });
     expect(getDisplayWindowForBar(10, 12)).toEqual({ startBar: 11, barCount: 2 });
     expect(getDisplayWindowForBar(20, 12)).toEqual({ startBar: 12, barCount: 1 });
+  });
+
+  it("configures alphaTab to render tab-only view", () => {
+    const settings = createTabViewerSettings("/api/songs/2/tabs/file", "html,body");
+    expect(settings.display.staveProfile).toBe("Tab");
+    expect(settings.display.barCount).toBe(4);
   });
 });
