@@ -13,19 +13,19 @@ export function createTabViewerSettings(tabSourceUrl: string, scrollElement: str
   return {
     file: tabSourceUrl,
     display: {
-      layoutMode: "Page",
+      layoutMode: "Horizontal",
       staveProfile: "Tab",
-      barsPerRow: BAR_WINDOW_SIZE,
-      scale: 1.8,
+      barsPerRow: -1,
+      scale: 1.35,
       stretchForce: 0.9,
       startBar: 1,
-      barCount: BAR_WINDOW_SIZE,
+      barCount: -1,
     },
     player: {
       playerMode: "EnabledExternalMedia",
       enableCursor: true,
       enableUserInteraction: false,
-      scrollMode: "Off",
+      scrollMode: "Continuous",
       scrollElement,
       nativeBrowserSmoothScroll: true,
     },
@@ -67,26 +67,13 @@ export function TabViewerPanel({ tabSourceUrl, currentTime, isPlaying, onSyncTim
   const containerRef = useRef<HTMLDivElement | null>(null);
   const alphaTabRef = useRef<any>(null);
   const renderReadyRef = useRef(false);
-  const barStartTicksRef = useRef<number[]>([]);
-  const totalBarsRef = useRef(0);
-  const activeWindowRef = useRef<{ startBar: number; barCount: number } | null>(null);
+  const currentTimeRef = useRef(currentTime);
+  const isPlayingRef = useRef(isPlaying);
 
-  const updateVisibleWindow = (api: any, currentBarIndex: number) => {
-    const window = getDisplayWindowForBar(currentBarIndex, totalBarsRef.current);
-    if (
-      activeWindowRef.current &&
-      activeWindowRef.current.startBar === window.startBar &&
-      activeWindowRef.current.barCount === window.barCount
-    ) {
-      return;
-    }
-
-    api.settings.display.startBar = window.startBar;
-    api.settings.display.barCount = window.barCount;
-    api.updateSettings?.();
-    api.render?.();
-    activeWindowRef.current = window;
-  };
+  useEffect(() => {
+    currentTimeRef.current = currentTime;
+    isPlayingRef.current = isPlaying;
+  }, [currentTime, isPlaying]);
 
   useEffect(() => {
     onSyncTime?.(currentTime);
@@ -94,9 +81,9 @@ export function TabViewerPanel({ tabSourceUrl, currentTime, isPlaying, onSyncTim
     if (!api || !renderReadyRef.current) return;
     try {
       api.timePosition = currentTime * 1000;
-      const currentTick = typeof api.tickPosition === "number" ? api.tickPosition : 0;
-      const currentBarIndex = findCurrentBarIndex(barStartTicksRef.current, currentTick);
-      updateVisibleWindow(api, currentBarIndex);
+      if (isPlaying) {
+        api.scrollToCursor?.();
+      }
     } catch {
       // Keep the app usable even if alphaTab state sync fails transiently.
     }
@@ -104,7 +91,6 @@ export function TabViewerPanel({ tabSourceUrl, currentTime, isPlaying, onSyncTim
 
   useEffect(() => {
     let disposed = false;
-    const unsubs: Array<() => void> = [];
     async function init() {
       if (!tabSourceUrl || !containerRef.current) return;
       try {
@@ -117,37 +103,14 @@ export function TabViewerPanel({ tabSourceUrl, currentTime, isPlaying, onSyncTim
           createTabViewerSettings(tabSourceUrl, scrollHostRef.current ?? "html,body"),
         );
         alphaTabRef.current = api;
-        unsubs.push(
-          api.renderFinished.on(() => {
-            if (disposed) return;
-            renderReadyRef.current = true;
-            const scoreMasterBars = api.score?.masterBars ?? [];
-            totalBarsRef.current = scoreMasterBars.length;
-            barStartTicksRef.current = scoreMasterBars.map((masterBar: any) => masterBar.start ?? 0);
-            const currentTick = typeof api.tickPosition === "number" ? api.tickPosition : 0;
-            const currentBarIndex = findCurrentBarIndex(barStartTicksRef.current, currentTick);
-            updateVisibleWindow(api, currentBarIndex);
-            api.timePosition = currentTime * 1000;
-          }),
-        );
-
-        unsubs.push(
-          api.playerPositionChanged.on((args: any) => {
-            if (disposed || !renderReadyRef.current) return;
-            const currentBarIndex = findCurrentBarIndex(barStartTicksRef.current, args.currentTick ?? 0);
-            updateVisibleWindow(api, currentBarIndex);
-          }),
-        );
-
-        unsubs.push(
-          api.playedBeatChanged.on((beat: any) => {
-            if (disposed || !renderReadyRef.current) return;
-            const barIndex = beat?.voice?.bar?.masterBar?.index;
-            if (typeof barIndex === "number") {
-              updateVisibleWindow(api, barIndex);
-            }
-          }),
-        );
+        api.renderFinished.on(() => {
+          if (disposed) return;
+          renderReadyRef.current = true;
+          api.timePosition = currentTimeRef.current * 1000;
+          if (isPlayingRef.current) {
+            api.scrollToCursor?.();
+          }
+        });
       } catch {
         alphaTabRef.current = null;
       }
@@ -156,13 +119,7 @@ export function TabViewerPanel({ tabSourceUrl, currentTime, isPlaying, onSyncTim
 
     return () => {
       disposed = true;
-      for (const unsub of unsubs) {
-        unsub();
-      }
       renderReadyRef.current = false;
-      barStartTicksRef.current = [];
-      totalBarsRef.current = 0;
-      activeWindowRef.current = null;
       alphaTabRef.current?.destroy?.();
       alphaTabRef.current = null;
     };
@@ -182,7 +139,7 @@ export function TabViewerPanel({ tabSourceUrl, currentTime, isPlaying, onSyncTim
       <div
         ref={scrollHostRef}
         data-testid="tab-viewer-scrollhost"
-        className="relative h-64 overflow-hidden rounded bg-white p-3 text-black"
+        className="relative h-64 overflow-x-auto overflow-y-hidden rounded bg-white p-3 text-black"
       >
         <div ref={containerRef} data-testid="tab-viewer-canvas" className="min-h-24" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-5 bg-white" />
