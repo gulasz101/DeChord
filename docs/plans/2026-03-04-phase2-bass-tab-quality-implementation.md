@@ -17,12 +17,12 @@
 - Create: `backend/tests/test_rhythm_grid.py`
 - Modify: `backend/app/main.py` (imports only if needed)
 
-- [ ] Step 1: Write failing tests for rhythm primitives (`Bar`, `BarGrid`, monotonic beat validation).
-- [ ] Step 2: Run test to verify RED.
+- [x] Step 1: Write failing tests for rhythm primitives (`Bar`, `BarGrid`, monotonic beat validation).
+- [x] Step 2: Run test to verify RED.
   - Run: `cd backend && uv run pytest tests/test_rhythm_grid.py -q`
-- [ ] Step 3: Implement minimal models and monotonic validation.
-- [ ] Step 4: Run test to verify GREEN.
-- [ ] Step 5: Commit.
+- [x] Step 3: Implement minimal models and monotonic validation.
+- [x] Step 4: Run test to verify GREEN.
+- [x] Step 5: Commit.
   - `git commit -m "feat(rhythm): add bar grid primitives" -m "Refs: docs/plans/2026-03-04-phase2-bass-tab-quality-implementation.md"`
 
 ### Task 2: Implement beat/downbeat extraction with fallback and BPM reconciliation (TDD)
