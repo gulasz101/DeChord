@@ -31,11 +31,11 @@
 - Modify: `backend/app/services/rhythm_grid.py`
 - Modify: `backend/tests/test_rhythm_grid.py`
 
-- [ ] Step 1: Write failing tests for madmom path abstraction, librosa fallback path, and tempo ambiguity correction (x2/x0.5).
-- [ ] Step 2: Run RED tests for new behaviors.
-- [ ] Step 3: Implement extraction adapters and `tempo_used` reconciliation logic.
-- [ ] Step 4: Run GREEN tests.
-- [ ] Step 5: Commit.
+- [x] Step 1: Write failing tests for madmom path abstraction, librosa fallback path, and tempo ambiguity correction (x2/x0.5).
+- [x] Step 2: Run RED tests for new behaviors.
+- [x] Step 3: Implement extraction adapters and `tempo_used` reconciliation logic.
+- [x] Step 4: Run GREEN tests.
+- [x] Step 5: Commit.
   - `git commit -m "feat(rhythm): add beat tracking fallback and bpm reconciliation" -m "Refs: docs/plans/2026-03-04-phase2-bass-tab-quality-implementation.md"`
 
 ### Task 3: Add bass transcriber interface and adapter around existing MIDI path (TDD)
