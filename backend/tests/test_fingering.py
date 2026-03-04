@@ -38,3 +38,15 @@ def test_candidates_for_pitch_regression_cases_use_standard_bass_octaves() -> No
     assert (4, 12) in _candidates_for_pitch(40, max_fret=24)
     assert _candidates_for_pitch(62, max_fret=24) == [(1, 19), (2, 24)]
     assert _candidates_for_pitch(20, max_fret=24) == []
+
+
+def test_optimize_fingering_drops_only_unplayable_notes() -> None:
+    notes = [
+        QuantizedNote(bar_index=0, beat_position=0.0, duration_beats=1.0, pitch_midi=40, start_sec=0.0, end_sec=0.5),
+        QuantizedNote(bar_index=0, beat_position=1.0, duration_beats=1.0, pitch_midi=20, start_sec=0.5, end_sec=1.0),
+        QuantizedNote(bar_index=0, beat_position=2.0, duration_beats=1.0, pitch_midi=45, start_sec=1.0, end_sec=1.5),
+    ]
+
+    fingering = optimize_fingering(notes, max_fret=24)
+
+    assert [note.pitch_midi for note in fingering] == [40, 45]

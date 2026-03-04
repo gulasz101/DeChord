@@ -44,11 +44,11 @@
 **Files:**
 - Modify: `backend/tests/test_fingering.py`
 
-- [ ] Step 1: Add test with playable-unplayable-playable sequence (e.g. `40, 20, 45`) expecting playable notes retained.
-- [ ] Step 2: Run test to verify RED against current all-or-nothing behavior.
+- [x] Step 1: Add test with playable-unplayable-playable sequence (e.g. `40, 20, 45`) expecting playable notes retained.
+- [x] Step 2: Run test to verify RED against current all-or-nothing behavior.
   - Run: `cd backend && uv run pytest tests/test_fingering.py::test_optimize_fingering_drops_only_unplayable_notes -q`
   - Expected: FAIL because solver currently returns empty.
-- [ ] Step 3: Commit failing test-first state.
+- [x] Step 3: Commit failing test-first state.
   - `git add backend/tests/test_fingering.py`
   - `git commit -m "test(fingering): add partial-unplayable retention case" -m "Refs: docs/plans/2026-03-04-bass-fingering-root-cause-fix-implementation.md"`
 
