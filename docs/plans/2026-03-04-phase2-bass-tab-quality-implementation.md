@@ -58,11 +58,11 @@
 - Create: `backend/app/services/note_cleanup.py`
 - Create: `backend/tests/test_note_cleanup.py`
 
-- [ ] Step 1: Write failing tests for overlap resolution, short-note/confidence filtering, repeated-note merge, octave jump smoothing heuristic.
-- [ ] Step 2: Run RED tests.
-- [ ] Step 3: Implement minimal cleanup passes to satisfy tests.
-- [ ] Step 4: Run GREEN tests.
-- [ ] Step 5: Commit.
+- [x] Step 1: Write failing tests for overlap resolution, short-note/confidence filtering, repeated-note merge, octave jump smoothing heuristic.
+- [x] Step 2: Run RED tests.
+- [x] Step 3: Implement minimal cleanup passes to satisfy tests.
+- [x] Step 4: Run GREEN tests.
+- [x] Step 5: Commit.
   - `git commit -m "feat(cleanup): add bass note cleanup pipeline" -m "Refs: docs/plans/2026-03-04-phase2-bass-tab-quality-implementation.md"`
 
 ### Task 5: Implement beat-grid quantization and bar-boundary splitting (TDD)
