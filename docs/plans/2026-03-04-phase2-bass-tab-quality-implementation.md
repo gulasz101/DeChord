@@ -164,13 +164,13 @@
 - Modify: `README.md`
 - Modify: `docs/plans/2026-03-04-phase2-bass-tab-quality-implementation.md`
 
-- [ ] Step 1: Update docs for new endpoint, AlphaTex format, and phase2 pipeline behavior.
-- [ ] Step 2: Run backend targeted suites and full test suite.
+- [x] Step 1: Update docs for new endpoint, AlphaTex format, and phase2 pipeline behavior.
+- [x] Step 2: Run backend targeted suites and full test suite.
   - `cd backend && uv run pytest tests/test_rhythm_grid.py tests/test_note_cleanup.py tests/test_quantization.py tests/test_fingering.py tests/test_alphatex_exporter.py tests/test_tab_pipeline.py tests/test_api.py -v`
   - `cd backend && uv run pytest tests -v`
-- [ ] Step 3: Run `make reset` before final verification/handoff.
-- [ ] Step 4: Re-run critical API tests after reset.
-- [ ] Step 5: Mark completed tasks as `[x]` in this plan and commit.
+- [x] Step 3: Run `make reset` before final verification/handoff.
+- [x] Step 4: Re-run critical API tests after reset.
+- [x] Step 5: Mark completed tasks as `[x]` in this plan and commit.
   - `git commit -m "docs: finalize phase2 tab quality verification and reset evidence" -m "Refs: docs/plans/2026-03-04-phase2-bass-tab-quality-implementation.md"`
 
 ---

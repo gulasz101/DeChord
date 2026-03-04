@@ -254,13 +254,16 @@ The repository now includes a browser-based DeChord practice app (FastAPI backen
   - automatic fallback to single mixed track when no stems are available
   - stem mixer checkboxes (all stems enabled by default)
   - per-stem stream endpoints (`/api/songs/{song_id}/stems`, `/api/audio/{song_id}/stems/{stem_key}`)
-- Bass artifact pipeline (EADG 4-string v1):
+- Bass artifact pipeline (EADG 4-string v2):
+  - drums stem -> beat/downbeat bar grid
   - bass stem -> MIDI artifact generation
-  - MIDI -> Guitar Pro (`.gp5`) tab generation
+  - cleaned + quantized notes -> AlphaTex (`.alphatex`) tab generation with `\sync` points
   - status stages: `transcribing_bass_midi`, `generating_tabs`
   - artifact file endpoints:
     - `/api/songs/{song_id}/midi/file`
     - `/api/songs/{song_id}/tabs/file`
+  - dedicated stems-to-tab endpoint:
+    - `POST /api/tab/from-demucs-stems`
 
 ### Start Locally
 
@@ -325,7 +328,7 @@ DECHORD_STEM_FALLBACK_ON_ERROR=0
    - `Analyze + split stems` to also generate stem tracks.
 3. Watch staged progress while processing (overall + current stage).
 4. If stems are generated, use the Stem Mixer panel to mute/unmute stems during playback.
-5. If bass stem extraction and transcription succeed, the Tab Viewer panel loads generated GP tabs and syncs with player time.
+5. If bass/drums stem extraction succeeds, the Tab Viewer panel loads generated AlphaTex tabs and syncs with player time.
 
 ### tmux Controls
 
