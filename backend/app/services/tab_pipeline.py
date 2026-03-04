@@ -163,6 +163,8 @@ class TabPipeline:
             "cleaned_note_count": len(cleaned_notes),
             "quantized_note_count": len(quantized_notes),
             "fingered_note_count": len(fingered_notes),
+            "after_fingering": len(fingered_notes),
+            "after_exporting": len(fingered_notes),
             "derived_bpm": derived_bpm,
             "bpm_hint": bpm_hint,
             "tempo_used": tempo_used,

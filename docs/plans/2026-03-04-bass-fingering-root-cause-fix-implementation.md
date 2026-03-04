@@ -105,10 +105,10 @@
 - Modify: `backend/tests/test_tab_pipeline.py`
 - Modify: `backend/tests/test_alphatex_exporter.py` (if needed)
 
-- [ ] Step 1: Add synthetic in-range notes smoke test asserting `after_fingering > 0`, note tokens exist, and `\\sync` entries remain.
-- [ ] Step 2: Run RED then GREEN.
+- [x] Step 1: Add synthetic in-range notes smoke test asserting `after_fingering > 0`, note tokens exist, and `\\sync` entries remain.
+- [x] Step 2: Run RED then GREEN.
   - Run: `cd backend && uv run pytest tests/test_tab_pipeline.py tests/test_alphatex_exporter.py -q`
-- [ ] Step 3: Commit tests + any minimal implementation updates.
+- [x] Step 3: Commit tests + any minimal implementation updates.
   - `git add backend/tests/test_tab_pipeline.py backend/tests/test_alphatex_exporter.py backend/app/services/tab_pipeline.py backend/app/services/alphatex_exporter.py`
   - `git commit -m "test(pipeline): add alphatex non-rest smoke verification" -m "Refs: docs/plans/2026-03-04-bass-fingering-root-cause-fix-implementation.md"`
 

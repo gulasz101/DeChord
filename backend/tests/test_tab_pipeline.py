@@ -157,3 +157,45 @@ def test_tab_pipeline_raises_when_all_quantized_notes_drop_in_fingering() -> Non
         pipeline.run(Path("bass.wav"), Path("drums.wav"), bpm_hint=120.0)
 
     assert export_called is False
+
+
+def test_tab_pipeline_smoke_alphatex_contains_notes_and_sync_with_nonzero_after_fingering() -> None:
+    raw_notes = [RawNoteEvent(pitch_midi=34, start_sec=0.0, end_sec=0.5, confidence=0.9)]
+
+    class FakeTranscriber:
+        def transcribe(self, _bass_wav: Path) -> BassTranscriptionResult:
+            return BassTranscriptionResult(engine="basic_pitch", midi_bytes=b"MThd", raw_notes=raw_notes)
+
+    bars = [Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])]
+    pipeline = TabPipeline(
+        transcriber=FakeTranscriber(),
+        rhythm_extract_fn=lambda _drums, **_kwargs: ([0.0, 0.5, 1.0, 1.5], [0.0], "madmom"),
+        bar_builder_fn=lambda _beats, _downbeats, **_kwargs: bars,
+        cleanup_fn=lambda events, **_kwargs: events,
+        quantize_fn=lambda _events, _grid, **_kwargs: [
+            QuantizedNote(
+                bar_index=0,
+                beat_position=0.0,
+                duration_beats=1.0,
+                pitch_midi=34,
+                start_sec=0.0,
+                end_sec=0.5,
+            ),
+            QuantizedNote(
+                bar_index=0,
+                beat_position=1.0,
+                duration_beats=1.0,
+                pitch_midi=40,
+                start_sec=0.5,
+                end_sec=1.0,
+            ),
+        ],
+    )
+
+    result = pipeline.run(Path("bass.wav"), Path("drums.wav"), bpm_hint=120.0)
+
+    assert result.debug_info["after_fingering"] > 0
+    assert result.debug_info["after_exporting"] > 0
+    assert "\\sync(" in result.alphatex
+    assert "r.1" not in result.alphatex
+    assert "1.3.4" in result.alphatex or "6.4.4" in result.alphatex
