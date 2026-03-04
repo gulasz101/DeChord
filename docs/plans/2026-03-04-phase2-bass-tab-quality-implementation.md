@@ -125,11 +125,11 @@
 - Modify: `backend/tests/test_api.py`
 - Modify: `backend/app/db_schema.sql` (only if metadata fields need extension)
 
-- [ ] Step 1: Write failing API tests for request validation, success payload, and error responses.
-- [ ] Step 2: Run RED tests.
-- [ ] Step 3: Implement endpoint, MIDI persistence in `song_midis`, AlphaTex persistence in `song_tabs` (`tab_format='alphatex'`).
-- [ ] Step 4: Run GREEN tests.
-- [ ] Step 5: Commit.
+- [x] Step 1: Write failing API tests for request validation, success payload, and error responses.
+- [x] Step 2: Run RED tests.
+- [x] Step 3: Implement endpoint, MIDI persistence in `song_midis`, AlphaTex persistence in `song_tabs` (`tab_format='alphatex'`).
+- [x] Step 4: Run GREEN tests.
+- [x] Step 5: Commit.
   - `git commit -m "feat(api): add stems-to-alphatex tab generation endpoint" -m "Refs: docs/plans/2026-03-04-phase2-bass-tab-quality-implementation.md"`
 
 ### Task 10: Integrate phase2 pipeline into `/api/analyze` stems flow (TDD)
@@ -138,11 +138,11 @@
 - Modify: `backend/app/main.py`
 - Modify: `backend/tests/test_api.py`
 
-- [ ] Step 1: Write failing tests asserting `/api/analyze` persists AlphaTex tabs and updated status fields remain coherent.
-- [ ] Step 2: Run RED tests.
-- [ ] Step 3: Replace GP5 generation path with phase2 pipeline call and AlphaTex persistence.
-- [ ] Step 4: Run GREEN tests.
-- [ ] Step 5: Commit.
+- [x] Step 1: Write failing tests asserting `/api/analyze` persists AlphaTex tabs and updated status fields remain coherent.
+- [x] Step 2: Run RED tests.
+- [x] Step 3: Replace GP5 generation path with phase2 pipeline call and AlphaTex persistence.
+- [x] Step 4: Run GREEN tests.
+- [x] Step 5: Commit.
   - `git commit -m "feat(api): route analyze stems tab generation through phase2 pipeline" -m "Refs: docs/plans/2026-03-04-phase2-bass-tab-quality-implementation.md"`
 
 ### Task 11: Update tab artifact serving/downloading for AlphaTex-only local workflow (TDD)
@@ -151,11 +151,11 @@
 - Modify: `backend/app/main.py`
 - Modify: `backend/tests/test_api.py`
 
-- [ ] Step 1: Write failing tests for `/api/songs/{id}/tabs/file` and `/tabs/download` returning AlphaTex bytes with proper content headers/extensions.
-- [ ] Step 2: Run RED tests.
-- [ ] Step 3: Implement AlphaTex response media type and `.alphatex` download naming.
-- [ ] Step 4: Run GREEN tests.
-- [ ] Step 5: Commit.
+- [x] Step 1: Write failing tests for `/api/songs/{id}/tabs/file` and `/tabs/download` returning AlphaTex bytes with proper content headers/extensions.
+- [x] Step 2: Run RED tests.
+- [x] Step 3: Implement AlphaTex response media type and `.alphatex` download naming.
+- [x] Step 4: Run GREEN tests.
+- [x] Step 5: Commit.
   - `git commit -m "feat(api): serve alphatex tab artifacts" -m "Refs: docs/plans/2026-03-04-phase2-bass-tab-quality-implementation.md"`
 
 ### Task 12: Documentation + verification + fresh-state reset (TDD completion gate)
