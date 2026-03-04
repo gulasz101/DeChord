@@ -111,11 +111,11 @@
 - Create: `backend/app/services/tab_pipeline.py`
 - Create: `backend/tests/test_tab_pipeline.py`
 
-- [ ] Step 1: Write failing integration-style unit tests for stage composition and debug counters.
-- [ ] Step 2: Run RED tests.
-- [ ] Step 3: Implement orchestrator composing rhythm/transcribe/cleanup/quantize/fingering/export.
-- [ ] Step 4: Run GREEN tests.
-- [ ] Step 5: Commit.
+- [x] Step 1: Write failing integration-style unit tests for stage composition and debug counters.
+- [x] Step 2: Run RED tests.
+- [x] Step 3: Implement orchestrator composing rhythm/transcribe/cleanup/quantize/fingering/export.
+- [x] Step 4: Run GREEN tests.
+- [x] Step 5: Commit.
   - `git commit -m "feat(pipeline): compose phase2 bass tab generation pipeline" -m "Refs: docs/plans/2026-03-04-phase2-bass-tab-quality-implementation.md"`
 
 ### Task 9: Add `POST /api/tab/from-demucs-stems` endpoint and persistence wiring (TDD)

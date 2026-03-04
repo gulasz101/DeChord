@@ -34,6 +34,47 @@ def _infer_downbeats_from_beats(beats: list[float], *, numerator: int) -> list[f
     return [beat for idx, beat in enumerate(beats) if idx % numerator == 0]
 
 
+def build_bars_from_beats_downbeats(
+    beats: list[float],
+    downbeats: list[float],
+    *,
+    time_signature_numerator: int = 4,
+) -> list[Bar]:
+    validate_increasing_timestamps(beats, label="beats")
+    if downbeats:
+        validate_increasing_timestamps(downbeats, label="downbeats")
+
+    bars: list[Bar] = []
+    if len(downbeats) >= 2:
+        for idx, start in enumerate(downbeats[:-1]):
+            end = downbeats[idx + 1]
+            beats_in_bar = [beat for beat in beats if start <= beat < end]
+            if not beats_in_bar:
+                beats_in_bar = [start]
+            bars.append(Bar(index=idx, start_sec=start, end_sec=end, beats_sec=beats_in_bar))
+        return bars
+
+    numerator = max(time_signature_numerator, 1)
+    if not beats:
+        return []
+
+    default_interval = median([beats[i] - beats[i - 1] for i in range(1, len(beats))]) if len(beats) > 1 else 0.5
+    bar_index = 0
+    for idx in range(0, len(beats), numerator):
+        group = beats[idx : idx + numerator]
+        if not group:
+            continue
+        start = group[0]
+        if idx + numerator < len(beats):
+            end = beats[idx + numerator]
+        else:
+            end = group[-1] + (default_interval or 0.5)
+        bars.append(Bar(index=bar_index, start_sec=start, end_sec=end, beats_sec=group))
+        bar_index += 1
+
+    return bars
+
+
 def compute_derived_bpm(beats: list[float]) -> float | None:
     if len(beats) < 2:
         return None

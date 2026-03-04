@@ -1,0 +1,60 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from app.services.alphatex_exporter import SyncPoint
+from app.services.bass_transcriber import BassTranscriptionResult, RawNoteEvent
+from app.services.fingering import FingeredNote
+from app.services.quantization import QuantizedNote
+from app.services.rhythm_grid import Bar
+from app.services.tab_pipeline import TabPipeline
+
+
+def test_tab_pipeline_composes_all_stages_and_exposes_debug_info() -> None:
+    raw_notes = [RawNoteEvent(pitch_midi=40, start_sec=0.0, end_sec=0.5, confidence=0.9)]
+
+    class FakeTranscriber:
+        def transcribe(self, _bass_wav: Path) -> BassTranscriptionResult:
+            return BassTranscriptionResult(engine="basic_pitch", midi_bytes=b"MThd", raw_notes=raw_notes)
+
+    bars = [Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])]
+
+    pipeline = TabPipeline(
+        transcriber=FakeTranscriber(),
+        rhythm_extract_fn=lambda _drums, **_kwargs: ([0.0, 0.5, 1.0, 1.5], [0.0], "madmom"),
+        bar_builder_fn=lambda _beats, _downbeats, **_kwargs: bars,
+        cleanup_fn=lambda events, **_kwargs: events,
+        quantize_fn=lambda events, _grid, **_kwargs: [
+            QuantizedNote(
+                bar_index=0,
+                beat_position=0.0,
+                duration_beats=1.0,
+                pitch_midi=40,
+                start_sec=0.0,
+                end_sec=0.5,
+            )
+        ],
+        fingering_fn=lambda notes, **_kwargs: [
+            FingeredNote(
+                bar_index=0,
+                beat_position=0.0,
+                duration_beats=1.0,
+                pitch_midi=40,
+                start_sec=0.0,
+                end_sec=0.5,
+                string=4,
+                fret=0,
+            )
+        ],
+        export_fn=lambda notes, bars, **_kwargs: ("\\tempo 120", [SyncPoint(bar_index=0, millisecond_offset=0)]),
+    )
+
+    result = pipeline.run(Path("bass.wav"), Path("drums.wav"), bpm_hint=120.0)
+
+    assert result.alphatex.startswith("\\tempo")
+    assert result.tempo_used == 120.0
+    assert result.midi_bytes == b"MThd"
+    assert result.debug_info["rhythm_source"] == "madmom"
+    assert result.debug_info["raw_note_count"] == 1
+    assert result.debug_info["quantized_note_count"] == 1
+    assert result.sync_points[0].bar_index == 0
