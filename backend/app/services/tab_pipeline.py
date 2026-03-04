@@ -6,7 +6,12 @@ from typing import Callable
 
 from app.services.alphatex_exporter import SyncPoint, export_alphatex
 from app.services.bass_transcriber import BasicPitchTranscriber, BassTranscriber
-from app.services.fingering import FingeredNote, optimize_fingering, optimize_fingering_with_debug
+from app.services.fingering import (
+    FingeredNote,
+    candidate_sanity_probe,
+    optimize_fingering,
+    optimize_fingering_with_debug,
+)
 from app.services.note_cleanup import cleanup_note_events
 from app.services.quantization import QuantizedNote, quantize_note_events
 from app.services.rhythm_grid import (
@@ -24,6 +29,12 @@ CleanupFn = Callable[..., list]
 QuantizeFn = Callable[..., list[QuantizedNote]]
 FingeringFn = Callable[..., list[FingeredNote]]
 ExportFn = Callable[..., tuple[str, list[SyncPoint]]]
+
+
+class FingeringCollapseError(RuntimeError):
+    def __init__(self, message: str, *, debug_info: dict[str, object]) -> None:
+        super().__init__(message)
+        self.debug_info = debug_info
 
 
 @dataclass(frozen=True)
@@ -82,6 +93,29 @@ class TabPipeline:
         transcription = self._transcriber.transcribe(bass_wav)
         cleaned_notes = self._cleanup_fn(transcription.raw_notes)
         quantized_notes = self._quantize_fn(cleaned_notes, BarGrid(bars=bars), subdivision=subdivision)
+
+        candidate_probe = candidate_sanity_probe(max_fret=max_fret)
+        if not candidate_probe["all_ok"]:
+            raise FingeringCollapseError(
+                "candidate sanity probe failed",
+                debug_info={
+                    "stage_counts": {
+                        "raw": len(transcription.raw_notes),
+                        "cleaned": len(cleaned_notes),
+                        "quantized": len(quantized_notes),
+                        "fingered": 0,
+                        "exported": 0,
+                    },
+                    "candidate_probe": candidate_probe,
+                    "fingering": {
+                        "dropped_reasons": {},
+                        "tuning_midi": {},
+                        "max_fret": max_fret,
+                        "octave_salvaged_notes": 0,
+                    },
+                },
+            )
+
         if self._fingering_fn is optimize_fingering:
             fingered_notes, fingering_debug = optimize_fingering_with_debug(quantized_notes, max_fret=max_fret)
         else:
@@ -96,6 +130,22 @@ class TabPipeline:
                 "tuning_midi": {},
                 "max_fret": max_fret,
             }
+
+        if quantized_notes and not fingered_notes:
+            raise FingeringCollapseError(
+                "fingering dropped all quantized notes",
+                debug_info={
+                    "stage_counts": {
+                        "raw": len(transcription.raw_notes),
+                        "cleaned": len(cleaned_notes),
+                        "quantized": len(quantized_notes),
+                        "fingered": 0,
+                        "exported": 0,
+                    },
+                    "candidate_probe": candidate_probe,
+                    "fingering": fingering_debug,
+                },
+            )
 
         alphatex, sync_points = self._export_fn(
             fingered_notes,
@@ -116,6 +166,14 @@ class TabPipeline:
             "derived_bpm": derived_bpm,
             "bpm_hint": bpm_hint,
             "tempo_used": tempo_used,
+            "stage_counts": {
+                "raw": len(transcription.raw_notes),
+                "cleaned": len(cleaned_notes),
+                "quantized": len(quantized_notes),
+                "fingered": len(fingered_notes),
+                "exported": len(fingered_notes),
+            },
+            "candidate_probe": candidate_probe,
             "fingering": fingering_debug,
         }
 

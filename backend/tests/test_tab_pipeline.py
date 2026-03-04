@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from app.services.alphatex_exporter import SyncPoint
 from app.services.bass_transcriber import BassTranscriptionResult, RawNoteEvent
 from app.services.fingering import FingeredNote
 from app.services.quantization import QuantizedNote
 from app.services.rhythm_grid import Bar
-from app.services.tab_pipeline import TabPipeline
+from app.services.tab_pipeline import FingeringCollapseError, TabPipeline
 
 
 def test_tab_pipeline_composes_all_stages_and_exposes_debug_info() -> None:
@@ -116,3 +118,42 @@ def test_tab_pipeline_drops_only_unplayable_notes_and_surfaces_fingering_debug()
     assert result.debug_info["fingering"]["dropped_reasons"] == {"no_fingering_candidate": 1}
     assert result.debug_info["fingering"]["octave_salvaged_notes"] == 0
     assert result.debug_info["fingering"]["tuning_midi"] == {4: 28, 3: 33, 2: 38, 1: 43}
+
+
+def test_tab_pipeline_raises_when_all_quantized_notes_drop_in_fingering() -> None:
+    raw_notes = [RawNoteEvent(pitch_midi=20, start_sec=0.0, end_sec=0.5, confidence=0.9)]
+
+    class FakeTranscriber:
+        def transcribe(self, _bass_wav: Path) -> BassTranscriptionResult:
+            return BassTranscriptionResult(engine="basic_pitch", midi_bytes=b"MThd", raw_notes=raw_notes)
+
+    bars = [Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])]
+    export_called = False
+
+    def fake_export(_notes, _bars, **_kwargs):
+        nonlocal export_called
+        export_called = True
+        return ("\\tempo 120", [SyncPoint(bar_index=0, millisecond_offset=0)])
+
+    pipeline = TabPipeline(
+        transcriber=FakeTranscriber(),
+        rhythm_extract_fn=lambda _drums, **_kwargs: ([0.0, 0.5, 1.0, 1.5], [0.0], "madmom"),
+        bar_builder_fn=lambda _beats, _downbeats, **_kwargs: bars,
+        cleanup_fn=lambda events, **_kwargs: events,
+        quantize_fn=lambda _events, _grid, **_kwargs: [
+            QuantizedNote(
+                bar_index=0,
+                beat_position=0.0,
+                duration_beats=1.0,
+                pitch_midi=20,
+                start_sec=0.0,
+                end_sec=0.5,
+            )
+        ],
+        export_fn=fake_export,
+    )
+
+    with pytest.raises(FingeringCollapseError, match="fingering dropped all quantized notes"):
+        pipeline.run(Path("bass.wav"), Path("drums.wav"), bpm_hint=120.0)
+
+    assert export_called is False

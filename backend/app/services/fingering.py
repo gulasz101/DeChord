@@ -11,6 +11,7 @@ STANDARD_BASS_TUNING_MIDI: dict[int, int] = {
     2: 38,  # D2
     1: 43,  # G2
 }
+CANONICAL_DEBUG_PITCHES: tuple[int, ...] = (34, 33, 40, 62)
 
 
 @dataclass(frozen=True)
@@ -150,3 +151,27 @@ def optimize_fingering_with_debug(notes: list[QuantizedNote], *, max_fret: int =
 def optimize_fingering(notes: list[QuantizedNote], *, max_fret: int = 24) -> list[FingeredNote]:
     fingered_notes, _ = optimize_fingering_with_debug(notes, max_fret=max_fret)
     return fingered_notes
+
+
+def candidate_sanity_probe(*, max_fret: int = 24) -> dict[str, object]:
+    candidate_map: dict[int, list[tuple[int, int]]] = {}
+    failures: dict[int, str] = {}
+    for pitch in CANONICAL_DEBUG_PITCHES:
+        candidates = _candidates_for_pitch(pitch, max_fret=max_fret)
+        candidate_map[pitch] = candidates
+        if not candidates:
+            failures[pitch] = "no_fingering_candidate"
+    return {
+        "max_fret": max_fret,
+        "checked_pitches": list(CANONICAL_DEBUG_PITCHES),
+        "candidate_map": candidate_map,
+        "failures": failures,
+        "all_ok": len(failures) == 0,
+    }
+
+
+def assert_candidate_sanity(*, max_fret: int = 24) -> dict[str, object]:
+    probe = candidate_sanity_probe(max_fret=max_fret)
+    if not probe["all_ok"]:
+        raise RuntimeError(f"Candidate sanity probe failed: {probe['failures']}")
+    return probe

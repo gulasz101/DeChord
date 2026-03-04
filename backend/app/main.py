@@ -21,7 +21,7 @@ from app.analysis import AnalysisResult, analyze_audio
 from app.db import close_db, execute, get_default_user, init_db
 from app.midi import transcribe_bass_stem_to_midi
 from app.models import ProcessMode
-from app.services.tab_pipeline import TabPipeline
+from app.services.tab_pipeline import FingeringCollapseError, TabPipeline
 from app.stems import StemResult, split_to_stems
 from app.tabs import build_gp5_from_tab_positions, map_midi_to_eadg_positions
 
@@ -335,6 +335,13 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                         )
                         jobs[job_id]["tab_status"] = "complete"
                         jobs[job_id]["tab_error"] = None
+                    except FingeringCollapseError as exc:
+                        logger.error("Job %s: phase2 tab pipeline fingering collapse: %s", job_id, exc, exc_info=True)
+                        jobs[job_id]["midi_status"] = "failed"
+                        jobs[job_id]["midi_error"] = str(exc)
+                        jobs[job_id]["tab_status"] = "failed"
+                        jobs[job_id]["tab_error"] = str(exc)
+                        jobs[job_id]["tab_debug_info"] = exc.debug_info
                     except Exception as exc:
                         logger.error("Job %s: phase2 tab pipeline failed: %s", job_id, exc, exc_info=True)
                         jobs[job_id]["midi_status"] = "failed"
@@ -456,6 +463,15 @@ async def tab_from_demucs_stems(
             max_fret=max_fret,
             sync_every_bars=sync_every_bars,
         )
+    except FingeringCollapseError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "fingering_collapse",
+                "message": str(exc),
+                "debug_info": exc.debug_info,
+            },
+        ) from exc
     except Exception as exc:
         raise HTTPException(422, f"tab generation failed: {exc}") from exc
     finally:

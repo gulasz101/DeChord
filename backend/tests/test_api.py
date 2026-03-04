@@ -439,6 +439,41 @@ def test_generate_tab_from_demucs_stems_endpoint_persists_midi_and_alphatex(tmp_
     assert tab_rs.rows[0][1] == "alphatex"
 
 
+def test_generate_tab_from_demucs_stems_returns_structured_debug_on_fingering_collapse(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+    from app.services.tab_pipeline import FingeringCollapseError
+
+    def fake_run(*_args, **_kwargs):
+        raise FingeringCollapseError(
+            "fingering dropped all quantized notes",
+            debug_info={
+                "stage_counts": {"quantized": 4, "fingered": 0, "exported": 0},
+                "fingering": {
+                    "dropped_reasons": {"no_fingering_candidate": 4},
+                    "tuning_midi": {4: 28, 3: 33, 2: 38, 1: 43},
+                    "max_fret": 24,
+                },
+            },
+        )
+
+    monkeypatch.setattr(main.tab_pipeline, "run", fake_run)
+
+    files = {
+        "bass": ("bass.wav", b"bass-bytes", "audio/wav"),
+        "drums": ("drums.wav", b"drums-bytes", "audio/wav"),
+    }
+    response = client.post("/api/tab/from-demucs-stems", files=files)
+
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail["error"] == "fingering_collapse"
+    assert detail["debug_info"]["stage_counts"]["quantized"] == 4
+    assert detail["debug_info"]["stage_counts"]["fingered"] == 0
+    assert detail["debug_info"]["fingering"]["dropped_reasons"] == {"no_fingering_candidate": 4}
+    assert detail["debug_info"]["fingering"]["tuning_midi"] == {"4": 28, "3": 33, "2": 38, "1": 43}
+
+
 def test_generate_tab_from_demucs_stems_requires_both_files(tmp_path, monkeypatch):
     client = _build_client(tmp_path, monkeypatch)
     response = client.post(

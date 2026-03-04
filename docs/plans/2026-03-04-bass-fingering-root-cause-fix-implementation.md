@@ -90,12 +90,12 @@
 - Modify: `backend/tests/test_tab_pipeline.py`
 - Modify: `backend/tests/test_api.py`
 
-- [ ] Step 1: Add guard that raises explicit error when quantized notes exist but fingered notes are zero.
-- [ ] Step 2: Ensure API returns structured error/debug payload including stage counters, reasons, and tuning values.
-- [ ] Step 3: Add/adjust tests to assert no silent successful rests-only export.
-- [ ] Step 4: Run API and pipeline tests to verify GREEN.
+- [x] Step 1: Add guard that raises explicit error when quantized notes exist but fingered notes are zero.
+- [x] Step 2: Ensure API returns structured error/debug payload including stage counters, reasons, and tuning values.
+- [x] Step 3: Add/adjust tests to assert no silent successful rests-only export.
+- [x] Step 4: Run API and pipeline tests to verify GREEN.
   - Run: `cd backend && uv run pytest tests/test_tab_pipeline.py tests/test_api.py -q`
-- [ ] Step 5: Commit implementation.
+- [x] Step 5: Commit implementation.
   - `git add backend/app/services/tab_pipeline.py backend/app/main.py backend/tests/test_tab_pipeline.py backend/tests/test_api.py`
   - `git commit -m "fix(pipeline): fail fast when fingering drops all quantized notes" -m "Refs: docs/plans/2026-03-04-bass-fingering-root-cause-fix-implementation.md"`
 
