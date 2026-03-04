@@ -72,11 +72,11 @@
 - Create: `backend/tests/test_quantization.py`
 - Modify: `backend/app/services/rhythm_grid.py` (if shared helpers needed)
 
-- [ ] Step 1: Write failing tests for 1/16 snapping error bounds and splitting cross-bar notes.
-- [ ] Step 2: Run RED tests.
-- [ ] Step 3: Implement quantizer with bar-local beat position mapping.
-- [ ] Step 4: Run GREEN tests.
-- [ ] Step 5: Commit.
+- [x] Step 1: Write failing tests for 1/16 snapping error bounds and splitting cross-bar notes.
+- [x] Step 2: Run RED tests.
+- [x] Step 3: Implement quantizer with bar-local beat position mapping.
+- [x] Step 4: Run GREEN tests.
+- [x] Step 5: Commit.
   - `git commit -m "feat(quantization): snap bass notes to drums bar grid" -m "Refs: docs/plans/2026-03-04-phase2-bass-tab-quality-implementation.md"`
 
 ### Task 6: Implement DP fingering optimizer (TDD)
