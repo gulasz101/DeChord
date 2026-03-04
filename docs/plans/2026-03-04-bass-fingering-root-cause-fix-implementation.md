@@ -118,17 +118,17 @@
 - Modify: `DEBUG_REPORT.md`
 - Modify: `docs/plans/2026-03-04-bass-fingering-root-cause-fix-implementation.md`
 
-- [ ] Step 1: Re-run the same debug workflow on the same failing song and regenerate report evidence.
+- [x] Step 1: Re-run the same debug workflow on the same failing song and regenerate report evidence.
   - Must include updated tuning table, non-zero `after_fingering`/`exported_notes`, sample `string,fret`, and AlphaTex excerpt with notes.
-- [ ] Step 2: Run targeted suites and full backend tests.
+- [x] Step 2: Run targeted suites and full backend tests.
   - `cd backend && uv run pytest tests/test_fingering.py tests/test_tab_pipeline.py tests/test_alphatex_exporter.py tests/test_api.py -v`
   - `cd backend && uv run pytest tests -v`
-- [ ] Step 3: Run fresh-state reset before final verification.
+- [x] Step 3: Run fresh-state reset before final verification.
   - `make reset`
-- [ ] Step 4: Re-run critical tests post-reset.
+- [x] Step 4: Re-run critical tests post-reset.
   - `cd backend && uv run pytest tests/test_fingering.py tests/test_tab_pipeline.py tests/test_api.py -v`
-- [ ] Step 5: Mark all completed tasks `[x]` in this plan file.
-- [ ] Step 6: Commit verification artifacts and plan completion state.
+- [x] Step 5: Mark all completed tasks `[x]` in this plan file.
+- [x] Step 6: Commit verification artifacts and plan completion state.
   - `git add DEBUG_REPORT.md docs/plans/2026-03-04-bass-fingering-root-cause-fix-implementation.md`
   - `git commit -m "docs: capture fingering fix debug evidence and verification" -m "Refs: docs/plans/2026-03-04-bass-fingering-root-cause-fix-implementation.md"`
 
