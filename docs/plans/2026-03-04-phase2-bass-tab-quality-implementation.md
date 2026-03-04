@@ -45,11 +45,11 @@
 - Modify: `backend/app/midi.py`
 - Create: `backend/tests/test_bass_transcriber.py`
 
-- [ ] Step 1: Write failing tests for transcriber contract returning raw notes with confidence and MIDI bytes.
-- [ ] Step 2: Run RED tests.
-- [ ] Step 3: Implement `BassTranscriber` protocol and `BasicPitchTranscriber` adapter using existing transcription path.
-- [ ] Step 4: Run GREEN tests.
-- [ ] Step 5: Commit.
+- [x] Step 1: Write failing tests for transcriber contract returning raw notes with confidence and MIDI bytes.
+- [x] Step 2: Run RED tests.
+- [x] Step 3: Implement `BassTranscriber` protocol and `BasicPitchTranscriber` adapter using existing transcription path.
+- [x] Step 4: Run GREEN tests.
+- [x] Step 5: Commit.
   - `git commit -m "feat(transcriber): add bass transcriber interface" -m "Refs: docs/plans/2026-03-04-phase2-bass-tab-quality-implementation.md"`
 
 ### Task 4: Implement note cleanup service (TDD)
