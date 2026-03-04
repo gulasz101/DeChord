@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.services.fingering import optimize_fingering
+from app.services.fingering import _candidates_for_pitch, optimize_fingering
 from app.services.quantization import QuantizedNote
 
 
@@ -30,3 +30,11 @@ def test_optimize_fingering_reduces_extreme_fret_jumps() -> None:
 
     jumps = [abs(fingering[idx].fret - fingering[idx - 1].fret) for idx in range(1, len(fingering))]
     assert max(jumps) <= 5
+
+
+def test_candidates_for_pitch_regression_cases_use_standard_bass_octaves() -> None:
+    assert _candidates_for_pitch(34, max_fret=24) == [(3, 1), (4, 6)]
+    assert _candidates_for_pitch(33, max_fret=24) == [(3, 0), (4, 5)]
+    assert (4, 12) in _candidates_for_pitch(40, max_fret=24)
+    assert _candidates_for_pitch(62, max_fret=24) == [(1, 19), (2, 24)]
+    assert _candidates_for_pitch(20, max_fret=24) == []

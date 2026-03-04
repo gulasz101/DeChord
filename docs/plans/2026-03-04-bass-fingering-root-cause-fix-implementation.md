@@ -16,12 +16,12 @@
 - Modify: `backend/tests/test_fingering.py`
 - Modify: `backend/app/services/fingering.py` (imports only if test needs explicit helper export)
 
-- [ ] Step 1: Write failing candidate tests for corrected bass tuning behavior.
+- [x] Step 1: Write failing candidate tests for corrected bass tuning behavior.
   - Cases: `pitch=34 -> (3,1)`, `33 -> (3,0)`, `40 includes (4,12)`, `62 -> (1,19)`, `20 -> []`.
-- [ ] Step 2: Run tests to verify RED.
+- [x] Step 2: Run tests to verify RED.
   - Run: `cd backend && uv run pytest tests/test_fingering.py -q`
   - Expected: FAIL on candidate assertions with current octave-high tuning.
-- [ ] Step 3: Commit failing test-first state.
+- [x] Step 3: Commit failing test-first state.
   - `git add backend/tests/test_fingering.py`
   - `git commit -m "test(fingering): add octave regression candidate cases" -m "Refs: docs/plans/2026-03-04-bass-fingering-root-cause-fix-implementation.md"`
 
