@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.services.fingering import _candidates_for_pitch, optimize_fingering
+from app.services.fingering import _candidates_for_pitch, optimize_fingering, optimize_fingering_with_debug
 from app.services.quantization import QuantizedNote
 
 
@@ -50,3 +50,19 @@ def test_optimize_fingering_drops_only_unplayable_notes() -> None:
     fingering = optimize_fingering(notes, max_fret=24)
 
     assert [note.pitch_midi for note in fingering] == [40, 45]
+
+
+def test_optimize_fingering_with_debug_reports_drop_reasons_and_tuning() -> None:
+    notes = [
+        QuantizedNote(bar_index=0, beat_position=0.0, duration_beats=1.0, pitch_midi=40, start_sec=0.0, end_sec=0.5),
+        QuantizedNote(bar_index=0, beat_position=1.0, duration_beats=1.0, pitch_midi=20, start_sec=0.5, end_sec=1.0),
+        QuantizedNote(bar_index=0, beat_position=2.0, duration_beats=1.0, pitch_midi=45, start_sec=1.0, end_sec=1.5),
+    ]
+
+    fingering, debug = optimize_fingering_with_debug(notes, max_fret=24)
+
+    assert [note.pitch_midi for note in fingering] == [40, 45]
+    assert debug["dropped_reasons"] == {"no_fingering_candidate": 1}
+    assert debug["octave_salvaged_notes"] == 0
+    assert debug["max_fret"] == 24
+    assert debug["tuning_midi"] == {4: 28, 3: 33, 2: 38, 1: 43}

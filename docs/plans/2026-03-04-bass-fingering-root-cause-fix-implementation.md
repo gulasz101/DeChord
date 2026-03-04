@@ -60,12 +60,12 @@
 - Modify: `backend/tests/test_fingering.py`
 - Modify: `backend/tests/test_tab_pipeline.py`
 
-- [ ] Step 1: Refactor fingering solve path to drop only per-note failures and preserve playable notes.
-- [ ] Step 2: Keep octave-salvage code path hard-disabled and expose `octave_salvaged_notes=0` in debug flow.
-- [ ] Step 3: Add dropped reason counting (`no_fingering_candidate`) and surfaced tuning/max-fret metadata for debug.
-- [ ] Step 4: Run target tests to verify GREEN.
+- [x] Step 1: Refactor fingering solve path to drop only per-note failures and preserve playable notes.
+- [x] Step 2: Keep octave-salvage code path hard-disabled and expose `octave_salvaged_notes=0` in debug flow.
+- [x] Step 3: Add dropped reason counting (`no_fingering_candidate`) and surfaced tuning/max-fret metadata for debug.
+- [x] Step 4: Run target tests to verify GREEN.
   - Run: `cd backend && uv run pytest tests/test_fingering.py tests/test_tab_pipeline.py -q`
-- [ ] Step 5: Commit implementation.
+- [x] Step 5: Commit implementation.
   - `git add backend/app/services/fingering.py backend/app/services/tab_pipeline.py backend/tests/test_fingering.py backend/tests/test_tab_pipeline.py`
   - `git commit -m "fix(fingering): keep playable notes when some notes are unplayable" -m "Refs: docs/plans/2026-03-04-bass-fingering-root-cause-fix-implementation.md"`
 

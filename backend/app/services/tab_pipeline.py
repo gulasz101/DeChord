@@ -6,7 +6,7 @@ from typing import Callable
 
 from app.services.alphatex_exporter import SyncPoint, export_alphatex
 from app.services.bass_transcriber import BasicPitchTranscriber, BassTranscriber
-from app.services.fingering import FingeredNote, optimize_fingering
+from app.services.fingering import FingeredNote, optimize_fingering, optimize_fingering_with_debug
 from app.services.note_cleanup import cleanup_note_events
 from app.services.quantization import QuantizedNote, quantize_note_events
 from app.services.rhythm_grid import (
@@ -82,7 +82,20 @@ class TabPipeline:
         transcription = self._transcriber.transcribe(bass_wav)
         cleaned_notes = self._cleanup_fn(transcription.raw_notes)
         quantized_notes = self._quantize_fn(cleaned_notes, BarGrid(bars=bars), subdivision=subdivision)
-        fingered_notes = self._fingering_fn(quantized_notes, max_fret=max_fret)
+        if self._fingering_fn is optimize_fingering:
+            fingered_notes, fingering_debug = optimize_fingering_with_debug(quantized_notes, max_fret=max_fret)
+        else:
+            fingered_notes = self._fingering_fn(quantized_notes, max_fret=max_fret)
+            fingering_debug = {
+                "dropped_reasons": {},
+                "dropped_note_count": max(0, len(quantized_notes) - len(fingered_notes)),
+                "playable_note_count": len(fingered_notes),
+                "input_note_count": len(quantized_notes),
+                "octave_salvage_enabled": False,
+                "octave_salvaged_notes": 0,
+                "tuning_midi": {},
+                "max_fret": max_fret,
+            }
 
         alphatex, sync_points = self._export_fn(
             fingered_notes,
@@ -103,6 +116,7 @@ class TabPipeline:
             "derived_bpm": derived_bpm,
             "bpm_hint": bpm_hint,
             "tempo_used": tempo_used,
+            "fingering": fingering_debug,
         }
 
         return TabPipelineResult(
