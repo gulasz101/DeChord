@@ -4,11 +4,11 @@ from dataclasses import dataclass
 
 from app.services.quantization import QuantizedNote
 
-STANDARD_BASS_TUNING: dict[int, int] = {
-    4: 40,  # E1
-    3: 45,  # A1
-    2: 50,  # D2
-    1: 55,  # G2
+STANDARD_BASS_TUNING_MIDI: dict[int, int] = {
+    4: 28,  # E1
+    3: 33,  # A1
+    2: 38,  # D2
+    1: 43,  # G2
 }
 
 
@@ -26,7 +26,7 @@ class FingeredNote:
 
 def _candidates_for_pitch(pitch_midi: int, *, max_fret: int) -> list[tuple[int, int]]:
     candidates: list[tuple[int, int]] = []
-    for string, open_note in STANDARD_BASS_TUNING.items():
+    for string, open_note in STANDARD_BASS_TUNING_MIDI.items():
         fret = pitch_midi - open_note
         if 0 <= fret <= max_fret:
             candidates.append((string, fret))

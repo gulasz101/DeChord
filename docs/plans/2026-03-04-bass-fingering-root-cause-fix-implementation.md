@@ -31,11 +31,11 @@
 - Modify: `backend/app/services/fingering.py`
 - Modify: `backend/tests/test_fingering.py`
 
-- [ ] Step 1: Replace tuning map with `STANDARD_BASS_TUNING_MIDI = {4: 28, 3: 33, 2: 38, 1: 43}` and keep string-order semantics.
-- [ ] Step 2: Ensure candidate generation function uses `_MIDI`-named constant and deterministic ordering.
-- [ ] Step 3: Run fingering tests to verify GREEN for candidate cases.
+- [x] Step 1: Replace tuning map with `STANDARD_BASS_TUNING_MIDI = {4: 28, 3: 33, 2: 38, 1: 43}` and keep string-order semantics.
+- [x] Step 2: Ensure candidate generation function uses `_MIDI`-named constant and deterministic ordering.
+- [x] Step 3: Run fingering tests to verify GREEN for candidate cases.
   - Run: `cd backend && uv run pytest tests/test_fingering.py -q`
-- [ ] Step 4: Commit implementation.
+- [x] Step 4: Commit implementation.
   - `git add backend/app/services/fingering.py backend/tests/test_fingering.py`
   - `git commit -m "fix(fingering): correct standard bass tuning midi map" -m "Refs: docs/plans/2026-03-04-bass-fingering-root-cause-fix-implementation.md"`
 
