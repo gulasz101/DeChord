@@ -75,10 +75,10 @@
 - Modify: `backend/app/services/fingering.py`
 - Modify: `backend/tests/test_fingering.py`
 
-- [ ] Step 1: Add failing tests for debug probe success conditions and explicit failure signaling.
-- [ ] Step 2: Run RED tests.
+- [x] Step 1: Add failing tests for debug probe success conditions and explicit failure signaling.
+- [x] Step 2: Run RED tests.
   - Run: `cd backend && uv run pytest tests/test_fingering.py -q`
-- [ ] Step 3: Commit failing test-first state.
+- [x] Step 3: Commit failing test-first state.
   - `git add backend/tests/test_fingering.py`
   - `git commit -m "test(fingering): add debug probe coverage for canonical pitches" -m "Refs: docs/plans/2026-03-04-bass-fingering-root-cause-fix-implementation.md"`
 

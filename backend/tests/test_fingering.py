@@ -1,6 +1,14 @@
 from __future__ import annotations
 
-from app.services.fingering import _candidates_for_pitch, optimize_fingering, optimize_fingering_with_debug
+import pytest
+
+from app.services.fingering import (
+    _candidates_for_pitch,
+    assert_candidate_sanity,
+    candidate_sanity_probe,
+    optimize_fingering,
+    optimize_fingering_with_debug,
+)
 from app.services.quantization import QuantizedNote
 
 
@@ -66,3 +74,16 @@ def test_optimize_fingering_with_debug_reports_drop_reasons_and_tuning() -> None
     assert debug["octave_salvaged_notes"] == 0
     assert debug["max_fret"] == 24
     assert debug["tuning_midi"] == {4: 28, 3: 33, 2: 38, 1: 43}
+
+
+def test_candidate_sanity_probe_reports_canonical_pitch_candidates() -> None:
+    probe = candidate_sanity_probe(max_fret=24)
+
+    assert probe["all_ok"] is True
+    assert probe["candidate_map"][34] == [(3, 1), (4, 6)]
+    assert probe["failures"] == {}
+
+
+def test_assert_candidate_sanity_raises_for_missing_candidates() -> None:
+    with pytest.raises(RuntimeError, match="Candidate sanity probe failed"):
+        assert_candidate_sanity(max_fret=0)
