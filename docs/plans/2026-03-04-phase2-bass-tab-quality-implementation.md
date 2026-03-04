@@ -98,11 +98,11 @@
 - Create: `backend/app/services/alphatex_exporter.py`
 - Create: `backend/tests/test_alphatex_exporter.py`
 
-- [ ] Step 1: Write failing tests for score header, tuning, bar serialization, and sync rules (bar 0, every 8 bars, last bar).
-- [ ] Step 2: Run RED tests.
-- [ ] Step 3: Implement exporter and sync-point generation.
-- [ ] Step 4: Run GREEN tests.
-- [ ] Step 5: Commit.
+- [x] Step 1: Write failing tests for score header, tuning, bar serialization, and sync rules (bar 0, every 8 bars, last bar).
+- [x] Step 2: Run RED tests.
+- [x] Step 3: Implement exporter and sync-point generation.
+- [x] Step 4: Run GREEN tests.
+- [x] Step 5: Commit.
   - `git commit -m "feat(alphatex): export bass tabs with sync points" -m "Refs: docs/plans/2026-03-04-phase2-bass-tab-quality-implementation.md"`
 
 ### Task 8: Compose end-to-end tab pipeline service (TDD)
