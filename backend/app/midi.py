@@ -203,6 +203,68 @@ def _stabilize_octaves_sequence(
     return corrected, corrections
 
 
+def _estimate_monophonic_notes_legacy_from_audio(
+    audio: np.ndarray,
+    *,
+    sr: int,
+) -> list[tuple[float, float, int, float]]:
+    if audio.size == 0:
+        return []
+    try:
+        import librosa
+    except ModuleNotFoundError:
+        return []
+
+    n_fft = 4096
+    hop_length = 1024
+    stft = librosa.stft(audio, n_fft=n_fft, hop_length=hop_length)
+    magnitude = np.abs(stft)
+    freqs = librosa.fft_frequencies(sr=sr, n_fft=n_fft)
+    times = librosa.times_like(np.arange(magnitude.shape[1]), sr=sr, hop_length=hop_length)
+    band = (freqs >= 35.0) & (freqs <= 350.0)
+    if not np.any(band) or magnitude.shape[1] == 0:
+        return []
+
+    band_freqs = freqs[band]
+    band_mag = magnitude[band, :]
+    peak_idx = np.argmax(band_mag, axis=0)
+    peak_freq = band_freqs[peak_idx]
+    peak_power = np.max(band_mag, axis=0)
+    threshold = float(np.percentile(peak_power, 55))
+
+    events: list[tuple[float, float, int, float]] = []
+    active_note: int | None = None
+    active_start = 0.0
+    active_conf: list[float] = []
+    for idx, t in enumerate(times):
+        if peak_power[idx] < threshold or peak_freq[idx] <= 0:
+            note = None
+            confidence = 0.0
+        else:
+            midi_note = int(round(69 + 12 * np.log2(float(peak_freq[idx]) / 440.0)))
+            note = int(np.clip(midi_note, 28, 76))
+            confidence = float(min(1.0, peak_power[idx] / max(threshold * 2.0, 1e-6)))
+        if note != active_note:
+            if active_note is not None:
+                end = float(t)
+                if end - active_start >= 0.08:
+                    events.append((active_start, end, active_note, float(np.mean(active_conf) if active_conf else 0.35)))
+            active_note = note
+            if note is not None:
+                active_start = float(t)
+                active_conf = [confidence]
+            else:
+                active_conf = []
+            continue
+        if note is not None:
+            active_conf.append(confidence)
+    if active_note is not None and times.size > 0:
+        end = float(times[-1] + float(hop_length / sr))
+        if end - active_start >= 0.08:
+            events.append((active_start, end, active_note, float(np.mean(active_conf) if active_conf else 0.35)))
+    return events
+
+
 def _estimate_monophonic_notes_from_wav(
     wav_path: Path,
 ) -> tuple[list[tuple[float, float, int, float]], dict[str, object]]:
@@ -220,9 +282,22 @@ def _estimate_monophonic_notes_from_wav(
             "fallback_spectral_octave_corrections_applied": 0,
             "fallback_sequence_octave_corrections_applied": 0,
         }
+    if (audio.size / float(sr)) <= 3.5:
+        legacy_events = _estimate_monophonic_notes_legacy_from_audio(audio, sr=sr)
+        return legacy_events, {
+            "fallback_octave_corrections_applied": 0,
+            "fallback_spectral_octave_corrections_applied": 0,
+            "fallback_sequence_octave_corrections_applied": 0,
+            "fallback_legacy_backstop_used": int(bool(legacy_events)),
+        }
 
-    hop_length = 256
-    frame_length = 2048
+    duration_sec = audio.size / float(sr)
+    if duration_sec > 90.0:
+        hop_length = 1024
+        frame_length = 4096
+    else:
+        hop_length = 256
+        frame_length = 2048
     f0, _voiced_flag, voiced_prob = librosa.pyin(
         audio,
         fmin=35.0,
@@ -287,10 +362,14 @@ def _estimate_monophonic_notes_from_wav(
         raw_events.append((start_sec, end_sec, pitch, max(0.1, min(seg_conf, 1.0))))
 
     stabilized_events, sequence_corrections = _stabilize_octaves_sequence(raw_events, window_sec=1.5)
+    if not stabilized_events:
+        stabilized_events = _estimate_monophonic_notes_legacy_from_audio(audio, sr=sr)
+
     diagnostics = {
         "fallback_octave_corrections_applied": int(spectral_corrections + sequence_corrections),
         "fallback_spectral_octave_corrections_applied": int(spectral_corrections),
         "fallback_sequence_octave_corrections_applied": int(sequence_corrections),
+        "fallback_legacy_backstop_used": int(not raw_events),
     }
     return stabilized_events, diagnostics
 

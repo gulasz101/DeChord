@@ -1,0 +1,184 @@
+{
+  "evaluation_context": {
+    "derived_tempo": 162.16216216216017,
+    "grid_source": "madmom",
+    "onset_recovery_enabled": false,
+    "quality_mode": "standard",
+    "resolved_gp5_path": "/Users/wojciechgula/Projects/DeChord/test songs/Iron Maiden - The Trooper.gp5",
+    "resolved_mp3_path": "/Users/wojciechgula/Projects/DeChord/test songs/Iron Maiden - The Trooper.mp3"
+  },
+  "generated": {
+    "notes": 485
+  },
+  "pipeline_debug": {
+    "QUALITY_MODE_SUSPECT_SILENCE": false,
+    "after_cleanup_count": 412,
+    "after_exporting": 485,
+    "after_fingering": 485,
+    "after_fingering_count": 485,
+    "after_onset_recovery_count": 543,
+    "after_quantize_count": 485,
+    "audio_duration_sec": 263.4071882086168,
+    "beat_bpm_estimate_corrected": 162.16216216216017,
+    "beat_bpm_estimate_raw": 162.16216216216017,
+    "beat_count": 674,
+    "bpm_hint": 162.0,
+    "candidate_probe": {
+      "all_ok": true,
+      "candidate_map": {
+        "33": [
+          [
+            3,
+            0
+          ],
+          [
+            4,
+            5
+          ]
+        ],
+        "34": [
+          [
+            3,
+            1
+          ],
+          [
+            4,
+            6
+          ]
+        ],
+        "40": [
+          [
+            2,
+            2
+          ],
+          [
+            3,
+            7
+          ],
+          [
+            4,
+            12
+          ]
+        ],
+        "62": [
+          [
+            1,
+            19
+          ],
+          [
+            2,
+            24
+          ]
+        ]
+      },
+      "checked_pitches": [
+        34,
+        33,
+        40,
+        62
+      ],
+      "failures": {},
+      "max_fret": 24
+    },
+    "cleaned_note_count": 412,
+    "cleanup_params": {
+      "apply_octave_correction": true,
+      "merge_gap_sec": 0.03,
+      "min_confidence": 0.15,
+      "min_duration_sec": 0.05555555555555555
+    },
+    "cleanup_stats": {
+      "merged_same_pitch": 126,
+      "merges_blocked_by_onset": 0,
+      "merges_blocked_by_tag": 0,
+      "octave_corrected": 0,
+      "removed_low_conf": 0,
+      "removed_overlap": 0,
+      "removed_short": 5
+    },
+    "derived_bpm": 162.16216216216017,
+    "downbeat_count": 169,
+    "fingered_note_count": 485,
+    "fingering": {
+      "dropped_note_count": 0,
+      "dropped_reasons": {},
+      "input_note_count": 485,
+      "max_fret": 24,
+      "octave_salvage_enabled": false,
+      "octave_salvaged_notes": 0,
+      "playable_note_count": 485,
+      "tuning_midi": {
+        "1": 43,
+        "2": 38,
+        "3": 33,
+        "4": 28
+      }
+    },
+    "grid_correction_applied": "none",
+    "onset_count": 0,
+    "onset_recovery_applied": false,
+    "onset_split_count": 0,
+    "quantized_note_count": 485,
+    "raw_note_count": 543,
+    "raw_notes_count": 543,
+    "rhythm_source": "madmom",
+    "song_bpm": 162.0,
+    "stage_counts": {
+      "cleaned": 412,
+      "exported": 485,
+      "fingered": 485,
+      "quantized": 485,
+      "raw": 543
+    },
+    "tab_generation_quality_mode": "standard",
+    "tab_last_sync_ms": 263180,
+    "tempo_used": 162.0,
+    "total_bars": 178
+  },
+  "reference": {
+    "bars": 176,
+    "notes": 1619,
+    "tempo": 162.0,
+    "time_signature": [
+      4,
+      4
+    ]
+  },
+  "song": "Iron Maiden - The Trooper",
+  "track": {
+    "bass_stem": "/Users/wojciechgula/Projects/DeChord/backend/stems/test_songs/iron_maiden__the_trooper/bass.wav",
+    "drums_stem": "/Users/wojciechgula/Projects/DeChord/backend/stems/test_songs/iron_maiden__the_trooper/drums.wav",
+    "gp5": "/Users/wojciechgula/Projects/DeChord/test songs/Iron Maiden - The Trooper.gp5",
+    "mp3": "/Users/wojciechgula/Projects/DeChord/test songs/Iron Maiden - The Trooper.mp3"
+  },
+  "transcription_audit": {
+    "basicpitch_octave_corrections_applied": 0,
+    "fallback_octave_corrections_applied": 0,
+    "mean_pitch_confidence": 1.0,
+    "non_octave_pitch_error_count": 347,
+    "note_duration_histogram": {
+      "0.1-0.25s": 268,
+      "0.25-0.5s": 72,
+      "0.5-1.0s": 1,
+      "<0.1s": 202
+    },
+    "octave_error_count": 4,
+    "pitch_histogram": {
+      "29": 1,
+      "33": 2,
+      "35": 11,
+      "36": 44,
+      "38": 136,
+      "40": 270,
+      "41": 9,
+      "43": 18,
+      "45": 13,
+      "47": 1,
+      "48": 15,
+      "50": 13,
+      "52": 10
+    },
+    "raw_note_count": 543,
+    "transcription_engine_used": "basic_pitch"
+  }
+}

@@ -15,5 +15,5 @@
 - [x] Task 3: Add conservative BasicPitch post-parse octave stabilization with strict guardrails.
 - [x] Task 4: Add transcription audit output and pitch error counters in evaluation script.
 - [x] Task 5: Add/extend unit tests for fallback logic, BasicPitch correction, and evaluation diagnostics.
-- [ ] Task 6: Produce baseline/final benchmark artifacts for Muse and Trooper and phase summary report.
+- [x] Task 6: Produce baseline/final benchmark artifacts for Muse and Trooper and phase summary report.
 - [ ] Task 7: Run `make reset`, run pytest, and finalize verification outputs.

@@ -1,0 +1,29 @@
+{
+  "f1_score": 0.3507604562737643,
+  "fingering_accuracy": 0.6449864498644986,
+  "mean_timing_offset": 0.0,
+  "note_density_correlation": 0.13533325368847224,
+  "octave_confusion": {
+    "+12": 0,
+    "-12": 1,
+    "exact": 279,
+    "other": 89
+  },
+  "onset_f1_grid": 0.40684410646387836,
+  "onset_f1_ms": 0.3507604562737643,
+  "onset_precision": 0.7608247422680412,
+  "onset_precision_grid": 0.8824742268041237,
+  "onset_precision_ms": 0.7608247422680412,
+  "onset_recall": 0.2279184681902409,
+  "onset_recall_grid": 0.26436071649166154,
+  "onset_recall_ms": 0.2279184681902409,
+  "pitch_accuracy": 0.7560975609756098,
+  "precision": 0.7608247422680412,
+  "quality": "standard",
+  "recall": 0.2279184681902409,
+  "song": "Iron Maiden - The Trooper",
+  "tempo_used": 162.0,
+  "total_gen_notes": 485,
+  "total_matched": 369,
+  "total_ref_notes": 1619
+}

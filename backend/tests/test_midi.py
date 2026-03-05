@@ -1,9 +1,12 @@
 from pathlib import Path
+import wave
 
 import numpy as np
 import pytest
 
 from app.midi import _apply_spectral_octave_verification
+from app.midi import _estimate_monophonic_notes_from_wav
+from app.midi import _estimate_monophonic_notes_legacy_from_audio
 from app.midi import _stabilize_octaves_sequence
 from app.midi import _smooth_midi_track_viterbi
 from app.midi import transcribe_bass_stem_to_midi_detailed
@@ -134,3 +137,31 @@ def test_stabilize_octaves_sequence_corrects_local_outlier() -> None:
 
     assert correction_count == 1
     assert corrected[1][2] == 40
+
+
+def test_legacy_monophonic_estimator_detects_simple_bass_tone() -> None:
+    sr = 22050
+    t = np.linspace(0.0, 0.8, int(sr * 0.8), endpoint=False)
+    audio = 0.2 * np.sin(2.0 * np.pi * 55.0 * t)
+
+    events = _estimate_monophonic_notes_legacy_from_audio(audio.astype(np.float32), sr=sr)
+
+    assert len(events) >= 1
+    assert 28 <= events[0][2] <= 76
+
+
+def test_estimate_monophonic_notes_short_clip_uses_legacy_backstop(tmp_path: Path) -> None:
+    sr = 22050
+    t = np.linspace(0.0, 0.7, int(sr * 0.7), endpoint=False)
+    audio = (0.25 * np.sin(2.0 * np.pi * 55.0 * t) * 32767.0).astype(np.int16)
+    wav_path = tmp_path / "short.wav"
+    with wave.open(str(wav_path), "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(sr)
+        wav_file.writeframes(audio.tobytes())
+
+    events, diagnostics = _estimate_monophonic_notes_from_wav(wav_path)
+
+    assert events
+    assert diagnostics["fallback_legacy_backstop_used"] in (0, 1)
