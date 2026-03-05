@@ -83,6 +83,16 @@ export function SongLibraryPanel({
           />
           <span>High accuracy (slower)</span>
         </label>
+        <label className="mt-2 flex items-center gap-2 text-sm text-slate-200">
+          <input
+            type="radio"
+            name="library-tab-quality"
+            value="high_accuracy_aggressive"
+            checked={tabQuality === "high_accuracy_aggressive"}
+            onChange={() => setTabQuality("high_accuracy_aggressive")}
+          />
+          <span>High accuracy aggressive (slowest)</span>
+        </label>
       </div>
 
       <div className="max-h-48 space-y-1 overflow-y-auto pr-1">

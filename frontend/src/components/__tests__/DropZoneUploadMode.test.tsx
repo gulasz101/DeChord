@@ -15,6 +15,7 @@ describe("DropZone upload mode", () => {
     expect(html).toContain("Tab accuracy");
     expect(html).toContain("Standard (faster)");
     expect(html).toContain("High accuracy (slower)");
+    expect(html).toContain("High accuracy aggressive (slowest)");
   });
 
   it("renders upload mode options in Song Library upload flow", () => {
@@ -33,5 +34,6 @@ describe("DropZone upload mode", () => {
     expect(html).toContain("Tab accuracy");
     expect(html).toContain("Standard (faster)");
     expect(html).toContain("High accuracy (slower)");
+    expect(html).toContain("High accuracy aggressive (slowest)");
   });
 });

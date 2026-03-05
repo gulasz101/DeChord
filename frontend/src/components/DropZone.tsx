@@ -138,6 +138,17 @@ export function DropZone({
           />
           <span>High accuracy (slower)</span>
         </label>
+        <label className="mt-2 flex items-center gap-2 text-sm">
+          <input
+            type="radio"
+            name="dropzone-tab-quality"
+            value="high_accuracy_aggressive"
+            checked={tabQuality === "high_accuracy_aggressive"}
+            onChange={() => setTabQuality("high_accuracy_aggressive")}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <span>High accuracy aggressive (slowest)</span>
+        </label>
       </div>
       <input
         ref={inputRef}
