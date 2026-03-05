@@ -1447,6 +1447,7 @@ git commit -m "chore: final verification and quality metrics (docs/plans/2026-03
 - [x] Task 3: Visual Diff Report Generator
 - [ ] Task 4: Evaluation Script
 - [x] Task 5: Expose FingeredNotes from Pipeline
+- [x] Task 6a: Replace STFT fallback with librosa pyin+onset transcription
 - [ ] Task 6: BasicPitch Transcription Parameter Tuning
 - [ ] Task 7: Onset Detection Enhancement
 - [ ] Task 8: Integrate Onset Recovery into Pipeline

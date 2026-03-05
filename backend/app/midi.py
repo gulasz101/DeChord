@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import subprocess
 import tempfile
-import wave
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Callable
 
 import numpy as np
 from mido import Message, MetaMessage, MidiFile, MidiTrack, second2tick
-from scipy import signal
 
 MidiTranscribeFn = Callable[[Path, Path], None]
 
@@ -26,71 +24,67 @@ def _transcribe_with_basic_pitch(input_path: Path, output_path: Path) -> None:
     midi_data.write(str(output_path))
 
 
-def _estimate_monophonic_notes_from_wav(wav_path: Path) -> list[tuple[float, float, int]]:
-    with wave.open(str(wav_path), "rb") as wav:
-        channels = wav.getnchannels()
-        sample_rate = wav.getframerate()
-        sample_width = wav.getsampwidth()
-        frames = wav.readframes(wav.getnframes())
+def _estimate_monophonic_notes_from_wav(
+    wav_path: Path,
+    *,
+    min_note_duration: float = 0.05,
+) -> list[tuple[float, float, int]]:
+    import librosa
 
-    if sample_width != 2:
-        raise RuntimeError(f"Unsupported PCM width: {sample_width}")
-
-    audio = np.frombuffer(frames, dtype=np.int16).astype(np.float32)
-    if channels > 1:
-        audio = audio.reshape(-1, channels).mean(axis=1)
-    if audio.size == 0:
+    sr = 22050
+    y, sr = librosa.load(str(wav_path), sr=sr, mono=True)
+    if y.size == 0:
         return []
 
-    audio /= max(np.max(np.abs(audio)), 1.0)
-
-    nperseg = 4096
-    noverlap = 3072
-    freqs, times, zxx = signal.stft(
-        audio,
-        fs=sample_rate,
-        window="hann",
-        nperseg=nperseg,
-        noverlap=noverlap,
-        padded=False,
-        boundary=None,
+    # --- Pitch detection with pyin (designed for monophonic sources) ---
+    fmin = 40.0   # E1 ≈ 41 Hz
+    fmax = 400.0  # G4 ≈ 392 Hz
+    f0, voiced_flag, _voiced_probs = librosa.pyin(
+        y, fmin=fmin, fmax=fmax, sr=sr, fill_na=0.0,
     )
-    magnitude = np.abs(zxx)
-    band = (freqs >= 35.0) & (freqs <= 350.0)
-    if not np.any(band):
+    times = librosa.times_like(f0, sr=sr)
+
+    if f0 is None or not np.any(voiced_flag):
         return []
 
-    band_freqs = freqs[band]
-    band_mag = magnitude[band, :]
-    peak_idx = np.argmax(band_mag, axis=0)
-    peak_freq = band_freqs[peak_idx]
-    peak_power = np.max(band_mag, axis=0)
+    # --- Onset detection ---
+    onset_frames = librosa.onset.onset_detect(y=y, sr=sr, units="frames")
+    onset_times = librosa.frames_to_time(onset_frames, sr=sr)
 
-    power_threshold = np.percentile(peak_power, 60)
+    # If no onsets detected but we have voiced frames, treat the first voiced
+    # frame as the single onset.
+    if len(onset_times) == 0:
+        first_voiced = np.argmax(voiced_flag)
+        onset_times = np.array([times[first_voiced]])
+
+    # --- Build note events from onset windows ---
+    duration = float(len(y) / sr)
     events: list[tuple[float, float, int]] = []
-    active_note: int | None = None
-    active_start = 0.0
 
-    for idx, t in enumerate(times):
-        if peak_power[idx] < power_threshold or peak_freq[idx] <= 0:
-            note = None
-        else:
-            midi_note = int(round(69 + 12 * np.log2(peak_freq[idx] / 440.0)))
-            note = max(28, min(76, midi_note))
+    for i, onset in enumerate(onset_times):
+        end_time = float(onset_times[i + 1]) if i + 1 < len(onset_times) else duration
 
-        if note != active_note:
-            if active_note is not None:
-                end = float(t)
-                if end - active_start >= 0.08:
-                    events.append((active_start, end, active_note))
-            if note is not None:
-                active_start = float(t)
-            active_note = note
+        # Select pyin frames within this onset window
+        mask = (times >= onset) & (times < end_time) & voiced_flag
+        if not np.any(mask):
+            continue
 
-    if active_note is not None and times.size > 0:
-        end = float(times[-1] + (times[1] - times[0] if times.size > 1 else 0.1))
-        if end - active_start >= 0.08:
-            events.append((active_start, end, active_note))
+        pitches_hz = f0[mask]
+        valid = pitches_hz > 0
+        if not np.any(valid):
+            continue
+
+        # Median pitch is more robust than mean against octave errors
+        median_hz = float(np.median(pitches_hz[valid]))
+        midi_note = int(round(69 + 12 * np.log2(median_hz / 440.0)))
+        midi_note = max(28, min(67, midi_note))
+
+        note_start = float(onset)
+        note_end = float(end_time)
+        if note_end - note_start < min_note_duration:
+            continue
+
+        events.append((note_start, note_end, midi_note))
 
     return events
 
