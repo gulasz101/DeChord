@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import pytest
+
 from scripts.evaluate_tab_quality import parse_alphatex_to_reference_notes
+from scripts.evaluate_tab_quality import parse_cli_args
 
 
 def test_parse_alphatex_to_reference_notes_parses_notes_and_rests() -> None:
@@ -18,3 +21,29 @@ def test_parse_alphatex_to_reference_notes_parses_notes_and_rests() -> None:
     assert notes[0].pitch_midi == 28
     assert notes[1].beat_position == 1.5
     assert notes[1].pitch_midi == 35
+
+
+def test_parse_cli_args_accepts_mp3_and_gp5_pair() -> None:
+    args = parse_cli_args(
+        [
+            "--mp3",
+            "../test songs/Muse - Hysteria.mp3",
+            "--gp5",
+            "../test songs/Muse - Hysteria.gp5",
+        ]
+    )
+
+    assert args.mp3 == "../test songs/Muse - Hysteria.mp3"
+    assert args.gp5 == "../test songs/Muse - Hysteria.gp5"
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["--mp3", "../test songs/Muse - Hysteria.mp3"],
+        ["--gp5", "../test songs/Muse - Hysteria.gp5"],
+    ],
+)
+def test_parse_cli_args_rejects_half_pair(argv: list[str]) -> None:
+    with pytest.raises(SystemExit):
+        parse_cli_args(argv)

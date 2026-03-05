@@ -205,18 +205,30 @@ def evaluate_song(song_key: str, *, quality: str, phase: str) -> dict[str, objec
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Evaluate DeChord tab quality with full TabPipeline")
-    parser.add_argument("--song", choices=list(SONGS.keys()), default="hysteria")
-    parser.add_argument("--quality", choices=["standard", "high_accuracy", "high_accuracy_aggressive"], default="high_accuracy_aggressive")
-    parser.add_argument("--phase", required=True)
-    args = parser.parse_args()
+    args = parse_cli_args()
 
-    output = evaluate_song(args.song, quality=args.quality, phase=args.phase)
+    output = evaluate_song(args.song, quality=args.quality, phase="deterministic")
     print(json.dumps(output["metrics"], indent=2, sort_keys=True))
     print(f"metrics: {output['metrics_path']}")
     print(f"debug: {output['debug_path']}")
     print(f"alphatex: {output['alphatex_path']}")
     return 0
+
+
+def parse_cli_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Evaluate DeChord tab quality with full TabPipeline")
+    parser.add_argument("--song", choices=list(SONGS.keys()), default="hysteria")
+    parser.add_argument("--mp3")
+    parser.add_argument("--gp5")
+    parser.add_argument("--quality", choices=["standard", "high_accuracy", "high_accuracy_aggressive"], default="high_accuracy_aggressive")
+    args = parser.parse_args(argv)
+
+    has_mp3 = bool(args.mp3)
+    has_gp5 = bool(args.gp5)
+    if has_mp3 ^ has_gp5:
+        parser.error("--mp3 and --gp5 must be provided together")
+
+    return args
 
 
 if __name__ == "__main__":
