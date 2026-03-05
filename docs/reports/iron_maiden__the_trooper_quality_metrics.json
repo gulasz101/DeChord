@@ -1,0 +1,13 @@
+{
+  "song": "Iron Maiden - The Trooper",
+  "precision": 0.5237366003062787,
+  "recall": 0.2112415071031501,
+  "f1_score": 0.301056338028169,
+  "pitch_accuracy": 0.023391812865497075,
+  "fingering_accuracy": 0.0,
+  "note_density_correlation": -0.02107036627033066,
+  "mean_timing_offset": 8.966998683540464e-15,
+  "total_ref_notes": 1619,
+  "total_gen_notes": 653,
+  "total_matched": 342
+}

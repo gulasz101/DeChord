@@ -1,0 +1,13 @@
+{
+  "song": "Muse - Hysteria",
+  "precision": 0.8231046931407943,
+  "recall": 0.34055265123226286,
+  "f1_score": 0.48177496038034867,
+  "pitch_accuracy": 0.08991228070175439,
+  "fingering_accuracy": 0.039473684210526314,
+  "note_density_correlation": 0.13189732955585165,
+  "mean_timing_offset": 7.003169973753948e-15,
+  "total_ref_notes": 1339,
+  "total_gen_notes": 554,
+  "total_matched": 456
+}

@@ -40,9 +40,9 @@ def _estimate_monophonic_notes_from_wav(
     fmin = 40.0   # E1 ≈ 41 Hz
     fmax = 400.0  # G4 ≈ 392 Hz
     f0, voiced_flag, _voiced_probs = librosa.pyin(
-        y, fmin=fmin, fmax=fmax, sr=sr, fill_na=0.0,
+        y, fmin=fmin, fmax=fmax, sr=sr, fill_na=0.0, hop_length=1024,
     )
-    times = librosa.times_like(f0, sr=sr)
+    times = librosa.times_like(f0, sr=sr, hop_length=1024)
 
     if f0 is None or not np.any(voiced_flag):
         return []
