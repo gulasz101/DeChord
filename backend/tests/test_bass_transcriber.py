@@ -52,3 +52,37 @@ def test_basic_pitch_transcriber_uses_engine_from_detailed_midi_result() -> None
 
     assert result.engine == "fallback_frequency"
     assert result.debug_info["fallback_octave_corrections_applied"] == 2
+
+
+def test_basic_pitch_transcriber_applies_conservative_octave_stabilization() -> None:
+    raw_notes = [
+        RawNoteEvent(pitch_midi=40, start_sec=0.0, end_sec=0.4, confidence=0.9),
+        RawNoteEvent(pitch_midi=52, start_sec=0.5, end_sec=0.9, confidence=0.9),
+        RawNoteEvent(pitch_midi=41, start_sec=1.0, end_sec=1.4, confidence=0.9),
+    ]
+    transcriber = BasicPitchTranscriber(
+        midi_transcribe_fn=lambda _path: b"MThd\x00\x00\x00\x06",
+        parse_notes_fn=lambda _midi: raw_notes,
+    )
+
+    result = transcriber.transcribe(Path("bass.wav"))
+
+    assert [note.pitch_midi for note in result.raw_notes] == [40, 40, 41]
+    assert result.debug_info["basicpitch_octave_corrections_applied"] == 1
+
+
+def test_basic_pitch_transcriber_does_not_overcorrect_when_context_is_weak() -> None:
+    raw_notes = [
+        RawNoteEvent(pitch_midi=40, start_sec=0.0, end_sec=0.4, confidence=0.9),
+        RawNoteEvent(pitch_midi=52, start_sec=0.5, end_sec=0.9, confidence=0.2),
+        RawNoteEvent(pitch_midi=58, start_sec=1.0, end_sec=1.4, confidence=0.9),
+    ]
+    transcriber = BasicPitchTranscriber(
+        midi_transcribe_fn=lambda _path: b"MThd\x00\x00\x00\x06",
+        parse_notes_fn=lambda _midi: raw_notes,
+    )
+
+    result = transcriber.transcribe(Path("bass.wav"))
+
+    assert [note.pitch_midi for note in result.raw_notes] == [40, 52, 58]
+    assert result.debug_info["basicpitch_octave_corrections_applied"] == 0

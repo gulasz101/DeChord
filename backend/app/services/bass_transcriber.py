@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from io import BytesIO
 from pathlib import Path
 from typing import Callable, Protocol
+import statistics
 
 import mido
 
@@ -94,4 +95,55 @@ class BasicPitchTranscriber:
             raise RuntimeError("Bass MIDI transcription failed: generated MIDI is empty")
 
         raw_notes = self._parse_notes_fn(midi_bytes)
+        corrections = 0
+        if engine == "basic_pitch" and raw_notes:
+            raw_notes, corrections = _conservative_basicpitch_octave_stabilization(raw_notes)
+        debug_info["basicpitch_octave_corrections_applied"] = int(corrections)
         return BassTranscriptionResult(engine=engine, midi_bytes=midi_bytes, raw_notes=raw_notes, debug_info=debug_info)
+
+
+def _conservative_basicpitch_octave_stabilization(
+    notes: list[RawNoteEvent],
+) -> tuple[list[RawNoteEvent], int]:
+    if len(notes) < 3:
+        return notes, 0
+
+    ordered = sorted(notes, key=lambda event: (event.start_sec, event.end_sec, event.pitch_midi))
+    corrected = list(ordered)
+    corrections = 0
+
+    for idx in range(1, len(corrected) - 1):
+        prev_note = corrected[idx - 1]
+        cur_note = corrected[idx]
+        next_note = corrected[idx + 1]
+
+        if cur_note.confidence < 0.4:
+            continue
+        if prev_note.confidence < 0.5 or next_note.confidence < 0.5:
+            continue
+
+        neighbor_median = int(round(statistics.median([prev_note.pitch_midi, next_note.pitch_midi])))
+        delta = cur_note.pitch_midi - neighbor_median
+        if abs(delta) != 12:
+            continue
+
+        candidate_pitch = int(cur_note.pitch_midi - 12 if delta > 0 else cur_note.pitch_midi + 12)
+        if candidate_pitch < 28 or candidate_pitch > 64:
+            continue
+
+        # Guardrail: only touch notes strongly supported by both adjacent notes.
+        if abs(candidate_pitch - prev_note.pitch_midi) > 3 or abs(candidate_pitch - next_note.pitch_midi) > 3:
+            continue
+        # Guardrail: keep true large leaps when neighbors also indicate wide interval.
+        if abs(prev_note.pitch_midi - next_note.pitch_midi) > 6:
+            continue
+
+        corrected[idx] = RawNoteEvent(
+            pitch_midi=candidate_pitch,
+            start_sec=cur_note.start_sec,
+            end_sec=cur_note.end_sec,
+            confidence=cur_note.confidence,
+        )
+        corrections += 1
+
+    return corrected, corrections
