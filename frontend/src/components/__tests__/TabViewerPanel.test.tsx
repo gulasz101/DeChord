@@ -46,6 +46,9 @@ describe("TabViewerPanel", () => {
     expect(settings.display.barCount).toBe(-1);
     expect(settings.display.scale).toBe(1.35);
     expect(settings.player.scrollMode).toBe("Continuous");
+    expect(settings.player.enableCursor).toBe(true);
+    expect(settings.player.enableAnimatedBeatCursor).toBe(true);
+    expect(settings.player.enableElementHighlighting).toBe(true);
     expect(settings.core.smuflFontSources instanceof Map).toBe(true);
   });
 });
