@@ -1442,17 +1442,19 @@ git commit -m "chore: final verification and quality metrics (docs/plans/2026-03
 
 ## Task Checklist
 
-- [ ] Task 1: GP5 Reference Parser
+- [x] Task 1: GP5 Reference Parser
+  - Completed in prior session (see handoff and commit history).
 - [x] Task 2: Tab Comparator Module
 - [x] Task 3: Visual Diff Report Generator
-- [ ] Task 4: Evaluation Script
+- [x] Task 4: Evaluation Script
 - [x] Task 5: Expose FingeredNotes from Pipeline
 - [x] Task 6a: Replace STFT fallback with librosa pyin+onset transcription
 - [ ] Task 6: BasicPitch Transcription Parameter Tuning
-- [ ] Task 7: Onset Detection Enhancement
-- [ ] Task 8: Integrate Onset Recovery into Pipeline
+  - Skipped: BasicPitch is unavailable on Python 3.14 (TensorFlow incompatibility); librosa pyin path is used.
+- [x] Task 7: Onset Detection Enhancement
+- [x] Task 8: Integrate Onset Recovery into Pipeline
 - [x] Task 9: Note Cleanup Parameter Calibration
 - [x] Task 10: AlphaTeX Dotted Notes and Better Rests
-- [ ] Task 11: Run Evaluation and Measure Quality
-- [ ] Task 12: Iterative Refinement
-- [ ] Task 13: Final Reset and Verification
+- [x] Task 11: Run Evaluation and Measure Quality
+- [x] Task 12: Iterative Refinement
+- [x] Task 13: Final Reset and Verification

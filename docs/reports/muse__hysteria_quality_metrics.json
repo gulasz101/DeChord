@@ -1,21 +1,21 @@
 {
   "song": "Muse - Hysteria",
   "tempo_used": 92.28515625000114,
-  "pipeline_time_sec": 9.52676124998834,
-  "onset_count": 632,
+  "pipeline_time_sec": 9.346014999988256,
+  "onset_count": 637,
   "cleanup_params": {
     "min_duration_sec": 0.09752380952380832,
     "min_confidence": 0.15,
     "merge_gap_sec": 0.04876190476190416,
     "apply_octave_correction": true
   },
-  "f1_score": 0.45711060948081267,
-  "precision": 0.9353348729792148,
-  "recall": 0.30246452576549665,
-  "pitch_accuracy": 0.20246913580246914,
-  "fingering_accuracy": 0.09876543209876543,
-  "note_density_correlation": 0.11455338371254502,
+  "f1_score": 0.46327683615819204,
+  "precision": 0.951276102088167,
+  "recall": 0.3061986557132188,
+  "pitch_accuracy": 0.2073170731707317,
+  "fingering_accuracy": 0.0975609756097561,
+  "note_density_correlation": 0.1090803293505922,
   "total_ref_notes": 1339,
-  "total_gen_notes": 433,
-  "total_matched": 405
+  "total_gen_notes": 431,
+  "total_matched": 410
 }
