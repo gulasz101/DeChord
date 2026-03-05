@@ -28,6 +28,7 @@ import {
 } from "./lib/api";
 import { resolvePlaybackSources } from "./lib/playbackSources";
 import { deriveStemWarning } from "./lib/uploadWarnings";
+import { ENABLE_TABS_UI } from "./lib/featureFlags";
 import type {
   AnalysisResult,
   JobStatus,
@@ -112,7 +113,7 @@ function App() {
   const loadSong = useCallback(async (songId: number) => {
     const data = await getSong(songId);
     const stemsData = await listSongStems(songId);
-    const tabsData = await getSongTabs(songId);
+    const tabsData = ENABLE_TABS_UI ? await getSongTabs(songId) : null;
     const defaultEnabled: Record<string, boolean> = {};
     for (const stem of stemsData.stems) {
       defaultEnabled[stem.stem_key] = true;
@@ -125,7 +126,7 @@ function App() {
     setStems(stemsData.stems);
     setEnabledByStem(defaultEnabled);
     setPlaybackMode(stemsData.stems.length > 0 ? "stems" : "full_mix");
-    setTabSourceUrl(tabsData.tab ? getTabFileUrl(songId) : null);
+    setTabSourceUrl(tabsData?.tab ? getTabFileUrl(songId) : null);
     setStemWarning(null);
     setLoopStartIdx(data.playback_prefs.loop_start_index);
     setLoopEndIdx(data.playback_prefs.loop_end_index);
@@ -459,7 +460,7 @@ function App() {
   }, [noteModal.noteId]);
 
   const downloadCurrentTab = useCallback(() => {
-    if (!selectedSongId || !tabSourceUrl) return;
+    if (!ENABLE_TABS_UI || !selectedSongId || !tabSourceUrl) return;
     const link = document.createElement("a");
     link.href = getTabDownloadUrl(selectedSongId);
     document.body.appendChild(link);
@@ -510,21 +511,25 @@ function App() {
             <div className="flex items-center gap-2">
               <span className="inline-block rounded bg-fuchsia-500 px-1.5 py-0.5 text-[11px] font-semibold text-white">Overlap</span>
             </div>
-            <button
-              type="button"
-              className="rounded border border-slate-600 px-2 py-1 text-[11px] font-semibold text-slate-200 hover:border-slate-500"
-              onClick={() => setShowTabs((v) => !v)}
-            >
-              {showTabs ? "Hide Tabs" : "Show Tabs"}
-            </button>
-            <button
-              type="button"
-              className="rounded border border-slate-600 px-2 py-1 text-[11px] font-semibold text-slate-200 enabled:hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={downloadCurrentTab}
-              disabled={!selectedSongId || !tabSourceUrl}
-            >
-              Download Tab
-            </button>
+            {ENABLE_TABS_UI ? (
+              <>
+                <button
+                  type="button"
+                  className="rounded border border-slate-600 px-2 py-1 text-[11px] font-semibold text-slate-200 hover:border-slate-500"
+                  onClick={() => setShowTabs((v) => !v)}
+                >
+                  {showTabs ? "Hide Tabs" : "Show Tabs"}
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-slate-600 px-2 py-1 text-[11px] font-semibold text-slate-200 enabled:hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={downloadCurrentTab}
+                  disabled={!selectedSongId || !tabSourceUrl}
+                >
+                  Download Tab
+                </button>
+              </>
+            ) : null}
           </section>
         </div>
 
@@ -570,7 +575,7 @@ function App() {
             />
           ) : null}
         </section>
-        {showTabs ? (
+        {ENABLE_TABS_UI && showTabs ? (
           <TabViewerPanel tabSourceUrl={tabSourceUrl} currentTime={player.currentTime} isPlaying={player.playing} />
         ) : null}
       </main>

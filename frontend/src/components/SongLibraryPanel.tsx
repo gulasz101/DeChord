@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import type { SongSummary } from "../lib/types";
 import type { ProcessMode, TabGenerationQuality } from "../lib/types";
+import { ENABLE_TABS_UI } from "../lib/featureFlags";
 
 interface SongLibraryPanelProps {
   songs: SongSummary[];
@@ -50,50 +51,52 @@ export function SongLibraryPanel({
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) onUpload(file, mode, tabQuality);
+              if (file) onUpload(file, mode, ENABLE_TABS_UI ? tabQuality : "standard");
             }}
             disabled={loading}
           />
         </div>
       </div>
-      <div className="mb-3 rounded-lg border border-slate-700 bg-slate-900/70 p-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Advanced</p>
-        <p className="mt-2 text-sm font-medium text-slate-100">Tab accuracy</p>
-        <p className="mt-1 whitespace-pre-line text-xs text-slate-400">
-          Runs an extra analysis pass in sections where bass is likely present but no notes were detected.
-          Improves tabs for quiet or ghost-note passages, but increases processing time.
-        </p>
-        <label className="mt-3 flex items-center gap-2 text-sm text-slate-200">
-          <input
-            type="radio"
-            name="library-tab-quality"
-            value="standard"
-            checked={tabQuality === "standard"}
-            onChange={() => setTabQuality("standard")}
-          />
-          <span>Standard (faster)</span>
-        </label>
-        <label className="mt-2 flex items-center gap-2 text-sm text-slate-200">
-          <input
-            type="radio"
-            name="library-tab-quality"
-            value="high_accuracy"
-            checked={tabQuality === "high_accuracy"}
-            onChange={() => setTabQuality("high_accuracy")}
-          />
-          <span>High accuracy (slower)</span>
-        </label>
-        <label className="mt-2 flex items-center gap-2 text-sm text-slate-200">
-          <input
-            type="radio"
-            name="library-tab-quality"
-            value="high_accuracy_aggressive"
-            checked={tabQuality === "high_accuracy_aggressive"}
-            onChange={() => setTabQuality("high_accuracy_aggressive")}
-          />
-          <span>High accuracy aggressive (slowest)</span>
-        </label>
-      </div>
+      {ENABLE_TABS_UI ? (
+        <div className="mb-3 rounded-lg border border-slate-700 bg-slate-900/70 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Advanced</p>
+          <p className="mt-2 text-sm font-medium text-slate-100">Tab accuracy</p>
+          <p className="mt-1 whitespace-pre-line text-xs text-slate-400">
+            Runs an extra analysis pass in sections where bass is likely present but no notes were detected.
+            Improves tabs for quiet or ghost-note passages, but increases processing time.
+          </p>
+          <label className="mt-3 flex items-center gap-2 text-sm text-slate-200">
+            <input
+              type="radio"
+              name="library-tab-quality"
+              value="standard"
+              checked={tabQuality === "standard"}
+              onChange={() => setTabQuality("standard")}
+            />
+            <span>Standard (faster)</span>
+          </label>
+          <label className="mt-2 flex items-center gap-2 text-sm text-slate-200">
+            <input
+              type="radio"
+              name="library-tab-quality"
+              value="high_accuracy"
+              checked={tabQuality === "high_accuracy"}
+              onChange={() => setTabQuality("high_accuracy")}
+            />
+            <span>High accuracy (slower)</span>
+          </label>
+          <label className="mt-2 flex items-center gap-2 text-sm text-slate-200">
+            <input
+              type="radio"
+              name="library-tab-quality"
+              value="high_accuracy_aggressive"
+              checked={tabQuality === "high_accuracy_aggressive"}
+              onChange={() => setTabQuality("high_accuracy_aggressive")}
+            />
+            <span>High accuracy aggressive (slowest)</span>
+          </label>
+        </div>
+      ) : null}
 
       <div className="max-h-48 space-y-1 overflow-y-auto pr-1">
         {songs.length === 0 ? (
