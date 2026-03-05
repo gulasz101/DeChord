@@ -21,3 +21,9 @@ Demucs-Gui/
 
 # Legacy
 requirements.txt
+
+# Local OS/editor noise
+.DS_Store
+
+# Local ad-hoc debug reports
+*DEBUG_REPORT*.md
