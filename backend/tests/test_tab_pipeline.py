@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+import wave
 from pathlib import Path
 
 import pytest
@@ -199,3 +201,175 @@ def test_tab_pipeline_smoke_alphatex_contains_notes_and_sync_with_nonzero_after_
     assert "\\sync(" in result.alphatex
     assert "r.1" not in result.alphatex
     assert "1.3.4" in result.alphatex or "6.4.4" in result.alphatex
+
+
+def _write_test_wav(path: Path, *, amplitudes: list[int], sample_rate: int = 8000, seconds_per_bar: float = 2.0) -> None:
+    frame_count_per_bar = int(sample_rate * seconds_per_bar)
+    with wave.open(str(path), "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(sample_rate)
+        frames = bytearray()
+        for amplitude in amplitudes:
+            for i in range(frame_count_per_bar):
+                sample = int(amplitude * math.sin((2.0 * math.pi * 220.0 * i) / sample_rate))
+                frames.extend(sample.to_bytes(2, byteorder="little", signed=True))
+        wav_file.writeframes(bytes(frames))
+
+
+def test_high_accuracy_detects_suspect_silence_and_adds_notes(tmp_path: Path) -> None:
+    bars = [
+        Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5]),
+        Bar(index=1, start_sec=2.0, end_sec=4.0, beats_sec=[2.0, 2.5, 3.0, 3.5]),
+    ]
+
+    class FakeTranscriber:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def transcribe(self, _bass_wav: Path) -> BassTranscriptionResult:
+            self.calls += 1
+            if self.calls == 1:
+                return BassTranscriptionResult(
+                    engine="basic_pitch",
+                    midi_bytes=b"MThd",
+                    raw_notes=[RawNoteEvent(pitch_midi=40, start_sec=2.2, end_sec=2.6, confidence=0.9)],
+                )
+            return BassTranscriptionResult(
+                engine="basic_pitch",
+                midi_bytes=b"MThd",
+                raw_notes=[RawNoteEvent(pitch_midi=34, start_sec=0.4, end_sec=0.8, confidence=0.9)],
+            )
+
+    transcriber = FakeTranscriber()
+
+    def fake_quantize(events, _grid, **_kwargs):
+        quantized: list[QuantizedNote] = []
+        for event in events:
+            bar_index = 0 if event.start_sec < 2.0 else 1
+            quantized.append(
+                QuantizedNote(
+                    bar_index=bar_index,
+                    beat_position=0.0,
+                    duration_beats=1.0,
+                    pitch_midi=event.pitch_midi,
+                    start_sec=event.start_sec,
+                    end_sec=event.end_sec,
+                )
+            )
+        return quantized
+
+    bass_wav = tmp_path / "bass.wav"
+    drums_wav = tmp_path / "drums.wav"
+    _write_test_wav(bass_wav, amplitudes=[9000, 7000])
+    _write_test_wav(drums_wav, amplitudes=[1000, 1000])
+
+    pipeline = TabPipeline(
+        transcriber=transcriber,
+        rhythm_extract_fn=lambda _drums, **_kwargs: ([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5], [0.0, 2.0], "madmom"),
+        bar_builder_fn=lambda _beats, _downbeats, **_kwargs: bars,
+        cleanup_fn=lambda events, **_kwargs: events,
+        quantize_fn=fake_quantize,
+        fingering_fn=lambda notes, **_kwargs: [
+            FingeredNote(
+                bar_index=note.bar_index,
+                beat_position=note.beat_position,
+                duration_beats=note.duration_beats,
+                pitch_midi=note.pitch_midi,
+                start_sec=note.start_sec,
+                end_sec=note.end_sec,
+                string=4,
+                fret=0,
+            )
+            for note in notes
+        ],
+        export_fn=lambda notes, _bars, **_kwargs: ("\\tempo 120", [SyncPoint(bar_index=0, millisecond_offset=0)]),
+    )
+
+    result = pipeline.run(
+        bass_wav,
+        drums_wav,
+        bpm_hint=120.0,
+        tab_generation_quality_mode="high_accuracy",
+    )
+
+    assert transcriber.calls > 1
+    assert result.debug_info["suspect_silence_bars_count"] == 1
+    assert result.debug_info["notes_added_second_pass"] > 0
+    assert result.debug_info["notes_per_bar_before_high_accuracy"] == [0, 1]
+    assert result.debug_info["notes_per_bar_after_high_accuracy"] == [1, 1]
+
+
+def test_high_accuracy_does_not_trigger_on_low_energy_empty_bars(tmp_path: Path) -> None:
+    bars = [
+        Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5]),
+        Bar(index=1, start_sec=2.0, end_sec=4.0, beats_sec=[2.0, 2.5, 3.0, 3.5]),
+    ]
+
+    class FakeTranscriber:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def transcribe(self, _bass_wav: Path) -> BassTranscriptionResult:
+            self.calls += 1
+            return BassTranscriptionResult(
+                engine="basic_pitch",
+                midi_bytes=b"MThd",
+                raw_notes=[RawNoteEvent(pitch_midi=40, start_sec=2.1, end_sec=2.5, confidence=0.9)],
+            )
+
+    transcriber = FakeTranscriber()
+
+    def fake_quantize(events, _grid, **_kwargs):
+        quantized: list[QuantizedNote] = []
+        for event in events:
+            bar_index = 0 if event.start_sec < 2.0 else 1
+            quantized.append(
+                QuantizedNote(
+                    bar_index=bar_index,
+                    beat_position=0.0,
+                    duration_beats=1.0,
+                    pitch_midi=event.pitch_midi,
+                    start_sec=event.start_sec,
+                    end_sec=event.end_sec,
+                )
+            )
+        return quantized
+
+    bass_wav = tmp_path / "bass.wav"
+    drums_wav = tmp_path / "drums.wav"
+    _write_test_wav(bass_wav, amplitudes=[1000, 12000])
+    _write_test_wav(drums_wav, amplitudes=[1000, 1000])
+
+    pipeline = TabPipeline(
+        transcriber=transcriber,
+        rhythm_extract_fn=lambda _drums, **_kwargs: ([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5], [0.0, 2.0], "madmom"),
+        bar_builder_fn=lambda _beats, _downbeats, **_kwargs: bars,
+        cleanup_fn=lambda events, **_kwargs: events,
+        quantize_fn=fake_quantize,
+        fingering_fn=lambda notes, **_kwargs: [
+            FingeredNote(
+                bar_index=note.bar_index,
+                beat_position=note.beat_position,
+                duration_beats=note.duration_beats,
+                pitch_midi=note.pitch_midi,
+                start_sec=note.start_sec,
+                end_sec=note.end_sec,
+                string=4,
+                fret=0,
+            )
+            for note in notes
+        ],
+        export_fn=lambda notes, _bars, **_kwargs: ("\\tempo 120", [SyncPoint(bar_index=0, millisecond_offset=0)]),
+    )
+
+    result = pipeline.run(
+        bass_wav,
+        drums_wav,
+        bpm_hint=120.0,
+        tab_generation_quality_mode="high_accuracy",
+    )
+
+    assert transcriber.calls == 1
+    assert result.debug_info["suspect_silence_bars_count"] == 0
+    assert result.debug_info["notes_added_second_pass"] == 0
