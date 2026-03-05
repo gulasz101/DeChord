@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from app.midi import MidiTranscriptionResult
 from app.services.bass_transcriber import BasicPitchTranscriber, RawNoteEvent
 
 
@@ -34,3 +35,20 @@ def test_basic_pitch_transcriber_raises_when_midi_is_empty() -> None:
 
     with pytest.raises(RuntimeError, match="generated MIDI is empty"):
         transcriber.transcribe(Path("bass.wav"))
+
+
+def test_basic_pitch_transcriber_uses_engine_from_detailed_midi_result() -> None:
+    expected_notes = [RawNoteEvent(pitch_midi=40, start_sec=0.0, end_sec=0.5, confidence=0.8)]
+    transcriber = BasicPitchTranscriber(
+        midi_transcribe_fn=lambda _path: MidiTranscriptionResult(
+            midi_bytes=b"MThd\x00\x00\x00\x06",
+            engine_used="fallback_frequency",
+            diagnostics={"fallback_octave_corrections_applied": 2},
+        ),
+        parse_notes_fn=lambda _midi: expected_notes,
+    )
+
+    result = transcriber.transcribe(Path("bass.wav"))
+
+    assert result.engine == "fallback_frequency"
+    assert result.debug_info["fallback_octave_corrections_applied"] == 2

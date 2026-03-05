@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 import tempfile
 import wave
+from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Callable
@@ -12,6 +13,13 @@ from mido import Message, MetaMessage, MidiFile, MidiTrack, second2tick
 from scipy import signal
 
 MidiTranscribeFn = Callable[[Path, Path], None]
+
+
+@dataclass(frozen=True)
+class MidiTranscriptionResult:
+    midi_bytes: bytes
+    engine_used: str
+    diagnostics: dict[str, object]
 
 
 def _transcribe_with_basic_pitch(input_path: Path, output_path: Path) -> None:
@@ -148,16 +156,18 @@ def _transcribe_with_frequency_fallback(input_path: Path, output_path: Path) -> 
         _write_note_events_to_midi(events, output_path)
 
 
-def transcribe_bass_stem_to_midi(
+def transcribe_bass_stem_to_midi_detailed(
     input_wav: Path,
     transcribe_fn: MidiTranscribeFn | None = None,
     fallback_fn: MidiTranscribeFn | None = None,
-) -> bytes:
+) -> MidiTranscriptionResult:
     if not input_wav.exists():
         raise RuntimeError(f"Bass stem file missing: {input_wav}")
 
     runner = transcribe_fn or _transcribe_with_basic_pitch
     fallback_runner = fallback_fn or _transcribe_with_frequency_fallback
+    engine_used = "basic_pitch"
+    diagnostics: dict[str, object] = {"transcription_engine_used": "basic_pitch"}
 
     try:
         with TemporaryDirectory(prefix="dechord-midi-") as tmp_dir:
@@ -172,6 +182,8 @@ def transcribe_bass_stem_to_midi(
                 if not missing_dep:
                     raise
                 fallback_runner(input_wav, output_path)
+                engine_used = "fallback_frequency"
+                diagnostics["transcription_engine_used"] = engine_used
             midi_bytes = output_path.read_bytes()
     except Exception as exc:
         raise RuntimeError(f"Bass MIDI transcription failed: {exc}") from exc
@@ -179,4 +191,20 @@ def transcribe_bass_stem_to_midi(
     if not midi_bytes:
         raise RuntimeError("Bass MIDI transcription failed: generated MIDI is empty")
 
-    return midi_bytes
+    return MidiTranscriptionResult(
+        midi_bytes=midi_bytes,
+        engine_used=engine_used,
+        diagnostics=diagnostics,
+    )
+
+
+def transcribe_bass_stem_to_midi(
+    input_wav: Path,
+    transcribe_fn: MidiTranscribeFn | None = None,
+    fallback_fn: MidiTranscribeFn | None = None,
+) -> bytes:
+    return transcribe_bass_stem_to_midi_detailed(
+        input_wav,
+        transcribe_fn=transcribe_fn,
+        fallback_fn=fallback_fn,
+    ).midi_bytes

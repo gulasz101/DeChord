@@ -10,7 +10,7 @@
 
 ---
 
-- [ ] Task 1: Add MIDI transcription result metadata plumbing (`engine`, diagnostics) without breaking existing API.
+- [x] Task 1: Add MIDI transcription result metadata plumbing (`engine`, diagnostics) without breaking existing API.
 - [ ] Task 2: Implement fallback framewise pitch smoothing + spectral octave verification + sequence stabilization.
 - [ ] Task 3: Add conservative BasicPitch post-parse octave stabilization with strict guardrails.
 - [ ] Task 4: Add transcription audit output and pitch error counters in evaluation script.

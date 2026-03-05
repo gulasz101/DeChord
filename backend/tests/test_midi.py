@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+from app.midi import transcribe_bass_stem_to_midi_detailed
 from app.midi import transcribe_bass_stem_to_midi
 
 
@@ -15,6 +16,20 @@ def test_transcribe_bass_stem_returns_midi_bytes(tmp_path: Path):
     )
 
     assert midi_bytes.startswith(b"MThd")
+
+
+def test_transcribe_bass_stem_detailed_reports_primary_engine(tmp_path: Path) -> None:
+    bass_stem = tmp_path / "bass.wav"
+    bass_stem.write_bytes(b"fake-audio")
+
+    result = transcribe_bass_stem_to_midi_detailed(
+        bass_stem,
+        transcribe_fn=lambda _in_path, out_path: out_path.write_bytes(b"MThd\x00\x00\x00\x06"),
+    )
+
+    assert result.engine_used == "basic_pitch"
+    assert result.midi_bytes.startswith(b"MThd")
+    assert result.diagnostics["transcription_engine_used"] == "basic_pitch"
 
 
 def test_transcribe_bass_stem_raises_when_input_missing(tmp_path: Path):
@@ -51,3 +66,22 @@ def test_transcribe_bass_stem_uses_fallback_when_primary_dependency_missing(tmp_
         fallback_fn=fallback,
     )
     assert midi_bytes.startswith(b"MThd")
+
+
+def test_transcribe_bass_stem_detailed_reports_fallback_engine(tmp_path: Path) -> None:
+    bass_stem = tmp_path / "bass.wav"
+    bass_stem.write_bytes(b"fake-audio")
+
+    def missing(_input_path: Path, _output_path: Path) -> None:
+        raise RuntimeError("Stem runtime dependency missing: No module named 'basic_pitch'")
+
+    def fallback(_input_path: Path, output_path: Path) -> None:
+        output_path.write_bytes(b"MThd\x00\x00\x00\x06")
+
+    result = transcribe_bass_stem_to_midi_detailed(
+        bass_stem,
+        transcribe_fn=missing,
+        fallback_fn=fallback,
+    )
+    assert result.engine_used == "fallback_frequency"
+    assert result.midi_bytes.startswith(b"MThd")

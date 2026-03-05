@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from io import BytesIO
 from pathlib import Path
 from typing import Callable, Protocol
 
 import mido
 
+from app.midi import MidiTranscriptionResult
 from app.midi import transcribe_bass_stem_to_midi
 
-MidiTranscribeFn = Callable[[Path], bytes]
+MidiTranscribeFn = Callable[[Path], bytes | MidiTranscriptionResult]
 ParseNotesFn = Callable[[bytes], list["RawNoteEvent"]]
 
 
@@ -26,6 +27,7 @@ class BassTranscriptionResult:
     engine: str
     midi_bytes: bytes
     raw_notes: list[RawNoteEvent]
+    debug_info: dict[str, object] = field(default_factory=dict)
 
 
 class BassTranscriber(Protocol):
@@ -78,9 +80,18 @@ class BasicPitchTranscriber:
         self._parse_notes_fn = parse_notes_fn or parse_midi_to_raw_notes
 
     def transcribe(self, bass_wav: Path, **kwargs) -> BassTranscriptionResult:
-        midi_bytes = self._midi_transcribe_fn(bass_wav)
+        raw_midi_result = self._midi_transcribe_fn(bass_wav)
+        if isinstance(raw_midi_result, MidiTranscriptionResult):
+            midi_bytes = raw_midi_result.midi_bytes
+            engine = raw_midi_result.engine_used
+            debug_info = dict(raw_midi_result.diagnostics)
+        else:
+            midi_bytes = raw_midi_result
+            engine = "basic_pitch"
+            debug_info = {"transcription_engine_used": "basic_pitch"}
+
         if not midi_bytes:
             raise RuntimeError("Bass MIDI transcription failed: generated MIDI is empty")
 
         raw_notes = self._parse_notes_fn(midi_bytes)
-        return BassTranscriptionResult(engine="basic_pitch", midi_bytes=midi_bytes, raw_notes=raw_notes)
+        return BassTranscriptionResult(engine=engine, midi_bytes=midi_bytes, raw_notes=raw_notes, debug_info=debug_info)
