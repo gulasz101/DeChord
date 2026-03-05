@@ -13,4 +13,8 @@
 - [x] Task 1: Add/adjust ignore rules so local noise files are not tracked while keeping `AGENTS.md` tracked.
 - [x] Task 2: Add failing tests for default-hidden tab UI behavior.
 - [x] Task 3: Implement feature-flag gating across app/upload UI.
-- [ ] Task 4: Run frontend verification + `make reset`, update plan statuses, and commit final verification changes.
+- [x] Task 4: Run frontend verification + `make reset`, update plan statuses, and commit final verification changes.
+
+## Verification Evidence
+- `make reset` (from repo root) completed successfully and reset local runtime/db state.
+- `cd frontend && npm test` passed: `16` files, `49` tests, `0` failures.
