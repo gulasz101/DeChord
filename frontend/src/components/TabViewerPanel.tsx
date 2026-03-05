@@ -34,6 +34,8 @@ export function createTabViewerSettings(tabSourceUrl: string, scrollElement: str
     player: {
       playerMode: "EnabledExternalMedia",
       enableCursor: true,
+      enableAnimatedBeatCursor: true,
+      enableElementHighlighting: true,
       enableUserInteraction: false,
       scrollMode: "Continuous",
       scrollElement,
