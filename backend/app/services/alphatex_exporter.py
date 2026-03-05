@@ -29,15 +29,47 @@ def build_sync_points(bars: list[Bar], *, sync_every_bars: int = 8) -> list[Sync
 
 
 def _duration_to_token(duration_beats: float) -> str:
-    if duration_beats >= 4.0:
+    """Convert beat duration to AlphaTeX duration token.
+
+    Supports dotted notes (suffix 'd') for 1.5x standard durations.
+    """
+    # Check dotted durations first (within tolerance)
+    if abs(duration_beats - 6.0) < 0.2:
+        return "1d"  # dotted whole
+    if abs(duration_beats - 3.0) < 0.1:
+        return "2d"  # dotted half
+    if abs(duration_beats - 1.5) < 0.05:
+        return "4d"  # dotted quarter
+    if abs(duration_beats - 0.75) < 0.03:
+        return "8d"  # dotted eighth
+    if abs(duration_beats - 0.375) < 0.02:
+        return "16d"  # dotted sixteenth
+    # Standard durations
+    if duration_beats >= 3.5:
         return "1"
-    if duration_beats >= 2.0:
+    if duration_beats >= 1.75:
         return "2"
-    if duration_beats >= 1.0:
+    if duration_beats >= 0.875:
         return "4"
-    if duration_beats >= 0.5:
+    if duration_beats >= 0.4375:
         return "8"
     return "16"
+
+
+def _fill_rests(gap_beats: float) -> list[str]:
+    """Break a gap (in beats) into rest tokens, largest first."""
+    # Ordered from largest to smallest, including dotted values
+    rest_values = [
+        (4.0, "1"), (3.0, "2d"), (2.0, "2"), (1.5, "4d"),
+        (1.0, "4"), (0.75, "8d"), (0.5, "8"), (0.375, "16d"), (0.25, "16"),
+    ]
+    tokens: list[str] = []
+    remaining = gap_beats
+    for beats, token in rest_values:
+        while remaining >= beats - 0.01:
+            tokens.append(f"r.{token}")
+            remaining -= beats
+    return tokens
 
 
 def export_alphatex(
@@ -65,16 +97,26 @@ def export_alphatex(
         lines.append(f"\\sync({point.bar_index} 0 {point.millisecond_offset} 0)")
 
     measure_lines: list[str] = []
+    beats_per_bar = float(numerator)
     for bar in bars:
-        bar_notes = sorted(by_bar.get(bar.index, []), key=lambda note: note.start_sec)
+        bar_notes = sorted(by_bar.get(bar.index, []), key=lambda note: note.beat_position)
         if not bar_notes:
             measure_lines.append("r.1")
             continue
 
         tokens: list[str] = []
+        cursor = 0.0  # current beat position within the bar
         for note in bar_notes:
+            gap = note.beat_position - cursor
+            if gap > 0.01:
+                tokens.extend(_fill_rests(gap))
             duration = _duration_to_token(note.duration_beats)
             tokens.append(f"{note.fret}.{note.string}.{duration}")
+            cursor = note.beat_position + note.duration_beats
+        # Fill trailing rest if notes don't reach end of bar
+        trailing = beats_per_bar - cursor
+        if trailing > 0.01:
+            tokens.extend(_fill_rests(trailing))
         measure_lines.append(" ".join(tokens))
 
     body = " | ".join(measure_lines)

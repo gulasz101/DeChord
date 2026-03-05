@@ -45,3 +45,36 @@ def test_export_alphatex_contains_tempo_tuning_and_sync_lines() -> None:
     assert "\\sync(8 0 16000 0)" in alphatex
     assert "\\sync(15 0 30000 0)" in alphatex
     assert points[-1].bar_index == 15
+
+
+def test_dotted_quarter_note_exported() -> None:
+    note = FingeredNote(
+        bar_index=0, beat_position=0.0, duration_beats=1.5,
+        pitch_midi=33, start_sec=0.0, end_sec=0.0, string=3, fret=0,
+    )
+    bars = [Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])]
+    alphatex, _ = export_alphatex([note], bars, tempo_used=120)
+    assert "4d" in alphatex
+
+
+def test_dotted_eighth_note_exported() -> None:
+    note = FingeredNote(
+        bar_index=0, beat_position=0.0, duration_beats=0.75,
+        pitch_midi=33, start_sec=0.0, end_sec=0.0, string=3, fret=0,
+    )
+    bars = [Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])]
+    alphatex, _ = export_alphatex([note], bars, tempo_used=120)
+    assert "8d" in alphatex
+
+
+def test_rest_fills_gap_between_notes() -> None:
+    notes = [
+        FingeredNote(bar_index=0, beat_position=0.0, duration_beats=1.0,
+                     pitch_midi=33, start_sec=0.0, end_sec=0.0, string=3, fret=0),
+        FingeredNote(bar_index=0, beat_position=3.0, duration_beats=1.0,
+                     pitch_midi=33, start_sec=1.5, end_sec=0.0, string=3, fret=0),
+    ]
+    bars = [Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])]
+    alphatex, _ = export_alphatex(notes, bars, tempo_used=120)
+    # Should have a rest between the two notes (beats 1-3 = 2 beats = half rest)
+    assert "r." in alphatex
