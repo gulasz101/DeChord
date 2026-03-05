@@ -14,6 +14,7 @@
 - [x] Task 2: Add failing tests for default-hidden tab UI behavior.
 - [x] Task 3: Implement feature-flag gating across app/upload UI.
 - [x] Task 4: Run frontend verification + `make reset`, update plan statuses, and commit final verification changes.
+- [x] Task 5: Ignore local `test songs/` assets so working tree stays clean for merge operations.
 
 ## Verification Evidence
 - `make reset` (from repo root) completed successfully and reset local runtime/db state.
