@@ -292,6 +292,7 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                     jobs[job_id]["tab_error"] = "Drums stem missing; cannot build rhythm grid."
                 else:
                     try:
+                        tab_generation_quality = jobs[job_id].get("tab_generation_quality", "standard")
                         set_stage(
                             "transcribing_bass_midi",
                             message="Transcribing bass stem to MIDI...",
@@ -306,6 +307,7 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                             subdivision=16,
                             max_fret=24,
                             sync_every_bars=8,
+                            tab_generation_quality_mode=tab_generation_quality,
                         )
                         midi_id = asyncio.run(
                             _persist_midi(
@@ -429,6 +431,7 @@ async def tab_from_demucs_stems(
     subdivision: int = Form(16),
     max_fret: int = Form(24),
     sync_every_bars: int = Form(8),
+    tabGenerationQuality: Literal["standard", "high_accuracy"] = Form("standard"),
 ):
     signature = _parse_time_signature(time_signature)
     bass_bytes = await bass.read()
@@ -462,6 +465,7 @@ async def tab_from_demucs_stems(
             subdivision=subdivision,
             max_fret=max_fret,
             sync_every_bars=sync_every_bars,
+            tab_generation_quality_mode=tabGenerationQuality,
         )
     except FingeringCollapseError as exc:
         raise HTTPException(
@@ -513,7 +517,11 @@ async def tab_from_demucs_stems(
 
 
 @app.post("/api/analyze")
-async def analyze(file: UploadFile, process_mode: ProcessMode = Form("analysis_only")):
+async def analyze(
+    file: UploadFile,
+    process_mode: ProcessMode = Form("analysis_only"),
+    tabGenerationQuality: Literal["standard", "high_accuracy"] = Form("standard"),
+):
     job_id = uuid.uuid4().hex[:12]
     ext = Path(file.filename).suffix if file.filename else ".mp3"
     audio_path = UPLOAD_DIR / f"{job_id}{ext}"
@@ -532,6 +540,7 @@ async def analyze(file: UploadFile, process_mode: ProcessMode = Form("analysis_o
         "progress_pct": 0,
         "stage_progress_pct": 0,
         "process_mode": process_mode,
+        "tab_generation_quality": tabGenerationQuality,
         "stems_status": "queued" if process_mode == "analysis_and_stems" else "not_requested",
         "stems_error": None,
         "midi_status": "queued" if process_mode == "analysis_and_stems" else "not_requested",

@@ -39,12 +39,12 @@
 - Modify: `backend/app/main.py`
 - Modify: `backend/tests/test_api.py`
 
-- [ ] Step 1: Add failing API test: upload without quality mode defaults to `standard` in pipeline call.
-- [ ] Step 2: Add failing API test: upload with `tabGenerationQuality=high_accuracy` forwards mode to pipeline.
-- [ ] Step 3: Implement optional form field parsing/default and pass mode to `tab_pipeline.run`.
-- [ ] Step 4: Ensure mode is persisted in in-memory job metadata.
-- [ ] Step 5: Run targeted API tests and confirm GREEN.
-- [ ] Step 6: Commit.
+- [x] Step 1: Add failing API test: upload without quality mode defaults to `standard` in pipeline call.
+- [x] Step 2: Add failing API test: upload with `tabGenerationQuality=high_accuracy` forwards mode to pipeline.
+- [x] Step 3: Implement optional form field parsing/default and pass mode to `tab_pipeline.run`.
+- [x] Step 4: Ensure mode is persisted in in-memory job metadata.
+- [x] Step 5: Run targeted API tests and confirm GREEN.
+- [x] Step 6: Commit.
 
 ### Task 4: Add frontend advanced upload setting and API payload
 
