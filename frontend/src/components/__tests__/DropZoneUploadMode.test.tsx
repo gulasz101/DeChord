@@ -12,6 +12,9 @@ describe("DropZone upload mode", () => {
     expect(html).toContain("Analyze chords only");
     expect(html).toContain("Analyze + split stems");
     expect(html).toContain('name="process-mode"');
+    expect(html).toContain("Tab accuracy");
+    expect(html).toContain("Standard (faster)");
+    expect(html).toContain("High accuracy (slower)");
   });
 
   it("renders upload mode options in Song Library upload flow", () => {
@@ -27,5 +30,8 @@ describe("DropZone upload mode", () => {
     expect(html).toContain("Analyze chords only");
     expect(html).toContain("Analyze + split stems");
     expect(html).toContain('name="library-process-mode"');
+    expect(html).toContain("Tab accuracy");
+    expect(html).toContain("Standard (faster)");
+    expect(html).toContain("High accuracy (slower)");
   });
 });

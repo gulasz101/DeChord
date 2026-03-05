@@ -28,7 +28,15 @@ import {
 } from "./lib/api";
 import { resolvePlaybackSources } from "./lib/playbackSources";
 import { deriveStemWarning } from "./lib/uploadWarnings";
-import type { AnalysisResult, JobStatus, PlaybackPrefs, ProcessMode, SongNote, SongSummary } from "./lib/types";
+import type {
+  AnalysisResult,
+  JobStatus,
+  PlaybackPrefs,
+  ProcessMode,
+  SongNote,
+  SongSummary,
+  TabGenerationQuality,
+} from "./lib/types";
 import type { StemInfo } from "./lib/types";
 
 interface NoteModalState {
@@ -221,13 +229,17 @@ function App() {
     lastTimeRef.current = currentTime;
   }, [player.currentTime, currentIndex, notes, addToast, result, isScrubbing]);
 
-  const handleFile = useCallback(async (file: File, processMode: ProcessMode = "analysis_only") => {
+  const handleFile = useCallback(async (
+    file: File,
+    processMode: ProcessMode = "analysis_only",
+    tabGenerationQuality: TabGenerationQuality = "standard",
+  ) => {
     setLoading(true);
     setError(null);
     setStemWarning(null);
 
     try {
-      const upload = await uploadAudio(file, processMode);
+      const upload = await uploadAudio(file, processMode, tabGenerationQuality);
       const analysisResult = await pollUntilComplete(upload.job_id, (s) => {
         setUploadStatus(s);
         const warning = deriveStemWarning(s);
@@ -484,7 +496,7 @@ function App() {
               selectedSongId={selectedSongId}
               loading={loading}
               onSelect={(songId) => void loadSong(songId)}
-              onUpload={(file, mode) => void handleFile(file, mode)}
+              onUpload={(file, mode, quality) => void handleFile(file, mode, quality)}
             />
           </div>
           <section className="flex shrink-0 flex-row items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 sm:flex-col sm:items-start sm:gap-1.5 sm:py-3">
@@ -526,7 +538,7 @@ function App() {
           {loading ? (
             <div className="flex h-full items-center justify-center">
               <DropZone
-                onFile={() => {}}
+                onFile={(_file, _mode, _quality) => {}}
                 loading
                 progressText={uploadStatus?.message || uploadStatus?.progress || "Processing..."}
                 progressPct={uploadStatus?.progress_pct}

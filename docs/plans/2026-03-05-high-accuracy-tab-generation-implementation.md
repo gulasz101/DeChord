@@ -57,11 +57,11 @@
 - Modify: `frontend/src/lib/__tests__/api.stems-status.test.ts`
 - Modify: `frontend/src/components/__tests__/DropZoneUploadMode.test.tsx`
 
-- [ ] Step 1: Add failing frontend tests for new field payload and advanced text rendering.
-- [ ] Step 2: Implement `Tab accuracy` advanced radio options and helper text (exact copy).
-- [ ] Step 3: Wire selected mode through app and upload API payload (`tabGenerationQuality`).
-- [ ] Step 4: Run targeted frontend tests and confirm GREEN.
-- [ ] Step 5: Commit.
+- [x] Step 1: Add failing frontend tests for new field payload and advanced text rendering.
+- [x] Step 2: Implement `Tab accuracy` advanced radio options and helper text (exact copy).
+- [x] Step 3: Wire selected mode through app and upload API payload (`tabGenerationQuality`).
+- [x] Step 4: Run targeted frontend tests and confirm GREEN.
+- [x] Step 5: Commit.
 
 ### Task 5: Verification, reset workflow, Clara Luciani run, and report updates
 

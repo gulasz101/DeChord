@@ -13,6 +13,7 @@ export interface AnalysisResult {
 }
 
 export type ProcessMode = "analysis_only" | "analysis_and_stems";
+export type TabGenerationQuality = "standard" | "high_accuracy";
 
 export type JobStage =
   | "queued"

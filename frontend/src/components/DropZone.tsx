@@ -1,8 +1,8 @@
 import { useCallback, useState, useRef } from "react";
-import type { JobStage, ProcessMode } from "../lib/types";
+import type { JobStage, ProcessMode, TabGenerationQuality } from "../lib/types";
 
 interface DropZoneProps {
-  onFile: (file: File, mode: ProcessMode) => void;
+  onFile: (file: File, mode: ProcessMode, quality: TabGenerationQuality) => void;
   loading?: boolean;
   progressText?: string;
   progressPct?: number;
@@ -22,6 +22,7 @@ export function DropZone({
 }: DropZoneProps) {
   const [dragOver, setDragOver] = useState(false);
   const [mode, setMode] = useState<ProcessMode>("analysis_only");
+  const [tabQuality, setTabQuality] = useState<TabGenerationQuality>("standard");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleDrop = useCallback(
@@ -29,17 +30,17 @@ export function DropZone({
       e.preventDefault();
       setDragOver(false);
       const file = e.dataTransfer.files[0];
-      if (file) onFile(file, mode);
+      if (file) onFile(file, mode, tabQuality);
     },
-    [onFile, mode],
+    [onFile, mode, tabQuality],
   );
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (file) onFile(file, mode);
+      if (file) onFile(file, mode, tabQuality);
     },
-    [onFile, mode],
+    [onFile, mode, tabQuality],
   );
 
   if (loading) {
@@ -107,6 +108,36 @@ export function DropZone({
           <option value="analysis_only">Analyze chords only</option>
           <option value="analysis_and_stems">Analyze + split stems</option>
         </select>
+      </div>
+      <div className="mt-3 w-full max-w-md rounded border border-slate-700 bg-slate-900/70 p-3 text-left text-sm text-slate-200">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Advanced</p>
+        <p className="mt-2 text-sm font-medium text-slate-100">Tab accuracy</p>
+        <p className="mt-1 whitespace-pre-line text-xs text-slate-400">
+          Runs an extra analysis pass in sections where bass is likely present but no notes were detected.
+          Improves tabs for quiet or ghost-note passages, but increases processing time.
+        </p>
+        <label className="mt-3 flex items-center gap-2 text-sm">
+          <input
+            type="radio"
+            name="dropzone-tab-quality"
+            value="standard"
+            checked={tabQuality === "standard"}
+            onChange={() => setTabQuality("standard")}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <span>Standard (faster)</span>
+        </label>
+        <label className="mt-2 flex items-center gap-2 text-sm">
+          <input
+            type="radio"
+            name="dropzone-tab-quality"
+            value="high_accuracy"
+            checked={tabQuality === "high_accuracy"}
+            onChange={() => setTabQuality("high_accuracy")}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <span>High accuracy (slower)</span>
+        </label>
       </div>
       <input
         ref={inputRef}

@@ -9,6 +9,7 @@ import type {
   SongNote,
   PlaybackPrefs,
   ProcessMode,
+  TabGenerationQuality,
 } from "./types";
 
 const BASE = "";
@@ -16,10 +17,14 @@ const BASE = "";
 export async function uploadAudio(
   file: File,
   processMode: ProcessMode = "analysis_only",
+  tabGenerationQuality: TabGenerationQuality = "standard",
 ): Promise<UploadResponse> {
   const form = new FormData();
   form.append("file", file);
   form.append("process_mode", processMode);
+  if (tabGenerationQuality === "high_accuracy") {
+    form.append("tabGenerationQuality", tabGenerationQuality);
+  }
   const res = await fetch(`${BASE}/api/analyze`, { method: "POST", body: form });
   if (!res.ok) throw new Error("Upload failed");
   return res.json();
