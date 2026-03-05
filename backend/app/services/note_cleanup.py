@@ -114,9 +114,10 @@ def cleanup_params_for_bpm(bpm: float) -> dict:
     """
     sixteenth_duration = 60.0 / bpm / 4.0
     return {
-        "min_duration_sec": max(0.03, sixteenth_duration * 0.6),
+        # Keep thresholds high enough to suppress spurious micro-notes at fast tempos.
+        "min_duration_sec": max(0.07, sixteenth_duration * 0.6),
         "min_confidence": 0.15,
-        "merge_gap_sec": max(0.02, sixteenth_duration * 0.3),
+        "merge_gap_sec": max(0.04, sixteenth_duration * 0.3),
         "apply_octave_correction": True,
     }
 

@@ -9,6 +9,7 @@ import pytest
 from app.services.alphatex_exporter import SyncPoint
 from app.services.bass_transcriber import BassTranscriptionResult, RawNoteEvent
 from app.services.fingering import FingeredNote
+from app.services.note_cleanup import cleanup_params_for_bpm
 from app.services.quantization import QuantizedNote
 from app.services.rhythm_grid import Bar
 from app.services.tab_pipeline import FingeringCollapseError, TabPipeline
@@ -585,3 +586,118 @@ def test_high_accuracy_aggressive_uses_onsets_for_low_rms_empty_bar_detection(tm
     assert aggressive_result.debug_info["suspect_silence_bars_count"] == 1
     assert aggressive_result.debug_info["notes_added_second_pass"] > 0
     assert aggressive_result.debug_info["suspect_bars"][0]["triggered_by_onsets"] is True
+
+
+def test_pipeline_applies_onset_recovery_before_cleanup() -> None:
+    class FakeTranscriber:
+        def transcribe(self, _bass_wav: Path) -> BassTranscriptionResult:
+            return BassTranscriptionResult(
+                engine="basic_pitch",
+                midi_bytes=b"MThd",
+                raw_notes=[RawNoteEvent(pitch_midi=40, start_sec=0.0, end_sec=1.0, confidence=0.9)],
+            )
+
+    bars = [Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])]
+    cleanup_inputs: dict[str, object] = {}
+
+    def fake_cleanup(events, **kwargs):
+        cleanup_inputs["events"] = events
+        cleanup_inputs["kwargs"] = kwargs
+        return events
+
+    pipeline = TabPipeline(
+        transcriber=FakeTranscriber(),
+        rhythm_extract_fn=lambda _drums, **_kwargs: ([0.0, 0.5, 1.0, 1.5], [0.0], "madmom"),
+        bar_builder_fn=lambda _beats, _downbeats, **_kwargs: bars,
+        cleanup_fn=fake_cleanup,
+        onset_detect_fn=lambda _bass_wav: [0.4],
+        quantize_fn=lambda events, _grid, **_kwargs: [
+            QuantizedNote(
+                bar_index=0,
+                beat_position=0.0,
+                duration_beats=0.5,
+                pitch_midi=event.pitch_midi,
+                start_sec=event.start_sec,
+                end_sec=event.end_sec,
+            )
+            for event in events
+        ],
+        fingering_fn=lambda notes, **_kwargs: [
+            FingeredNote(
+                bar_index=note.bar_index,
+                beat_position=note.beat_position,
+                duration_beats=note.duration_beats,
+                pitch_midi=note.pitch_midi,
+                start_sec=note.start_sec,
+                end_sec=note.end_sec,
+                string=4,
+                fret=0,
+            )
+            for note in notes
+        ],
+        export_fn=lambda notes, _bars, **_kwargs: ("\\tempo 120", [SyncPoint(bar_index=0, millisecond_offset=0)]),
+    )
+
+    result = pipeline.run(Path("bass.wav"), Path("drums.wav"), bpm_hint=120.0, onset_recovery=True)
+
+    assert result.debug_info["onset_recovery_applied"] is True
+    cleanup_events = cleanup_inputs["events"]
+    assert isinstance(cleanup_events, list)
+    assert len(cleanup_events) == 2
+    assert cleanup_events[0].start_sec == 0.0
+    assert cleanup_events[0].end_sec == 0.4
+    assert cleanup_events[1].start_sec == 0.4
+    assert cleanup_events[1].end_sec == 1.0
+
+
+def test_pipeline_uses_bpm_adaptive_cleanup_parameters() -> None:
+    class FakeTranscriber:
+        def transcribe(self, _bass_wav: Path) -> BassTranscriptionResult:
+            return BassTranscriptionResult(
+                engine="basic_pitch",
+                midi_bytes=b"MThd",
+                raw_notes=[RawNoteEvent(pitch_midi=40, start_sec=0.0, end_sec=0.5, confidence=0.9)],
+            )
+
+    bars = [Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])]
+    captured_kwargs: dict[str, object] = {}
+
+    def fake_cleanup(events, **kwargs):
+        captured_kwargs.update(kwargs)
+        return events
+
+    pipeline = TabPipeline(
+        transcriber=FakeTranscriber(),
+        rhythm_extract_fn=lambda _drums, **_kwargs: ([0.0, 0.375, 0.75, 1.125], [0.0], "madmom"),
+        bar_builder_fn=lambda _beats, _downbeats, **_kwargs: bars,
+        cleanup_fn=fake_cleanup,
+        quantize_fn=lambda events, _grid, **_kwargs: [
+            QuantizedNote(
+                bar_index=0,
+                beat_position=0.0,
+                duration_beats=1.0,
+                pitch_midi=event.pitch_midi,
+                start_sec=event.start_sec,
+                end_sec=event.end_sec,
+            )
+            for event in events
+        ],
+        fingering_fn=lambda notes, **_kwargs: [
+            FingeredNote(
+                bar_index=note.bar_index,
+                beat_position=note.beat_position,
+                duration_beats=note.duration_beats,
+                pitch_midi=note.pitch_midi,
+                start_sec=note.start_sec,
+                end_sec=note.end_sec,
+                string=4,
+                fret=0,
+            )
+            for note in notes
+        ],
+        export_fn=lambda notes, _bars, **_kwargs: ("\\tempo 120", [SyncPoint(bar_index=0, millisecond_offset=0)]),
+    )
+
+    pipeline.run(Path("bass.wav"), Path("drums.wav"), bpm_hint=160.0)
+
+    assert captured_kwargs == cleanup_params_for_bpm(160.0)

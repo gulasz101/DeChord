@@ -15,7 +15,8 @@ from app.services.fingering import (
     optimize_fingering,
     optimize_fingering_with_debug,
 )
-from app.services.note_cleanup import cleanup_note_events
+from app.services.note_cleanup import cleanup_note_events, cleanup_params_for_bpm
+from app.services.onset_recovery import recover_missing_onsets
 from app.services.quantization import QuantizedNote, quantize_note_events
 from app.services.rhythm_grid import (
     Bar,
@@ -32,6 +33,7 @@ CleanupFn = Callable[..., list]
 QuantizeFn = Callable[..., list[QuantizedNote]]
 FingeringFn = Callable[..., list[FingeredNote]]
 ExportFn = Callable[..., tuple[str, list[SyncPoint]]]
+OnsetDetectFn = Callable[[Path], list[float]]
 
 
 class FingeringCollapseError(RuntimeError):
@@ -62,6 +64,7 @@ class TabPipeline:
         quantize_fn: QuantizeFn | None = None,
         fingering_fn: FingeringFn | None = None,
         export_fn: ExportFn | None = None,
+        onset_detect_fn: OnsetDetectFn | None = None,
     ) -> None:
         self._transcriber = transcriber or BasicPitchTranscriber()
         self._rhythm_extract_fn = rhythm_extract_fn or extract_beats_and_downbeats
@@ -70,6 +73,7 @@ class TabPipeline:
         self._quantize_fn = quantize_fn or quantize_note_events
         self._fingering_fn = fingering_fn or optimize_fingering
         self._export_fn = export_fn or export_alphatex
+        self._onset_detect_fn = onset_detect_fn or self._detect_onsets_librosa
 
     def run(
         self,
@@ -82,6 +86,7 @@ class TabPipeline:
         subdivision: int = 16,
         max_fret: int = 24,
         sync_every_bars: int = 8,
+        onset_recovery: bool = False,
     ) -> TabPipelineResult:
         numerator, denominator = time_signature
         beats, downbeats, rhythm_source = self._rhythm_extract_fn(
@@ -106,7 +111,16 @@ class TabPipeline:
         tempo_used = float(song_bpm) if song_bpm is not None else reconcile_tempo(derived_bpm=derived_bpm, bpm_hint=bpm_hint)
 
         transcription = self._transcriber.transcribe(bass_wav)
-        cleaned_notes = self._cleanup_fn(transcription.raw_notes)
+        pre_cleanup_notes = transcription.raw_notes
+        onset_recovery_applied = False
+        onset_count = 0
+        if onset_recovery and pre_cleanup_notes:
+            onset_times = self._onset_detect_fn(bass_wav)
+            onset_count = len(onset_times)
+            pre_cleanup_notes = recover_missing_onsets(pre_cleanup_notes, onset_times)
+            onset_recovery_applied = bool(onset_times)
+        cleanup_kwargs = cleanup_params_for_bpm(tempo_used)
+        cleaned_notes = self._cleanup_fn(pre_cleanup_notes, **cleanup_kwargs)
         quantized_notes = self._quantize_fn(cleaned_notes, BarGrid(bars=bars), subdivision=subdivision)
         quality_mode_suspect_silence = tab_generation_quality_mode in {"high_accuracy", "high_accuracy_aggressive"}
         quality_diagnostics: dict[str, object] = {
@@ -254,6 +268,7 @@ class TabPipeline:
             "beat_count": len(corrected_beats),
             "downbeat_count": len(corrected_downbeats),
             "raw_note_count": len(transcription.raw_notes),
+            "pre_cleanup_note_count": len(pre_cleanup_notes),
             "cleaned_note_count": len(cleaned_notes),
             "quantized_note_count": len(quantized_notes),
             "fingered_note_count": len(fingered_notes),
@@ -279,6 +294,9 @@ class TabPipeline:
             "tab_last_sync_ms": sync_points[-1].millisecond_offset if sync_points else 0,
             "audio_duration_sec": audio_duration_sec,
             "total_bars": len(export_bars),
+            "onset_recovery_applied": onset_recovery_applied,
+            "onset_count": onset_count,
+            "cleanup_params": cleanup_kwargs,
             **quality_diagnostics,
         }
 
@@ -291,6 +309,20 @@ class TabPipeline:
             fingered_notes=fingered_notes,
             debug_info=debug_info,
         )
+
+    @staticmethod
+    def _detect_onsets_librosa(bass_wav: Path) -> list[float]:
+        try:
+            import librosa
+        except ModuleNotFoundError:
+            return []
+
+        y, sr = librosa.load(str(bass_wav), sr=22050, mono=True)
+        if y.size == 0:
+            return []
+        onset_frames = librosa.onset.onset_detect(y=y, sr=sr, units="frames")
+        onset_times = librosa.frames_to_time(onset_frames, sr=sr)
+        return [float(t) for t in onset_times]
 
     @staticmethod
     def _notes_per_bar(quantized_notes: list[QuantizedNote], bar_count: int) -> list[int]:
