@@ -26,12 +26,12 @@
 - Modify: `backend/app/services/tab_pipeline.py`
 - Modify: `backend/app/services/bass_transcriber.py`
 
-- [ ] Step 1: Add `tab_generation_quality_mode: Literal["standard", "high_accuracy"] = "standard"` to pipeline run API.
-- [ ] Step 2: Implement suspect silence detection (`notes_per_bar == 0` and `bar_rms >= median_bar_rms * 0.9`) after first quantization.
-- [ ] Step 3: Re-run transcription on per-bar windows (`start-0.2s`, `end+0.2s`), merge notes, re-run cleanup+quantization.
-- [ ] Step 4: Add diagnostics (`suspect_silence_bars_count`, `suspect_bars`, `notes_added_second_pass`, `notes_per_bar_before_high_accuracy`, `notes_per_bar_after_high_accuracy`) into debug output when mode is high accuracy.
-- [ ] Step 5: Run targeted tests and confirm GREEN.
-- [ ] Step 6: Commit.
+- [x] Step 1: Add `tab_generation_quality_mode: Literal["standard", "high_accuracy"] = "standard"` to pipeline run API.
+- [x] Step 2: Implement suspect silence detection (`notes_per_bar == 0` and `bar_rms >= median_bar_rms * 0.9`) after first quantization.
+- [x] Step 3: Re-run transcription on per-bar windows (`start-0.2s`, `end+0.2s`), merge notes, re-run cleanup+quantization.
+- [x] Step 4: Add diagnostics (`suspect_silence_bars_count`, `suspect_bars`, `notes_added_second_pass`, `notes_per_bar_before_high_accuracy`, `notes_per_bar_after_high_accuracy`) into debug output when mode is high accuracy.
+- [x] Step 5: Run targeted tests and confirm GREEN.
+- [x] Step 6: Commit.
 
 ### Task 3: Add upload API field and persist quality mode in job metadata
 

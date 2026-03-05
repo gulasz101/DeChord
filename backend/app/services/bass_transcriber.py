@@ -29,7 +29,7 @@ class BassTranscriptionResult:
 
 
 class BassTranscriber(Protocol):
-    def transcribe(self, bass_wav: Path) -> BassTranscriptionResult: ...
+    def transcribe(self, bass_wav: Path, **kwargs) -> BassTranscriptionResult: ...
 
 
 def parse_midi_to_raw_notes(midi_bytes: bytes) -> list[RawNoteEvent]:
@@ -77,7 +77,7 @@ class BasicPitchTranscriber:
         self._midi_transcribe_fn = midi_transcribe_fn or transcribe_bass_stem_to_midi
         self._parse_notes_fn = parse_notes_fn or parse_midi_to_raw_notes
 
-    def transcribe(self, bass_wav: Path) -> BassTranscriptionResult:
+    def transcribe(self, bass_wav: Path, **kwargs) -> BassTranscriptionResult:
         midi_bytes = self._midi_transcribe_fn(bass_wav)
         if not midi_bytes:
             raise RuntimeError("Bass MIDI transcription failed: generated MIDI is empty")
