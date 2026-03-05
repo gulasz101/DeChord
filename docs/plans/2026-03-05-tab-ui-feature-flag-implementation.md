@@ -11,6 +11,6 @@
 ---
 
 - [x] Task 1: Add/adjust ignore rules so local noise files are not tracked while keeping `AGENTS.md` tracked.
-- [ ] Task 2: Add failing tests for default-hidden tab UI behavior.
+- [x] Task 2: Add failing tests for default-hidden tab UI behavior.
 - [ ] Task 3: Implement feature-flag gating across app/upload UI.
 - [ ] Task 4: Run frontend verification + `make reset`, update plan statuses, and commit final verification changes.
