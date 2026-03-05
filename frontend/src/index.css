@@ -8,3 +8,18 @@
   font-weight: 400;
   font-display: swap;
 }
+
+/* alphaTab playback cursor + current element highlighting */
+.at-cursor-bar {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.at-cursor-beat {
+  background: rgba(255, 100, 100, 0.65);
+  width: 3px;
+}
+
+.at-highlight {
+  fill: rgba(255, 180, 0, 0.9);
+  stroke: rgba(255, 180, 0, 0.9);
+}
