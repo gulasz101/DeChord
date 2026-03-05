@@ -1450,7 +1450,7 @@ git commit -m "chore: final verification and quality metrics (docs/plans/2026-03
 - [ ] Task 6: BasicPitch Transcription Parameter Tuning
 - [ ] Task 7: Onset Detection Enhancement
 - [ ] Task 8: Integrate Onset Recovery into Pipeline
-- [ ] Task 9: Note Cleanup Parameter Calibration
+- [x] Task 9: Note Cleanup Parameter Calibration
 - [ ] Task 10: AlphaTeX Dotted Notes and Better Rests
 - [ ] Task 11: Run Evaluation and Measure Quality
 - [ ] Task 12: Iterative Refinement

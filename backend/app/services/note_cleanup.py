@@ -106,6 +106,21 @@ def _correct_octave_jumps(events: list[RawNoteEvent]) -> list[RawNoteEvent]:
     return corrected
 
 
+def cleanup_params_for_bpm(bpm: float) -> dict:
+    """Return cleanup parameters tuned for the given BPM.
+
+    At high BPMs, 16th notes are shorter and we need to lower thresholds
+    to avoid filtering them out. At 160 BPM, a 16th note is ~94ms.
+    """
+    sixteenth_duration = 60.0 / bpm / 4.0
+    return {
+        "min_duration_sec": max(0.03, sixteenth_duration * 0.6),
+        "min_confidence": 0.15,
+        "merge_gap_sec": max(0.02, sixteenth_duration * 0.3),
+        "apply_octave_correction": True,
+    }
+
+
 def cleanup_note_events(
     events: list[RawNoteEvent],
     *,
