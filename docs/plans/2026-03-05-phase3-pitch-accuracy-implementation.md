@@ -16,4 +16,4 @@
 - [x] Task 4: Add transcription audit output and pitch error counters in evaluation script.
 - [x] Task 5: Add/extend unit tests for fallback logic, BasicPitch correction, and evaluation diagnostics.
 - [x] Task 6: Produce baseline/final benchmark artifacts for Muse and Trooper and phase summary report.
-- [ ] Task 7: Run `make reset`, run pytest, and finalize verification outputs.
+- [x] Task 7: Run `make reset`, run pytest, and finalize verification outputs.
