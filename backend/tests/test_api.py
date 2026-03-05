@@ -186,6 +186,7 @@ def test_analyze_with_stems_reports_split_stage(tmp_path, monkeypatch):
             bars=[Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])],
             sync_points=[SyncPoint(bar_index=0, millisecond_offset=0)],
             midi_bytes=b"MThd\x00\x00\x00\x06",
+            fingered_notes=[],
             debug_info={"rhythm_source": "madmom"},
         )
 
@@ -404,6 +405,7 @@ def test_generate_tab_from_demucs_stems_endpoint_persists_midi_and_alphatex(tmp_
             bars=[Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])],
             sync_points=[SyncPoint(bar_index=0, millisecond_offset=0)],
             midi_bytes=b"MThd\x00\x00\x00\x06",
+            fingered_notes=[],
             debug_info={"rhythm_source": "madmom"},
         )
 
@@ -513,6 +515,7 @@ def test_analyze_defaults_tab_generation_quality_to_standard(tmp_path, monkeypat
             bars=[Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])],
             sync_points=[SyncPoint(bar_index=0, millisecond_offset=0)],
             midi_bytes=b"MThd\x00\x00\x00\x06",
+            fingered_notes=[],
             debug_info={"rhythm_source": "madmom"},
         )
 
@@ -555,6 +558,7 @@ def test_analyze_accepts_high_accuracy_tab_generation_quality(tmp_path, monkeypa
             bars=[Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])],
             sync_points=[SyncPoint(bar_index=0, millisecond_offset=0)],
             midi_bytes=b"MThd\x00\x00\x00\x06",
+            fingered_notes=[],
             debug_info={"rhythm_source": "madmom"},
         )
 
@@ -601,6 +605,7 @@ def test_analyze_accepts_high_accuracy_aggressive_tab_generation_quality(tmp_pat
             bars=[Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])],
             sync_points=[SyncPoint(bar_index=0, millisecond_offset=0)],
             midi_bytes=b"MThd\x00\x00\x00\x06",
+            fingered_notes=[],
             debug_info={"rhythm_source": "madmom"},
         )
 

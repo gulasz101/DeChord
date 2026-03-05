@@ -14,6 +14,29 @@ from app.services.rhythm_grid import Bar
 from app.services.tab_pipeline import FingeringCollapseError, TabPipeline
 
 
+def test_pipeline_result_exposes_fingered_notes() -> None:
+    """TabPipelineResult must include fingered_notes for direct comparison."""
+    raw_notes = [RawNoteEvent(pitch_midi=40, start_sec=0.0, end_sec=0.5, confidence=0.9)]
+
+    class FakeTranscriber:
+        def transcribe(self, _bass_wav, **kw):
+            return BassTranscriptionResult(engine="fake", midi_bytes=b"MThd", raw_notes=raw_notes)
+
+    bars = [Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])]
+
+    pipeline = TabPipeline(
+        transcriber=FakeTranscriber(),
+        rhythm_extract_fn=lambda _drums, **kw: ([0.0, 0.5, 1.0, 1.5], [0.0], "madmom"),
+        bar_builder_fn=lambda _beats, _downbeats, **kw: bars,
+    )
+
+    result = pipeline.run(Path("bass.wav"), Path("drums.wav"), bpm_hint=120.0)
+
+    assert hasattr(result, "fingered_notes")
+    assert len(result.fingered_notes) > 0
+    assert result.fingered_notes[0].pitch_midi == 40
+
+
 def test_tab_pipeline_composes_all_stages_and_exposes_debug_info() -> None:
     raw_notes = [RawNoteEvent(pitch_midi=40, start_sec=0.0, end_sec=0.5, confidence=0.9)]
 

@@ -47,6 +47,7 @@ class TabPipelineResult:
     bars: list[Bar]
     sync_points: list[SyncPoint]
     midi_bytes: bytes
+    fingered_notes: list[FingeredNote]
     debug_info: dict[str, object]
 
 
@@ -287,6 +288,7 @@ class TabPipeline:
             bars=export_bars,
             sync_points=sync_points,
             midi_bytes=transcription.midi_bytes,
+            fingered_notes=fingered_notes,
             debug_info=debug_info,
         )
 
