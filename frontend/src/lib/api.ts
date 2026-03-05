@@ -5,9 +5,11 @@ import type {
   SongDetailResponse,
   SongsListResponse,
   SongStemsResponse,
+  SongTabsResponse,
   SongNote,
   PlaybackPrefs,
   ProcessMode,
+  TabGenerationQuality,
 } from "./types";
 
 const BASE = "";
@@ -15,10 +17,12 @@ const BASE = "";
 export async function uploadAudio(
   file: File,
   processMode: ProcessMode = "analysis_only",
+  tabGenerationQuality: TabGenerationQuality = "standard",
 ): Promise<UploadResponse> {
   const form = new FormData();
   form.append("file", file);
   form.append("process_mode", processMode);
+  form.append("tabGenerationQuality", tabGenerationQuality);
   const res = await fetch(`${BASE}/api/analyze`, { method: "POST", body: form });
   if (!res.ok) throw new Error("Upload failed");
   return res.json();
@@ -42,6 +46,18 @@ export function getAudioUrl(songId: number): string {
 
 export function getStemAudioUrl(songId: number, stemKey: string): string {
   return `${BASE}/api/audio/${songId}/stems/${encodeURIComponent(stemKey)}`;
+}
+
+export function getMidiFileUrl(songId: number): string {
+  return `${BASE}/api/songs/${songId}/midi/file`;
+}
+
+export function getTabFileUrl(songId: number): string {
+  return `${BASE}/api/songs/${songId}/tabs/file`;
+}
+
+export function getTabDownloadUrl(songId: number): string {
+  return `${BASE}/api/songs/${songId}/tabs/download`;
 }
 
 export async function pollUntilComplete(
@@ -77,6 +93,12 @@ export async function getSong(songId: number): Promise<SongDetailResponse> {
 export async function listSongStems(songId: number): Promise<SongStemsResponse> {
   const res = await fetch(`${BASE}/api/songs/${songId}/stems`);
   if (!res.ok) throw new Error("Failed to fetch stems");
+  return res.json();
+}
+
+export async function getSongTabs(songId: number): Promise<SongTabsResponse> {
+  const res = await fetch(`${BASE}/api/songs/${songId}/tabs`);
+  if (!res.ok) throw new Error("Failed to fetch tabs metadata");
   return res.json();
 }
 

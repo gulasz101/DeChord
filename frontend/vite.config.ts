@@ -4,10 +4,13 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  optimizeDeps: {
+    exclude: ["@coderline/alphatab"],
+  },
   server: {
     proxy: {
       "/api": {
-        target: "http://api.dechord.localhost:1355",
+        target: "http://api.dechord.localhost",
         changeOrigin: true,
       },
     },

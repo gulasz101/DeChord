@@ -22,4 +22,6 @@
 
 - After finishing development work and before final verification/handoff, run the local reset workflow (`make reset`) so testing starts from a fresh runtime state.
 
+Testing file for uploads and testing tabs generation-> /Users/wojciechgula/Downloads/Clara Luciani - La grenade (Clip officiel) [85m-Qgo9_nE].mp3 
+
 end of AGENTS.md

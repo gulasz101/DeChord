@@ -7,6 +7,9 @@ describe("App integration", () => {
   it("shows drop zone prompt before analysis", () => {
     const html = renderToStaticMarkup(<App />);
     expect(html).toContain("Drop audio file here or click to browse");
+    expect(html).not.toContain("Show Tabs");
+    expect(html).not.toContain("Download Tab");
+    expect(html).not.toContain("Tab accuracy");
   });
 
   it("falls back to single-track playback when no stems", () => {

@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import os
+import re
 import shutil
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -18,8 +19,11 @@ from pydantic import BaseModel, Field
 
 from app.analysis import AnalysisResult, analyze_audio
 from app.db import close_db, execute, get_default_user, init_db
+from app.midi import transcribe_bass_stem_to_midi
 from app.models import ProcessMode
+from app.services.tab_pipeline import FingeringCollapseError, TabPipeline
 from app.stems import StemResult, split_to_stems
+from app.tabs import build_gp5_from_tab_positions, map_midi_to_eadg_positions
 
 app = FastAPI(title="DeChord API")
 
@@ -38,6 +42,7 @@ STEMS_DIR.mkdir(exist_ok=True)
 # In-memory job store (single-user local)
 jobs: dict[str, dict] = {}
 executor = ThreadPoolExecutor(max_workers=2)
+tab_pipeline = TabPipeline()
 
 
 class NoteCreate(BaseModel):
@@ -116,6 +121,71 @@ async def _persist_stems(song_id: int, stems: list[StemResult]) -> None:
             """,
             [song_id, stem.stem_key, stem.relative_path, stem.mime_type, stem.duration],
         )
+
+
+async def _persist_midi(
+    song_id: int,
+    *,
+    source_stem_key: str,
+    midi_blob: bytes,
+    engine: str,
+    status: str = "complete",
+    error_message: str | None = None,
+) -> int:
+    await execute(
+        "DELETE FROM song_midis WHERE song_id = ? AND source_stem_key = ?",
+        [song_id, source_stem_key],
+    )
+    rs = await execute(
+        """
+        INSERT INTO song_midis (song_id, source_stem_key, midi_blob, midi_format, engine, status, error_message)
+        VALUES (?, ?, ?, 'mid', ?, ?, ?)
+        RETURNING id
+        """,
+        [song_id, source_stem_key, midi_blob, engine, status, error_message],
+    )
+    return int(rs.rows[0][0])
+
+
+async def _persist_tab(
+    song_id: int,
+    *,
+    source_midi_id: int,
+    tab_blob: bytes,
+    tab_format: str = "gp5",
+    tuning: str = "E1,A1,D2,G2",
+    strings: int = 4,
+    generator_version: str = "v1",
+    status: str = "complete",
+    error_message: str | None = None,
+) -> None:
+    await execute("DELETE FROM song_tabs WHERE song_id = ?", [song_id])
+    await execute(
+        """
+        INSERT INTO song_tabs (
+            song_id, source_midi_id, tab_blob, tab_format, tuning, strings, generator_version, status, error_message
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            song_id,
+            source_midi_id,
+            tab_blob,
+            tab_format,
+            tuning,
+            strings,
+            generator_version,
+            status,
+            error_message,
+        ],
+    )
+
+
+def _generate_gp5_from_midi(midi_blob: bytes) -> bytes:
+    tab_notes = map_midi_to_eadg_positions(midi_blob)
+    if not tab_notes:
+        raise RuntimeError("No playable EADG notes were generated from MIDI.")
+    return build_gp5_from_tab_positions(tab_notes)
 
 
 async def _load_latest_analysis(song_id: int) -> dict | None:
@@ -208,15 +278,95 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                 asyncio.run(_persist_stems(song_id, stems))
                 jobs[job_id]["stems_status"] = "complete"
                 jobs[job_id]["stems_error"] = None
+                bass_stem = next((stem for stem in stems if stem.stem_key == "bass"), None)
+                drums_stem = next((stem for stem in stems if stem.stem_key == "drums"), None)
+                if bass_stem is None:
+                    jobs[job_id]["midi_status"] = "failed"
+                    jobs[job_id]["midi_error"] = "Bass stem missing; cannot transcribe MIDI."
+                    jobs[job_id]["tab_status"] = "not_requested"
+                    jobs[job_id]["tab_error"] = None
+                elif drums_stem is None:
+                    jobs[job_id]["midi_status"] = "not_requested"
+                    jobs[job_id]["midi_error"] = None
+                    jobs[job_id]["tab_status"] = "failed"
+                    jobs[job_id]["tab_error"] = "Drums stem missing; cannot build rhythm grid."
+                else:
+                    try:
+                        tab_generation_quality = jobs[job_id].get("tab_generation_quality", "standard")
+                        set_stage(
+                            "transcribing_bass_midi",
+                            message="Transcribing bass stem to MIDI...",
+                            progress_pct=90,
+                            stage_progress_pct=0,
+                        )
+                        tab_result = tab_pipeline.run(
+                            Path(bass_stem.relative_path),
+                            Path(drums_stem.relative_path),
+                            bpm_hint=float(result.tempo) if result.tempo else None,
+                            time_signature=(4, 4),
+                            subdivision=16,
+                            max_fret=24,
+                            sync_every_bars=8,
+                            tab_generation_quality_mode=tab_generation_quality,
+                        )
+                        midi_id = asyncio.run(
+                            _persist_midi(
+                                song_id,
+                                source_stem_key="bass",
+                                midi_blob=tab_result.midi_bytes,
+                                engine="basic_pitch",
+                            )
+                        )
+                        jobs[job_id]["midi_status"] = "complete"
+                        jobs[job_id]["midi_error"] = None
+
+                        set_stage(
+                            "generating_tabs",
+                            message="Generating bass tabs...",
+                            progress_pct=93,
+                            stage_progress_pct=0,
+                        )
+                        asyncio.run(
+                            _persist_tab(
+                                song_id,
+                                source_midi_id=midi_id,
+                                tab_blob=tab_result.alphatex.encode("utf-8"),
+                                tab_format="alphatex",
+                                generator_version="v2-rhythm-grid",
+                            )
+                        )
+                        jobs[job_id]["tab_status"] = "complete"
+                        jobs[job_id]["tab_error"] = None
+                    except FingeringCollapseError as exc:
+                        logger.error("Job %s: phase2 tab pipeline fingering collapse: %s", job_id, exc, exc_info=True)
+                        jobs[job_id]["midi_status"] = "failed"
+                        jobs[job_id]["midi_error"] = str(exc)
+                        jobs[job_id]["tab_status"] = "failed"
+                        jobs[job_id]["tab_error"] = str(exc)
+                        jobs[job_id]["tab_debug_info"] = exc.debug_info
+                    except Exception as exc:
+                        logger.error("Job %s: phase2 tab pipeline failed: %s", job_id, exc, exc_info=True)
+                        jobs[job_id]["midi_status"] = "failed"
+                        jobs[job_id]["midi_error"] = str(exc)
+                        jobs[job_id]["tab_status"] = "not_requested"
+                        jobs[job_id]["tab_error"] = None
                 logger.info("Job %s: stem splitting complete", job_id)
             except Exception as exc:
                 logger.error("Job %s: stem splitting failed: %s", job_id, exc, exc_info=True)
                 jobs[job_id]["stems_status"] = "failed"
                 jobs[job_id]["stems_error"] = str(exc)
+                jobs[job_id]["midi_status"] = "not_requested"
+                jobs[job_id]["midi_error"] = None
+                jobs[job_id]["tab_status"] = "not_requested"
+                jobs[job_id]["tab_error"] = None
         else:
             logger.info("Job %s: stems not requested (mode=%s)", job_id, jobs[job_id].get("process_mode"))
             jobs[job_id]["stems_status"] = "not_requested"
             jobs[job_id]["stems_error"] = None
+            jobs[job_id]["midi_status"] = "not_requested"
+            jobs[job_id]["midi_error"] = None
+            jobs[job_id]["tab_status"] = "not_requested"
+            jobs[job_id]["tab_error"] = None
 
         set_stage(
             "persisting",
@@ -260,8 +410,118 @@ async def health():
     return {"status": "ok"}
 
 
+def _parse_time_signature(time_signature: str) -> tuple[int, int]:
+    match = re.match(r"^\s*(\d+)\s*/\s*(\d+)\s*$", time_signature or "")
+    if not match:
+        raise HTTPException(400, "time_signature must use the form 'N/D' (for example '4/4').")
+    numerator = int(match.group(1))
+    denominator = int(match.group(2))
+    if numerator <= 0 or denominator <= 0:
+        raise HTTPException(400, "time_signature values must be positive.")
+    return numerator, denominator
+
+
+@app.post("/api/tab/from-demucs-stems")
+async def tab_from_demucs_stems(
+    bass: UploadFile,
+    drums: UploadFile,
+    song_id: int | None = Form(None),
+    bpm: float | None = Form(None),
+    time_signature: str = Form("4/4"),
+    subdivision: int = Form(16),
+    max_fret: int = Form(24),
+    sync_every_bars: int = Form(8),
+    tabGenerationQuality: Literal["standard", "high_accuracy", "high_accuracy_aggressive"] = Form("standard"),
+):
+    signature = _parse_time_signature(time_signature)
+    bass_bytes = await bass.read()
+    drums_bytes = await drums.read()
+    if not bass_bytes:
+        raise HTTPException(400, "bass file is empty")
+    if not drums_bytes:
+        raise HTTPException(400, "drums file is empty")
+
+    resolved_song_id = song_id
+    if resolved_song_id is None:
+        resolved_song_id = await _create_song_record(
+            bass.filename or "demucs-bass.wav",
+            bass.content_type or "audio/wav",
+            bass_bytes,
+        )
+
+    stem_tmp_dir = STEMS_DIR / "_tmp" / uuid.uuid4().hex[:12]
+    stem_tmp_dir.mkdir(parents=True, exist_ok=True)
+    bass_path = stem_tmp_dir / "bass.wav"
+    drums_path = stem_tmp_dir / "drums.wav"
+    bass_path.write_bytes(bass_bytes)
+    drums_path.write_bytes(drums_bytes)
+
+    try:
+        result = tab_pipeline.run(
+            bass_path,
+            drums_path,
+            bpm_hint=bpm,
+            time_signature=signature,
+            subdivision=subdivision,
+            max_fret=max_fret,
+            sync_every_bars=sync_every_bars,
+            tab_generation_quality_mode=tabGenerationQuality,
+        )
+    except FingeringCollapseError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "fingering_collapse",
+                "message": str(exc),
+                "debug_info": exc.debug_info,
+            },
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(422, f"tab generation failed: {exc}") from exc
+    finally:
+        shutil.rmtree(stem_tmp_dir, ignore_errors=True)
+
+    midi_id = await _persist_midi(
+        resolved_song_id,
+        source_stem_key="bass",
+        midi_blob=result.midi_bytes,
+        engine="basic_pitch",
+    )
+    await _persist_tab(
+        resolved_song_id,
+        source_midi_id=midi_id,
+        tab_blob=result.alphatex.encode("utf-8"),
+        tab_format="alphatex",
+        generator_version="v2-rhythm-grid",
+    )
+
+    return {
+        "song_id": resolved_song_id,
+        "alphatex": result.alphatex,
+        "tempo_used": result.tempo_used,
+        "bars": [
+            {
+                "index": bar.index,
+                "start_sec": bar.start_sec,
+                "end_sec": bar.end_sec,
+                "beats_sec": bar.beats_sec,
+            }
+            for bar in result.bars
+        ],
+        "sync_points": [
+            {"bar_index": point.bar_index, "millisecond_offset": point.millisecond_offset}
+            for point in result.sync_points
+        ],
+        "debug_info": result.debug_info,
+    }
+
+
 @app.post("/api/analyze")
-async def analyze(file: UploadFile, process_mode: ProcessMode = Form("analysis_only")):
+async def analyze(
+    file: UploadFile,
+    process_mode: ProcessMode = Form("analysis_only"),
+    tabGenerationQuality: Literal["standard", "high_accuracy", "high_accuracy_aggressive"] = Form("standard"),
+):
     job_id = uuid.uuid4().hex[:12]
     ext = Path(file.filename).suffix if file.filename else ".mp3"
     audio_path = UPLOAD_DIR / f"{job_id}{ext}"
@@ -280,8 +540,13 @@ async def analyze(file: UploadFile, process_mode: ProcessMode = Form("analysis_o
         "progress_pct": 0,
         "stage_progress_pct": 0,
         "process_mode": process_mode,
+        "tab_generation_quality": tabGenerationQuality,
         "stems_status": "queued" if process_mode == "analysis_and_stems" else "not_requested",
         "stems_error": None,
+        "midi_status": "queued" if process_mode == "analysis_and_stems" else "not_requested",
+        "midi_error": None,
+        "tab_status": "queued" if process_mode == "analysis_and_stems" else "not_requested",
+        "tab_error": None,
         "audio_path": str(audio_path),
         "song_id": song_id,
         "error": None,
@@ -305,6 +570,10 @@ async def status(job_id: str):
         "stage_history": job.get("stage_history", []),
         "stems_status": job.get("stems_status", "not_requested"),
         "stems_error": job.get("stems_error"),
+        "midi_status": job.get("midi_status", "not_requested"),
+        "midi_error": job.get("midi_error"),
+        "tab_status": job.get("tab_status", "not_requested"),
+        "tab_error": job.get("tab_error"),
         "progress": job.get("progress"),
         "error": job.get("error"),
     }
@@ -464,6 +733,105 @@ async def get_song_stems(song_id: int):
         for row in stems_rs.rows
     ]
     return {"stems": stems}
+
+
+@app.get("/api/songs/{song_id}/tabs")
+async def get_song_tabs(song_id: int):
+    rs = await execute(
+        """
+        SELECT id, source_midi_id, tab_format, tuning, strings, generator_version, status, error_message, created_at, updated_at
+        FROM song_tabs
+        WHERE song_id = ?
+        ORDER BY updated_at DESC, id DESC
+        LIMIT 1
+        """,
+        [song_id],
+    )
+    if not rs.rows:
+        return {"tab": None}
+
+    row = rs.rows[0]
+    return {
+        "tab": {
+            "id": row[0],
+            "source_midi_id": row[1],
+            "tab_format": row[2],
+            "tuning": row[3],
+            "strings": row[4],
+            "generator_version": row[5],
+            "status": row[6],
+            "error_message": row[7],
+            "created_at": row[8],
+            "updated_at": row[9],
+        }
+    }
+
+
+@app.get("/api/songs/{song_id}/midi/file")
+async def get_song_midi_file(song_id: int):
+    rs = await execute(
+        """
+        SELECT midi_blob
+        FROM song_midis
+        WHERE song_id = ?
+        ORDER BY updated_at DESC, id DESC
+        LIMIT 1
+        """,
+        [song_id],
+    )
+    if not rs.rows:
+        raise HTTPException(404, "MIDI not found")
+    return Response(content=rs.rows[0][0], media_type="audio/midi")
+
+
+@app.get("/api/songs/{song_id}/tabs/file")
+async def get_song_tabs_file(song_id: int):
+    rs = await execute(
+        """
+        SELECT tab_blob, tab_format
+        FROM song_tabs
+        WHERE song_id = ?
+        ORDER BY updated_at DESC, id DESC
+        LIMIT 1
+        """,
+        [song_id],
+    )
+    if not rs.rows:
+        raise HTTPException(404, "Tabs not found")
+    tab_blob, tab_format = rs.rows[0][0], (rs.rows[0][1] or "").lower()
+    media_type = "text/plain; charset=utf-8" if tab_format == "alphatex" else "application/octet-stream"
+    return Response(content=tab_blob, media_type=media_type)
+
+
+@app.get("/api/songs/{song_id}/tabs/download")
+async def download_song_tabs_file(song_id: int):
+    rs = await execute(
+        """
+        SELECT s.title, t.tab_blob, t.tab_format
+        FROM song_tabs t
+        JOIN songs s ON s.id = t.song_id
+        WHERE t.song_id = ?
+        ORDER BY t.updated_at DESC, t.id DESC
+        LIMIT 1
+        """,
+        [song_id],
+    )
+    if not rs.rows:
+        raise HTTPException(404, "Tabs not found")
+
+    title, tab_blob, tab_format = rs.rows[0][0], rs.rows[0][1], (rs.rows[0][2] or "gp5").lower()
+    safe_title = re.sub(r"[^a-zA-Z0-9._-]+", "_", title or f"song-{song_id}").strip("._-") or f"song-{song_id}"
+    extension = "alphatex" if tab_format == "alphatex" else ("gp5" if tab_format not in {"gp3", "gp4", "gp5", "gpx"} else tab_format)
+    filename = f"{safe_title}.{extension}"
+
+    return Response(
+        content=tab_blob,
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(tab_blob)),
+        },
+    )
 
 
 @app.get("/api/audio/{audio_id}")

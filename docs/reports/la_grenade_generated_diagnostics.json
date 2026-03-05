@@ -1,0 +1,3101 @@
+{
+  "track": "Clara Luciani - La grenade (Clip officiel) [85m-Qgo9_nE].mp3",
+  "bass_stem": "backend/stems/la_grenade_e2e/bass.wav",
+  "drums_stem": "backend/stems/la_grenade_e2e/drums.wav",
+  "tempo_used": 120.0,
+  "total_bars": 103,
+  "debug_info": {
+    "rhythm_source": "madmom",
+    "beat_count": 402,
+    "downbeat_count": 100,
+    "raw_note_count": 322,
+    "cleaned_note_count": 340,
+    "quantized_note_count": 359,
+    "fingered_note_count": 359,
+    "after_fingering": 359,
+    "after_exporting": 359,
+    "derived_bpm": 130.4347826086954,
+    "bpm_hint": 120.0,
+    "tempo_used": 120.0,
+    "song_bpm": 120.0,
+    "beat_bpm_estimate_raw": 130.4347826086954,
+    "beat_bpm_estimate_corrected": 130.4347826086954,
+    "grid_correction_applied": "none",
+    "stage_counts": {
+      "raw": 322,
+      "cleaned": 340,
+      "quantized": 359,
+      "fingered": 359,
+      "exported": 359
+    },
+    "candidate_probe": {
+      "max_fret": 24,
+      "checked_pitches": [
+        34,
+        33,
+        40,
+        62
+      ],
+      "candidate_map": {
+        "34": [
+          [
+            3,
+            1
+          ],
+          [
+            4,
+            6
+          ]
+        ],
+        "33": [
+          [
+            3,
+            0
+          ],
+          [
+            4,
+            5
+          ]
+        ],
+        "40": [
+          [
+            2,
+            2
+          ],
+          [
+            3,
+            7
+          ],
+          [
+            4,
+            12
+          ]
+        ],
+        "62": [
+          [
+            1,
+            19
+          ],
+          [
+            2,
+            24
+          ]
+        ]
+      },
+      "failures": {},
+      "all_ok": true
+    },
+    "fingering": {
+      "dropped_reasons": {},
+      "dropped_note_count": 0,
+      "playable_note_count": 359,
+      "input_note_count": 359,
+      "octave_salvage_enabled": false,
+      "octave_salvaged_notes": 0,
+      "tuning_midi": {
+        "4": 28,
+        "3": 33,
+        "2": 38,
+        "1": 43
+      },
+      "max_fret": 24
+    },
+    "tab_generation_quality_mode": "high_accuracy_aggressive",
+    "tab_last_sync_ms": 194210,
+    "audio_duration_sec": 194.65290249433107,
+    "total_bars": 103,
+    "QUALITY_MODE_SUSPECT_SILENCE": true,
+    "suspect_silence_bars_count": 4,
+    "suspect_bars": [
+      {
+        "bar_index": 93,
+        "rms": 0.03140203483857491,
+        "local_median_rms": 0.026964770687332117,
+        "onset_peaks": 0,
+        "triggered_by_rms": true,
+        "triggered_by_onsets": false
+      },
+      {
+        "bar_index": 94,
+        "rms": 0.03248886232763526,
+        "local_median_rms": 0.02252750653608932,
+        "onset_peaks": 0,
+        "triggered_by_rms": true,
+        "triggered_by_onsets": false
+      },
+      {
+        "bar_index": 95,
+        "rms": 0.03323916089513481,
+        "local_median_rms": 0.026964770687332117,
+        "onset_peaks": 0,
+        "triggered_by_rms": true,
+        "triggered_by_onsets": false
+      },
+      {
+        "bar_index": 96,
+        "rms": 0.04174652245085888,
+        "local_median_rms": 0.03140203483857491,
+        "onset_peaks": 0,
+        "triggered_by_rms": true,
+        "triggered_by_onsets": false
+      }
+    ],
+    "notes_added_second_pass": 18,
+    "notes_per_bar_before_high_accuracy": [
+      5,
+      4,
+      6,
+      4,
+      6,
+      7,
+      6,
+      6,
+      6,
+      6,
+      4,
+      6,
+      6,
+      6,
+      8,
+      7,
+      5,
+      6,
+      5,
+      4,
+      1,
+      3,
+      6,
+      5,
+      2,
+      4,
+      1,
+      0,
+      0,
+      2,
+      0,
+      0,
+      0,
+      3,
+      1,
+      2,
+      5,
+      5,
+      6,
+      8,
+      6,
+      5,
+      6,
+      6,
+      3,
+      0,
+      1,
+      3,
+      5,
+      6,
+      6,
+      4,
+      1,
+      5,
+      5,
+      5,
+      4,
+      5,
+      2,
+      2,
+      2,
+      4,
+      2,
+      5,
+      6,
+      6,
+      5,
+      3,
+      4,
+      6,
+      4,
+      6,
+      2,
+      4,
+      1,
+      3,
+      1,
+      0,
+      0,
+      0,
+      5,
+      4,
+      6,
+      1,
+      6,
+      4,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      2,
+      2
+    ],
+    "notes_per_bar_after_high_accuracy": [
+      5,
+      4,
+      6,
+      4,
+      6,
+      7,
+      6,
+      6,
+      6,
+      6,
+      4,
+      6,
+      6,
+      6,
+      8,
+      7,
+      5,
+      6,
+      5,
+      4,
+      1,
+      3,
+      6,
+      5,
+      2,
+      4,
+      1,
+      0,
+      0,
+      2,
+      0,
+      0,
+      0,
+      3,
+      1,
+      2,
+      5,
+      5,
+      6,
+      8,
+      6,
+      5,
+      6,
+      6,
+      3,
+      0,
+      1,
+      3,
+      5,
+      6,
+      6,
+      4,
+      1,
+      5,
+      5,
+      5,
+      4,
+      5,
+      2,
+      2,
+      2,
+      4,
+      2,
+      5,
+      6,
+      6,
+      5,
+      3,
+      4,
+      6,
+      4,
+      6,
+      2,
+      4,
+      1,
+      3,
+      1,
+      0,
+      0,
+      0,
+      5,
+      4,
+      6,
+      1,
+      6,
+      4,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      4,
+      4,
+      5,
+      5,
+      2,
+      2
+    ]
+  },
+  "generated_bars": [
+    {
+      "bar_index": 1,
+      "generated_note_count": 5,
+      "generated_notes": [
+        {
+          "token": "6.4.8",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.8",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.4",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        }
+      ]
+    },
+    {
+      "bar_index": 2,
+      "generated_note_count": 4,
+      "generated_notes": [
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.8",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "5.1.16",
+          "string": 1,
+          "fret": 5,
+          "midi": 45
+        }
+      ]
+    },
+    {
+      "bar_index": 3,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "5.1.16",
+          "string": 1,
+          "fret": 5,
+          "midi": 45
+        },
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.8",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        }
+      ]
+    },
+    {
+      "bar_index": 4,
+      "generated_note_count": 4,
+      "generated_notes": [
+        {
+          "token": "16.1.16",
+          "string": 1,
+          "fret": 16,
+          "midi": 56
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        }
+      ]
+    },
+    {
+      "bar_index": 5,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.8",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "8.2.16",
+          "string": 2,
+          "fret": 8,
+          "midi": 53
+        }
+      ]
+    },
+    {
+      "bar_index": 6,
+      "generated_note_count": 7,
+      "generated_notes": [
+        {
+          "token": "8.2.16",
+          "string": 2,
+          "fret": 8,
+          "midi": 53
+        },
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "4.1.16",
+          "string": 1,
+          "fret": 4,
+          "midi": 44
+        },
+        {
+          "token": "6.4.8",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "7.3.16",
+          "string": 3,
+          "fret": 7,
+          "midi": 57
+        }
+      ]
+    },
+    {
+      "bar_index": 7,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "5.4.16",
+          "string": 4,
+          "fret": 5,
+          "midi": 60
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "7.2.8",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "6.2.16",
+          "string": 2,
+          "fret": 6,
+          "midi": 51
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        }
+      ]
+    },
+    {
+      "bar_index": 8,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "7.2.8",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "7.2.8",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "8.3.16",
+          "string": 3,
+          "fret": 8,
+          "midi": 58
+        },
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        }
+      ]
+    },
+    {
+      "bar_index": 9,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "10.3.8",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.3.16",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.3.8",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.1.16",
+          "string": 1,
+          "fret": 10,
+          "midi": 50
+        },
+        {
+          "token": "10.3.16",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        }
+      ]
+    },
+    {
+      "bar_index": 10,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "10.3.16",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.3.8",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.3.8",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "12.2.16",
+          "string": 2,
+          "fret": 12,
+          "midi": 57
+        },
+        {
+          "token": "10.3.8",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.3.8",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        }
+      ]
+    },
+    {
+      "bar_index": 11,
+      "generated_note_count": 4,
+      "generated_notes": [
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "9.3.8",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "8.4.16",
+          "string": 4,
+          "fret": 8,
+          "midi": 63
+        }
+      ]
+    },
+    {
+      "bar_index": 12,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "9.3.8",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "5.1.16",
+          "string": 1,
+          "fret": 5,
+          "midi": 45
+        }
+      ]
+    },
+    {
+      "bar_index": 13,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.8",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.8",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "8.2.16",
+          "string": 2,
+          "fret": 8,
+          "midi": 53
+        }
+      ]
+    },
+    {
+      "bar_index": 14,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "8.2.16",
+          "string": 2,
+          "fret": 8,
+          "midi": 53
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "11.2.16",
+          "string": 2,
+          "fret": 11,
+          "midi": 56
+        },
+        {
+          "token": "10.2.16",
+          "string": 2,
+          "fret": 10,
+          "midi": 55
+        }
+      ]
+    },
+    {
+      "bar_index": 15,
+      "generated_note_count": 8,
+      "generated_notes": [
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "5.4.16",
+          "string": 4,
+          "fret": 5,
+          "midi": 60
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "5.4.16",
+          "string": 4,
+          "fret": 5,
+          "midi": 60
+        },
+        {
+          "token": "5.2.16",
+          "string": 2,
+          "fret": 5,
+          "midi": 50
+        },
+        {
+          "token": "6.2.16",
+          "string": 2,
+          "fret": 6,
+          "midi": 51
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        }
+      ]
+    },
+    {
+      "bar_index": 16,
+      "generated_note_count": 7,
+      "generated_notes": [
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "7.2.8",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "10.2.16",
+          "string": 2,
+          "fret": 10,
+          "midi": 55
+        },
+        {
+          "token": "8.2.16",
+          "string": 2,
+          "fret": 8,
+          "midi": 53
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        }
+      ]
+    },
+    {
+      "bar_index": 17,
+      "generated_note_count": 5,
+      "generated_notes": [
+        {
+          "token": "5.2.16",
+          "string": 2,
+          "fret": 5,
+          "midi": 50
+        },
+        {
+          "token": "5.2.8",
+          "string": 2,
+          "fret": 5,
+          "midi": 50
+        },
+        {
+          "token": "5.2.16",
+          "string": 2,
+          "fret": 5,
+          "midi": 50
+        },
+        {
+          "token": "5.2.8",
+          "string": 2,
+          "fret": 5,
+          "midi": 50
+        },
+        {
+          "token": "4.2.16",
+          "string": 2,
+          "fret": 4,
+          "midi": 49
+        }
+      ]
+    },
+    {
+      "bar_index": 18,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "4.2.16",
+          "string": 2,
+          "fret": 4,
+          "midi": 49
+        },
+        {
+          "token": "5.2.8",
+          "string": 2,
+          "fret": 5,
+          "midi": 50
+        },
+        {
+          "token": "5.2.16",
+          "string": 2,
+          "fret": 5,
+          "midi": 50
+        },
+        {
+          "token": "5.2.8",
+          "string": 2,
+          "fret": 5,
+          "midi": 50
+        },
+        {
+          "token": "5.2.16",
+          "string": 2,
+          "fret": 5,
+          "midi": 50
+        },
+        {
+          "token": "4.2.16",
+          "string": 2,
+          "fret": 4,
+          "midi": 49
+        }
+      ]
+    },
+    {
+      "bar_index": 19,
+      "generated_note_count": 5,
+      "generated_notes": [
+        {
+          "token": "4.2.16",
+          "string": 2,
+          "fret": 4,
+          "midi": 49
+        },
+        {
+          "token": "4.2.16",
+          "string": 2,
+          "fret": 4,
+          "midi": 49
+        },
+        {
+          "token": "4.2.8",
+          "string": 2,
+          "fret": 4,
+          "midi": 49
+        },
+        {
+          "token": "4.2.8",
+          "string": 2,
+          "fret": 4,
+          "midi": 49
+        },
+        {
+          "token": "5.1.16",
+          "string": 1,
+          "fret": 5,
+          "midi": 45
+        }
+      ]
+    },
+    {
+      "bar_index": 20,
+      "generated_note_count": 4,
+      "generated_notes": [
+        {
+          "token": "4.2.16",
+          "string": 2,
+          "fret": 4,
+          "midi": 49
+        },
+        {
+          "token": "4.2.16",
+          "string": 2,
+          "fret": 4,
+          "midi": 49
+        },
+        {
+          "token": "4.2.16",
+          "string": 2,
+          "fret": 4,
+          "midi": 49
+        },
+        {
+          "token": "4.2.8",
+          "string": 2,
+          "fret": 4,
+          "midi": 49
+        }
+      ]
+    },
+    {
+      "bar_index": 21,
+      "generated_note_count": 1,
+      "generated_notes": [
+        {
+          "token": "6.4.2",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        }
+      ]
+    },
+    {
+      "bar_index": 22,
+      "generated_note_count": 3,
+      "generated_notes": [
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "9.1.4",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "6.4.4",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        }
+      ]
+    },
+    {
+      "bar_index": 23,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "7.2.4",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "5.4.4",
+          "string": 4,
+          "fret": 5,
+          "midi": 60
+        },
+        {
+          "token": "5.4.16",
+          "string": 4,
+          "fret": 5,
+          "midi": 60
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "5.4.16",
+          "string": 4,
+          "fret": 5,
+          "midi": 60
+        }
+      ]
+    },
+    {
+      "bar_index": 24,
+      "generated_note_count": 5,
+      "generated_notes": [
+        {
+          "token": "5.4.16",
+          "string": 4,
+          "fret": 5,
+          "midi": 60
+        },
+        {
+          "token": "7.1.4",
+          "string": 1,
+          "fret": 7,
+          "midi": 47
+        },
+        {
+          "token": "7.2.4",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "5.4.16",
+          "string": 4,
+          "fret": 5,
+          "midi": 60
+        }
+      ]
+    },
+    {
+      "bar_index": 25,
+      "generated_note_count": 2,
+      "generated_notes": [
+        {
+          "token": "5.4.16",
+          "string": 4,
+          "fret": 5,
+          "midi": 60
+        },
+        {
+          "token": "6.4.2",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        }
+      ]
+    },
+    {
+      "bar_index": 26,
+      "generated_note_count": 4,
+      "generated_notes": [
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "9.1.8",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "9.1.8",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "6.4.4",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        }
+      ]
+    },
+    {
+      "bar_index": 27,
+      "generated_note_count": 1,
+      "generated_notes": [
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        }
+      ]
+    },
+    {
+      "bar_index": 28,
+      "generated_note_count": 0,
+      "generated_notes": []
+    },
+    {
+      "bar_index": 29,
+      "generated_note_count": 0,
+      "generated_notes": []
+    },
+    {
+      "bar_index": 30,
+      "generated_note_count": 2,
+      "generated_notes": [
+        {
+          "token": "9.1.8",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "9.1.16",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        }
+      ]
+    },
+    {
+      "bar_index": 31,
+      "generated_note_count": 0,
+      "generated_notes": []
+    },
+    {
+      "bar_index": 32,
+      "generated_note_count": 0,
+      "generated_notes": []
+    },
+    {
+      "bar_index": 33,
+      "generated_note_count": 0,
+      "generated_notes": []
+    },
+    {
+      "bar_index": 34,
+      "generated_note_count": 3,
+      "generated_notes": [
+        {
+          "token": "9.1.8",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "9.1.8",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        }
+      ]
+    },
+    {
+      "bar_index": 35,
+      "generated_note_count": 1,
+      "generated_notes": [
+        {
+          "token": "7.1.16",
+          "string": 1,
+          "fret": 7,
+          "midi": 47
+        }
+      ]
+    },
+    {
+      "bar_index": 36,
+      "generated_note_count": 2,
+      "generated_notes": [
+        {
+          "token": "9.1.16",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "11.1.16",
+          "string": 1,
+          "fret": 11,
+          "midi": 51
+        }
+      ]
+    },
+    {
+      "bar_index": 37,
+      "generated_note_count": 5,
+      "generated_notes": [
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "9.2.8",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        }
+      ]
+    },
+    {
+      "bar_index": 38,
+      "generated_note_count": 5,
+      "generated_notes": [
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.8",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.8",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "9.2.8",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "7.3.16",
+          "string": 3,
+          "fret": 7,
+          "midi": 57
+        }
+      ]
+    },
+    {
+      "bar_index": 39,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "5.4.16",
+          "string": 4,
+          "fret": 5,
+          "midi": 60
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "7.2.8",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "5.2.16",
+          "string": 2,
+          "fret": 5,
+          "midi": 50
+        },
+        {
+          "token": "6.2.16",
+          "string": 2,
+          "fret": 6,
+          "midi": 51
+        }
+      ]
+    },
+    {
+      "bar_index": 40,
+      "generated_note_count": 8,
+      "generated_notes": [
+        {
+          "token": "6.2.16",
+          "string": 2,
+          "fret": 6,
+          "midi": 51
+        },
+        {
+          "token": "7.2.8",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "5.4.16",
+          "string": 4,
+          "fret": 5,
+          "midi": 60
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "5.4.16",
+          "string": 4,
+          "fret": 5,
+          "midi": 60
+        },
+        {
+          "token": "5.4.4",
+          "string": 4,
+          "fret": 5,
+          "midi": 60
+        },
+        {
+          "token": "8.3.16",
+          "string": 3,
+          "fret": 8,
+          "midi": 58
+        },
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        }
+      ]
+    },
+    {
+      "bar_index": 41,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "10.3.8",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.3.8",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.3.8",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "13.4.16",
+          "string": 4,
+          "fret": 13,
+          "midi": 68
+        },
+        {
+          "token": "14.4.16",
+          "string": 4,
+          "fret": 14,
+          "midi": 69
+        }
+      ]
+    },
+    {
+      "bar_index": 42,
+      "generated_note_count": 5,
+      "generated_notes": [
+        {
+          "token": "19.1.16",
+          "string": 1,
+          "fret": 19,
+          "midi": 59
+        },
+        {
+          "token": "15.4.16",
+          "string": 4,
+          "fret": 15,
+          "midi": 70
+        },
+        {
+          "token": "15.4.16",
+          "string": 4,
+          "fret": 15,
+          "midi": 70
+        },
+        {
+          "token": "12.2.8",
+          "string": 2,
+          "fret": 12,
+          "midi": 57
+        },
+        {
+          "token": "12.1.8",
+          "string": 1,
+          "fret": 12,
+          "midi": 52
+        }
+      ]
+    },
+    {
+      "bar_index": 43,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "8.3.16",
+          "string": 3,
+          "fret": 8,
+          "midi": 58
+        },
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "9.3.4",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "11.1.16",
+          "string": 1,
+          "fret": 11,
+          "midi": 51
+        },
+        {
+          "token": "8.4.16",
+          "string": 4,
+          "fret": 8,
+          "midi": 63
+        }
+      ]
+    },
+    {
+      "bar_index": 44,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "8.4.16",
+          "string": 4,
+          "fret": 8,
+          "midi": 63
+        },
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "9.3.8",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "11.1.16",
+          "string": 1,
+          "fret": 11,
+          "midi": 51
+        },
+        {
+          "token": "8.4.16",
+          "string": 4,
+          "fret": 8,
+          "midi": 63
+        }
+      ]
+    },
+    {
+      "bar_index": 45,
+      "generated_note_count": 3,
+      "generated_notes": [
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        }
+      ]
+    },
+    {
+      "bar_index": 46,
+      "generated_note_count": 0,
+      "generated_notes": []
+    },
+    {
+      "bar_index": 47,
+      "generated_note_count": 1,
+      "generated_notes": [
+        {
+          "token": "6.2.16",
+          "string": 2,
+          "fret": 6,
+          "midi": 51
+        }
+      ]
+    },
+    {
+      "bar_index": 48,
+      "generated_note_count": 3,
+      "generated_notes": [
+        {
+          "token": "7.2.8",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "10.2.16",
+          "string": 2,
+          "fret": 10,
+          "midi": 55
+        },
+        {
+          "token": "12.3.16",
+          "string": 3,
+          "fret": 12,
+          "midi": 62
+        }
+      ]
+    },
+    {
+      "bar_index": 49,
+      "generated_note_count": 5,
+      "generated_notes": [
+        {
+          "token": "10.3.16",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.3.16",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.3.16",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.3.8",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        }
+      ]
+    },
+    {
+      "bar_index": 50,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "10.3.16",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.3.8",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.3.16",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.3.8",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.3.8",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        }
+      ]
+    },
+    {
+      "bar_index": 51,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "9.3.8",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "10.2.16",
+          "string": 2,
+          "fret": 10,
+          "midi": 55
+        }
+      ]
+    },
+    {
+      "bar_index": 52,
+      "generated_note_count": 4,
+      "generated_notes": [
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "9.3.8",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "8.4.16",
+          "string": 4,
+          "fret": 8,
+          "midi": 63
+        }
+      ]
+    },
+    {
+      "bar_index": 53,
+      "generated_note_count": 1,
+      "generated_notes": [
+        {
+          "token": "6.4.2",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        }
+      ]
+    },
+    {
+      "bar_index": 54,
+      "generated_note_count": 5,
+      "generated_notes": [
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "9.1.8",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "9.1.8",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "6.4.8",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.8",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        }
+      ]
+    },
+    {
+      "bar_index": 55,
+      "generated_note_count": 5,
+      "generated_notes": [
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "7.2.8",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "7.2.8",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "5.4.8",
+          "string": 4,
+          "fret": 5,
+          "midi": 60
+        },
+        {
+          "token": "5.4.8",
+          "string": 4,
+          "fret": 5,
+          "midi": 60
+        }
+      ]
+    },
+    {
+      "bar_index": 56,
+      "generated_note_count": 5,
+      "generated_notes": [
+        {
+          "token": "5.4.16",
+          "string": 4,
+          "fret": 5,
+          "midi": 60
+        },
+        {
+          "token": "7.1.8",
+          "string": 1,
+          "fret": 7,
+          "midi": 47
+        },
+        {
+          "token": "7.1.8",
+          "string": 1,
+          "fret": 7,
+          "midi": 47
+        },
+        {
+          "token": "7.2.8",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "7.2.8",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        }
+      ]
+    },
+    {
+      "bar_index": 57,
+      "generated_note_count": 4,
+      "generated_notes": [
+        {
+          "token": "6.4.8",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.8",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.8",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.8",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        }
+      ]
+    },
+    {
+      "bar_index": 58,
+      "generated_note_count": 5,
+      "generated_notes": [
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "9.1.8",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "9.1.8",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "6.4.8",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "6.4.8",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        }
+      ]
+    },
+    {
+      "bar_index": 59,
+      "generated_note_count": 2,
+      "generated_notes": [
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        }
+      ]
+    },
+    {
+      "bar_index": 60,
+      "generated_note_count": 2,
+      "generated_notes": [
+        {
+          "token": "7.2.8",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        }
+      ]
+    },
+    {
+      "bar_index": 61,
+      "generated_note_count": 2,
+      "generated_notes": [
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        }
+      ]
+    },
+    {
+      "bar_index": 62,
+      "generated_note_count": 4,
+      "generated_notes": [
+        {
+          "token": "9.1.8",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "9.1.8",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "9.2.8",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "9.2.8",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        }
+      ]
+    },
+    {
+      "bar_index": 63,
+      "generated_note_count": 2,
+      "generated_notes": [
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "12.3.8",
+          "string": 3,
+          "fret": 12,
+          "midi": 62
+        }
+      ]
+    },
+    {
+      "bar_index": 64,
+      "generated_note_count": 5,
+      "generated_notes": [
+        {
+          "token": "12.3.16",
+          "string": 3,
+          "fret": 12,
+          "midi": 62
+        },
+        {
+          "token": "12.2.16",
+          "string": 2,
+          "fret": 12,
+          "midi": 57
+        },
+        {
+          "token": "12.2.8",
+          "string": 2,
+          "fret": 12,
+          "midi": 57
+        },
+        {
+          "token": "12.3.8",
+          "string": 3,
+          "fret": 12,
+          "midi": 62
+        },
+        {
+          "token": "12.3.8",
+          "string": 3,
+          "fret": 12,
+          "midi": 62
+        }
+      ]
+    },
+    {
+      "bar_index": 65,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "14.3.16",
+          "string": 3,
+          "fret": 14,
+          "midi": 64
+        },
+        {
+          "token": "14.3.8",
+          "string": 3,
+          "fret": 14,
+          "midi": 64
+        },
+        {
+          "token": "14.3.16",
+          "string": 3,
+          "fret": 14,
+          "midi": 64
+        },
+        {
+          "token": "14.3.8",
+          "string": 3,
+          "fret": 14,
+          "midi": 64
+        },
+        {
+          "token": "14.3.16",
+          "string": 3,
+          "fret": 14,
+          "midi": 64
+        },
+        {
+          "token": "14.3.8",
+          "string": 3,
+          "fret": 14,
+          "midi": 64
+        }
+      ]
+    },
+    {
+      "bar_index": 66,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "14.2.8",
+          "string": 2,
+          "fret": 14,
+          "midi": 59
+        },
+        {
+          "token": "14.2.8",
+          "string": 2,
+          "fret": 14,
+          "midi": 59
+        },
+        {
+          "token": "14.3.16",
+          "string": 3,
+          "fret": 14,
+          "midi": 64
+        },
+        {
+          "token": "14.3.8",
+          "string": 3,
+          "fret": 14,
+          "midi": 64
+        },
+        {
+          "token": "14.3.16",
+          "string": 3,
+          "fret": 14,
+          "midi": 64
+        },
+        {
+          "token": "14.3.16",
+          "string": 3,
+          "fret": 14,
+          "midi": 64
+        }
+      ]
+    },
+    {
+      "bar_index": 67,
+      "generated_note_count": 5,
+      "generated_notes": [
+        {
+          "token": "14.3.16",
+          "string": 3,
+          "fret": 14,
+          "midi": 64
+        },
+        {
+          "token": "12.3.16",
+          "string": 3,
+          "fret": 12,
+          "midi": 62
+        },
+        {
+          "token": "11.2.8",
+          "string": 2,
+          "fret": 11,
+          "midi": 56
+        },
+        {
+          "token": "14.1.16",
+          "string": 1,
+          "fret": 14,
+          "midi": 54
+        },
+        {
+          "token": "12.2.16",
+          "string": 2,
+          "fret": 12,
+          "midi": 57
+        }
+      ]
+    },
+    {
+      "bar_index": 68,
+      "generated_note_count": 3,
+      "generated_notes": [
+        {
+          "token": "14.2.16",
+          "string": 2,
+          "fret": 14,
+          "midi": 59
+        },
+        {
+          "token": "16.2.16",
+          "string": 2,
+          "fret": 16,
+          "midi": 61
+        },
+        {
+          "token": "12.2.16",
+          "string": 2,
+          "fret": 12,
+          "midi": 57
+        }
+      ]
+    },
+    {
+      "bar_index": 69,
+      "generated_note_count": 4,
+      "generated_notes": [
+        {
+          "token": "8.4.16",
+          "string": 4,
+          "fret": 8,
+          "midi": 63
+        },
+        {
+          "token": "8.4.16",
+          "string": 4,
+          "fret": 8,
+          "midi": 63
+        },
+        {
+          "token": "8.4.16",
+          "string": 4,
+          "fret": 8,
+          "midi": 63
+        },
+        {
+          "token": "8.4.16",
+          "string": 4,
+          "fret": 8,
+          "midi": 63
+        }
+      ]
+    },
+    {
+      "bar_index": 70,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "8.4.16",
+          "string": 4,
+          "fret": 8,
+          "midi": 63
+        },
+        {
+          "token": "12.3.16",
+          "string": 3,
+          "fret": 12,
+          "midi": 62
+        },
+        {
+          "token": "15.1.16",
+          "string": 1,
+          "fret": 15,
+          "midi": 55
+        },
+        {
+          "token": "6.4.16",
+          "string": 4,
+          "fret": 6,
+          "midi": 61
+        },
+        {
+          "token": "16.1.16",
+          "string": 1,
+          "fret": 16,
+          "midi": 56
+        },
+        {
+          "token": "12.3.16",
+          "string": 3,
+          "fret": 12,
+          "midi": 62
+        }
+      ]
+    },
+    {
+      "bar_index": 71,
+      "generated_note_count": 4,
+      "generated_notes": [
+        {
+          "token": "14.2.16",
+          "string": 2,
+          "fret": 14,
+          "midi": 59
+        },
+        {
+          "token": "14.2.16",
+          "string": 2,
+          "fret": 14,
+          "midi": 59
+        },
+        {
+          "token": "14.2.16",
+          "string": 2,
+          "fret": 14,
+          "midi": 59
+        },
+        {
+          "token": "14.2.16",
+          "string": 2,
+          "fret": 14,
+          "midi": 59
+        }
+      ]
+    },
+    {
+      "bar_index": 72,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "14.2.16",
+          "string": 2,
+          "fret": 14,
+          "midi": 59
+        },
+        {
+          "token": "14.2.8",
+          "string": 2,
+          "fret": 14,
+          "midi": 59
+        },
+        {
+          "token": "12.1.16",
+          "string": 1,
+          "fret": 12,
+          "midi": 52
+        },
+        {
+          "token": "5.4.16",
+          "string": 4,
+          "fret": 5,
+          "midi": 60
+        },
+        {
+          "token": "14.1.16",
+          "string": 1,
+          "fret": 14,
+          "midi": 54
+        },
+        {
+          "token": "12.3.16",
+          "string": 3,
+          "fret": 12,
+          "midi": 62
+        }
+      ]
+    },
+    {
+      "bar_index": 73,
+      "generated_note_count": 2,
+      "generated_notes": [
+        {
+          "token": "10.3.16",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "12.2.16",
+          "string": 2,
+          "fret": 12,
+          "midi": 57
+        }
+      ]
+    },
+    {
+      "bar_index": 74,
+      "generated_note_count": 4,
+      "generated_notes": [
+        {
+          "token": "10.3.16",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.1.16",
+          "string": 1,
+          "fret": 10,
+          "midi": 50
+        },
+        {
+          "token": "11.1.16",
+          "string": 1,
+          "fret": 11,
+          "midi": 51
+        },
+        {
+          "token": "12.1.8",
+          "string": 1,
+          "fret": 12,
+          "midi": 52
+        }
+      ]
+    },
+    {
+      "bar_index": 75,
+      "generated_note_count": 1,
+      "generated_notes": [
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        }
+      ]
+    },
+    {
+      "bar_index": 76,
+      "generated_note_count": 3,
+      "generated_notes": [
+        {
+          "token": "11.2.8",
+          "string": 2,
+          "fret": 11,
+          "midi": 56
+        },
+        {
+          "token": "9.1.16",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "11.1.4",
+          "string": 1,
+          "fret": 11,
+          "midi": 51
+        }
+      ]
+    },
+    {
+      "bar_index": 77,
+      "generated_note_count": 1,
+      "generated_notes": [
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        }
+      ]
+    },
+    {
+      "bar_index": 78,
+      "generated_note_count": 0,
+      "generated_notes": []
+    },
+    {
+      "bar_index": 79,
+      "generated_note_count": 0,
+      "generated_notes": []
+    },
+    {
+      "bar_index": 80,
+      "generated_note_count": 0,
+      "generated_notes": []
+    },
+    {
+      "bar_index": 81,
+      "generated_note_count": 5,
+      "generated_notes": [
+        {
+          "token": "10.3.8",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.3.8",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.3.8",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.1.16",
+          "string": 1,
+          "fret": 10,
+          "midi": 50
+        },
+        {
+          "token": "11.1.16",
+          "string": 1,
+          "fret": 11,
+          "midi": 51
+        }
+      ]
+    },
+    {
+      "bar_index": 82,
+      "generated_note_count": 4,
+      "generated_notes": [
+        {
+          "token": "10.3.16",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.3.16",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "10.3.8",
+          "string": 3,
+          "fret": 10,
+          "midi": 60
+        },
+        {
+          "token": "12.2.8",
+          "string": 2,
+          "fret": 12,
+          "midi": 57
+        }
+      ]
+    },
+    {
+      "bar_index": 83,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "11.1.16",
+          "string": 1,
+          "fret": 11,
+          "midi": 51
+        },
+        {
+          "token": "9.3.16",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "11.1.16",
+          "string": 1,
+          "fret": 11,
+          "midi": 51
+        },
+        {
+          "token": "9.3.8",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        },
+        {
+          "token": "9.1.16",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "8.3.16",
+          "string": 3,
+          "fret": 8,
+          "midi": 58
+        }
+      ]
+    },
+    {
+      "bar_index": 84,
+      "generated_note_count": 1,
+      "generated_notes": [
+        {
+          "token": "9.3.8",
+          "string": 3,
+          "fret": 9,
+          "midi": 59
+        }
+      ]
+    },
+    {
+      "bar_index": 85,
+      "generated_note_count": 6,
+      "generated_notes": [
+        {
+          "token": "9.2.8",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        }
+      ]
+    },
+    {
+      "bar_index": 86,
+      "generated_note_count": 4,
+      "generated_notes": [
+        {
+          "token": "9.1.8",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "9.1.8",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        }
+      ]
+    },
+    {
+      "bar_index": 87,
+      "generated_note_count": 0,
+      "generated_notes": []
+    },
+    {
+      "bar_index": 88,
+      "generated_note_count": 0,
+      "generated_notes": []
+    },
+    {
+      "bar_index": 89,
+      "generated_note_count": 0,
+      "generated_notes": []
+    },
+    {
+      "bar_index": 90,
+      "generated_note_count": 0,
+      "generated_notes": []
+    },
+    {
+      "bar_index": 91,
+      "generated_note_count": 0,
+      "generated_notes": []
+    },
+    {
+      "bar_index": 92,
+      "generated_note_count": 0,
+      "generated_notes": []
+    },
+    {
+      "bar_index": 93,
+      "generated_note_count": 0,
+      "generated_notes": []
+    },
+    {
+      "bar_index": 94,
+      "generated_note_count": 4,
+      "generated_notes": [
+        {
+          "token": "9.1.8",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "9.1.16",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        }
+      ]
+    },
+    {
+      "bar_index": 95,
+      "generated_note_count": 4,
+      "generated_notes": [
+        {
+          "token": "9.1.8",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "9.1.16",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "9.1.16",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "9.1.8",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        }
+      ]
+    },
+    {
+      "bar_index": 96,
+      "generated_note_count": 5,
+      "generated_notes": [
+        {
+          "token": "7.1.16",
+          "string": 1,
+          "fret": 7,
+          "midi": 47
+        },
+        {
+          "token": "5.3.16",
+          "string": 3,
+          "fret": 5,
+          "midi": 55
+        },
+        {
+          "token": "9.1.16",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "9.1.16",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "7.2.16",
+          "string": 2,
+          "fret": 7,
+          "midi": 52
+        }
+      ]
+    },
+    {
+      "bar_index": 97,
+      "generated_note_count": 5,
+      "generated_notes": [
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "11.1.16",
+          "string": 1,
+          "fret": 11,
+          "midi": 51
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        },
+        {
+          "token": "11.1.16",
+          "string": 1,
+          "fret": 11,
+          "midi": 51
+        }
+      ]
+    },
+    {
+      "bar_index": 98,
+      "generated_note_count": 2,
+      "generated_notes": [
+        {
+          "token": "9.1.8",
+          "string": 1,
+          "fret": 9,
+          "midi": 49
+        },
+        {
+          "token": "9.2.16",
+          "string": 2,
+          "fret": 9,
+          "midi": 54
+        }
+      ]
+    },
+    {
+      "bar_index": 99,
+      "generated_note_count": 2,
+      "generated_notes": [
+        {
+          "token": "12.2.16",
+          "string": 2,
+          "fret": 12,
+          "midi": 57
+        },
+        {
+          "token": "12.3.16",
+          "string": 3,
+          "fret": 12,
+          "midi": 62
+        }
+      ]
+    },
+    {
+      "bar_index": 100,
+      "generated_note_count": 0,
+      "generated_notes": []
+    },
+    {
+      "bar_index": 101,
+      "generated_note_count": 0,
+      "generated_notes": []
+    },
+    {
+      "bar_index": 102,
+      "generated_note_count": 0,
+      "generated_notes": []
+    },
+    {
+      "bar_index": 103,
+      "generated_note_count": 0,
+      "generated_notes": []
+    }
+  ]
+}

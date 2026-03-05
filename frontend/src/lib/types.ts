@@ -13,11 +13,14 @@ export interface AnalysisResult {
 }
 
 export type ProcessMode = "analysis_only" | "analysis_and_stems";
+export type TabGenerationQuality = "standard" | "high_accuracy" | "high_accuracy_aggressive";
 
 export type JobStage =
   | "queued"
   | "analyzing_chords"
   | "splitting_stems"
+  | "transcribing_bass_midi"
+  | "generating_tabs"
   | "persisting"
   | "complete"
   | "error";
@@ -31,6 +34,10 @@ export interface JobStatus {
   message?: string;
   stems_status?: "queued" | "complete" | "failed" | "not_requested";
   stems_error?: string | null;
+  midi_status?: "queued" | "complete" | "failed" | "not_requested";
+  midi_error?: string | null;
+  tab_status?: "queued" | "complete" | "failed" | "not_requested";
+  tab_error?: string | null;
   progress?: string;
   error?: string;
 }
@@ -94,4 +101,21 @@ export interface StemInfo {
 
 export interface SongStemsResponse {
   stems: StemInfo[];
+}
+
+export interface SongTabMeta {
+  id: number;
+  source_midi_id: number;
+  tab_format: string;
+  tuning: string;
+  strings: number;
+  generator_version: string;
+  status: string;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SongTabsResponse {
+  tab: SongTabMeta | null;
 }

@@ -8,6 +8,7 @@ import { TransportBar } from "./components/TransportBar";
 import { NoteEditorModal } from "./components/NoteEditorModal";
 import { ToastCueLayer } from "./components/ToastCueLayer";
 import { StemMixerPanel } from "./components/StemMixerPanel";
+import { TabViewerPanel } from "./components/TabViewerPanel";
 import type { PlaybackMode } from "./components/StemMixerPanel";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
 import { useChordSync } from "./hooks/useChordSync";
@@ -17,14 +18,26 @@ import {
   listSongs,
   getSong,
   listSongStems,
+  getSongTabs,
   createSongNote,
   updateSongNote,
   deleteSongNote,
   savePlaybackPrefs,
+  getTabFileUrl,
+  getTabDownloadUrl,
 } from "./lib/api";
 import { resolvePlaybackSources } from "./lib/playbackSources";
 import { deriveStemWarning } from "./lib/uploadWarnings";
-import type { AnalysisResult, JobStatus, PlaybackPrefs, ProcessMode, SongNote, SongSummary } from "./lib/types";
+import { ENABLE_TABS_UI } from "./lib/featureFlags";
+import type {
+  AnalysisResult,
+  JobStatus,
+  PlaybackPrefs,
+  ProcessMode,
+  SongNote,
+  SongSummary,
+  TabGenerationQuality,
+} from "./lib/types";
 import type { StemInfo } from "./lib/types";
 
 interface NoteModalState {
@@ -60,6 +73,8 @@ function App() {
   const [stems, setStems] = useState<StemInfo[]>([]);
   const [enabledByStem, setEnabledByStem] = useState<Record<string, boolean>>({});
   const [playbackMode, setPlaybackMode] = useState<PlaybackMode>("full_mix");
+  const [tabSourceUrl, setTabSourceUrl] = useState<string | null>(null);
+  const [showTabs, setShowTabs] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<JobStatus | null>(null);
@@ -98,6 +113,7 @@ function App() {
   const loadSong = useCallback(async (songId: number) => {
     const data = await getSong(songId);
     const stemsData = await listSongStems(songId);
+    const tabsData = ENABLE_TABS_UI ? await getSongTabs(songId) : null;
     const defaultEnabled: Record<string, boolean> = {};
     for (const stem of stemsData.stems) {
       defaultEnabled[stem.stem_key] = true;
@@ -110,6 +126,7 @@ function App() {
     setStems(stemsData.stems);
     setEnabledByStem(defaultEnabled);
     setPlaybackMode(stemsData.stems.length > 0 ? "stems" : "full_mix");
+    setTabSourceUrl(tabsData?.tab ? getTabFileUrl(songId) : null);
     setStemWarning(null);
     setLoopStartIdx(data.playback_prefs.loop_start_index);
     setLoopEndIdx(data.playback_prefs.loop_end_index);
@@ -213,13 +230,17 @@ function App() {
     lastTimeRef.current = currentTime;
   }, [player.currentTime, currentIndex, notes, addToast, result, isScrubbing]);
 
-  const handleFile = useCallback(async (file: File, processMode: ProcessMode = "analysis_only") => {
+  const handleFile = useCallback(async (
+    file: File,
+    processMode: ProcessMode = "analysis_only",
+    tabGenerationQuality: TabGenerationQuality = "standard",
+  ) => {
     setLoading(true);
     setError(null);
     setStemWarning(null);
 
     try {
-      const upload = await uploadAudio(file, processMode);
+      const upload = await uploadAudio(file, processMode, tabGenerationQuality);
       const analysisResult = await pollUntilComplete(upload.job_id, (s) => {
         setUploadStatus(s);
         const warning = deriveStemWarning(s);
@@ -438,6 +459,15 @@ function App() {
     setNoteModal({ open: false, mode: "time" });
   }, [noteModal.noteId]);
 
+  const downloadCurrentTab = useCallback(() => {
+    if (!ENABLE_TABS_UI || !selectedSongId || !tabSourceUrl) return;
+    const link = document.createElement("a");
+    link.href = getTabDownloadUrl(selectedSongId);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }, [selectedSongId, tabSourceUrl]);
+
   return (
     <div className="flex h-screen flex-col bg-slate-950 text-slate-100">
       <Header songKey={result?.key} tempo={result?.tempo} fileName={fileName || undefined} />
@@ -467,7 +497,7 @@ function App() {
               selectedSongId={selectedSongId}
               loading={loading}
               onSelect={(songId) => void loadSong(songId)}
-              onUpload={(file, mode) => void handleFile(file, mode)}
+              onUpload={(file, mode, quality) => void handleFile(file, mode, quality)}
             />
           </div>
           <section className="flex shrink-0 flex-row items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 sm:flex-col sm:items-start sm:gap-1.5 sm:py-3">
@@ -481,6 +511,25 @@ function App() {
             <div className="flex items-center gap-2">
               <span className="inline-block rounded bg-fuchsia-500 px-1.5 py-0.5 text-[11px] font-semibold text-white">Overlap</span>
             </div>
+            {ENABLE_TABS_UI ? (
+              <>
+                <button
+                  type="button"
+                  className="rounded border border-slate-600 px-2 py-1 text-[11px] font-semibold text-slate-200 hover:border-slate-500"
+                  onClick={() => setShowTabs((v) => !v)}
+                >
+                  {showTabs ? "Hide Tabs" : "Show Tabs"}
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-slate-600 px-2 py-1 text-[11px] font-semibold text-slate-200 enabled:hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={downloadCurrentTab}
+                  disabled={!selectedSongId || !tabSourceUrl}
+                >
+                  Download Tab
+                </button>
+              </>
+            ) : null}
           </section>
         </div>
 
@@ -494,7 +543,7 @@ function App() {
           {loading ? (
             <div className="flex h-full items-center justify-center">
               <DropZone
-                onFile={() => {}}
+                onFile={(_file, _mode, _quality) => {}}
                 loading
                 progressText={uploadStatus?.message || uploadStatus?.progress || "Processing..."}
                 progressPct={uploadStatus?.progress_pct}
@@ -526,6 +575,9 @@ function App() {
             />
           ) : null}
         </section>
+        {ENABLE_TABS_UI && showTabs ? (
+          <TabViewerPanel tabSourceUrl={tabSourceUrl} currentTime={player.currentTime} isPlaying={player.playing} />
+        ) : null}
       </main>
 
       {result ? (
