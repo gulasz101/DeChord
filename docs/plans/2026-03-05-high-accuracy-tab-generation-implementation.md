@@ -69,9 +69,9 @@
 - Modify: `docs/plans/2026-03-05-high-accuracy-tab-generation-implementation.md`
 - Optional report outputs only if generated in this run.
 
-- [ ] Step 1: Run backend and frontend targeted/full relevant tests.
-- [ ] Step 2: Run `make reset` before final verification/handoff.
-- [ ] Step 3: Re-run critical tests post-reset.
-- [ ] Step 4: Run pipeline on Clara Luciani track and capture requested before/after metrics.
-- [ ] Step 5: Mark all completed checkboxes `[x]`.
-- [ ] Step 6: Commit.
+- [x] Step 1: Run backend and frontend targeted/full relevant tests.
+- [x] Step 2: Run `make reset` before final verification/handoff.
+- [x] Step 3: Re-run critical tests post-reset.
+- [x] Step 4: Run pipeline on Clara Luciani track and capture requested before/after metrics.
+- [x] Step 5: Mark all completed checkboxes `[x]`.
+- [x] Step 6: Commit.
