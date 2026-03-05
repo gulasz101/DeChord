@@ -14,4 +14,4 @@
 - [x] Task 2: Run DeChord pipeline on `backend/stems/la_grenade_e2e` with `high_accuracy_aggressive` and capture diagnostics + AlphaTex output.
 - [x] Task 3: Normalize official and generated bar-level representations and compute comparison metrics.
 - [x] Task 4: Write `la_grenade_tab_comparison.md` with overview, metrics table, highlights, observations, and conclusion.
-- [ ] Task 5: Run required reset and final verification from a fresh local state.
+- [x] Task 5: Run required reset and final verification from a fresh local state.
