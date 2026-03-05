@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import asdict
+from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -105,6 +105,13 @@ def parse_alphatex_to_reference_notes(alphatex: str) -> list[ReferenceNote]:
             beat_cursor += duration_beats
 
     return notes
+
+
+@dataclass(frozen=True)
+class ResolvedInputs:
+    song_name: str
+    mp3_path: Path
+    gp5_path: Path
 
 
 def evaluate_song(song_key: str, *, quality: str, phase: str) -> dict[str, object]:
@@ -217,7 +224,8 @@ def main() -> int:
 
 def parse_cli_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Evaluate DeChord tab quality with full TabPipeline")
-    parser.add_argument("--song", choices=list(SONGS.keys()), default="hysteria")
+    parser.add_argument("--song")
+    parser.add_argument("--song-dir")
     parser.add_argument("--mp3")
     parser.add_argument("--gp5")
     parser.add_argument("--quality", choices=["standard", "high_accuracy", "high_accuracy_aggressive"], default="high_accuracy_aggressive")
@@ -227,8 +235,34 @@ def parse_cli_args(argv: list[str] | None = None) -> argparse.Namespace:
     has_gp5 = bool(args.gp5)
     if has_mp3 ^ has_gp5:
         parser.error("--mp3 and --gp5 must be provided together")
+    has_song = bool(args.song)
+    has_song_dir = bool(args.song_dir)
+    if has_song ^ has_song_dir:
+        parser.error("--song-dir and --song must be provided together")
+    if (has_mp3 or has_gp5) and (has_song or has_song_dir):
+        parser.error("Use either --mp3/--gp5 or --song-dir/--song, not both")
+    if not ((has_mp3 and has_gp5) or (has_song and has_song_dir)):
+        parser.error("Provide either --mp3/--gp5 or --song-dir/--song")
 
     return args
+
+
+def resolve_input_paths(args: argparse.Namespace) -> ResolvedInputs:
+    if args.mp3 and args.gp5:
+        mp3_path = Path(args.mp3).expanduser().resolve()
+        gp5_path = Path(args.gp5).expanduser().resolve()
+        song_name = Path(args.mp3).stem
+        return ResolvedInputs(song_name=song_name, mp3_path=mp3_path, gp5_path=gp5_path)
+
+    song_dir = Path(args.song_dir).expanduser().resolve()
+    song_name = args.song
+    mp3_path = song_dir / f"{song_name}.mp3"
+    gp5_path = song_dir / f"{song_name}.gp5"
+    if not mp3_path.exists():
+        raise FileNotFoundError(f"Missing song MP3: {mp3_path}")
+    if not gp5_path.exists():
+        raise FileNotFoundError(f"Missing song GP5: {gp5_path}")
+    return ResolvedInputs(song_name=song_name, mp3_path=mp3_path, gp5_path=gp5_path)
 
 
 if __name__ == "__main__":
