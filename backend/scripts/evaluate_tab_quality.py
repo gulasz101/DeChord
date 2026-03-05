@@ -11,8 +11,6 @@ against GP5 reference tabs. Writes quality reports to docs/reports/.
 from __future__ import annotations
 
 import json
-import shutil
-import subprocess
 import sys
 from pathlib import Path
 
@@ -48,7 +46,7 @@ SONGS = [
 
 
 def separate_stems(mp3_path: Path, output_dir: Path) -> tuple[Path, Path]:
-    """Run Demucs stem separation, caching results."""
+    """Run Demucs stem separation using Python API, caching results."""
     bass_wav = output_dir / "bass.wav"
     drums_wav = output_dir / "drums.wav"
     if bass_wav.exists() and drums_wav.exists():
@@ -56,71 +54,56 @@ def separate_stems(mp3_path: Path, output_dir: Path) -> tuple[Path, Path]:
         return bass_wav, drums_wav
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    stem_name = mp3_path.stem
 
-    # Separate bass
-    print(f"  Running Demucs (bass) on {mp3_path.name}...")
-    demucs_bass_out = output_dir / "demucs_bass"
-    cmd_bass = [
-        sys.executable, "-m", "demucs",
-        "--two-stems", "bass",
-        "-o", str(demucs_bass_out),
-        str(mp3_path),
-    ]
-    result = subprocess.run(cmd_bass, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise RuntimeError(f"Demucs bass failed: {result.stderr[:500]}")
+    import demucs.api
+    import scipy.io.wavfile as wavfile
+    import torch
 
-    # Find bass output
-    src_bass = _find_demucs_output(demucs_bass_out, stem_name, "bass.wav")
-    if src_bass is None:
-        raise RuntimeError(f"bass.wav not found in demucs output")
-    shutil.copy2(src_bass, bass_wav)
+    device = "mps" if torch.backends.mps.is_available() else "cpu"
+    print(f"  Demucs: using device={device}")
 
-    # Separate drums
-    print(f"  Running Demucs (drums) on {mp3_path.name}...")
-    demucs_drums_out = output_dir / "demucs_drums"
-    cmd_drums = [
-        sys.executable, "-m", "demucs",
-        "--two-stems", "drums",
-        "-o", str(demucs_drums_out),
-        str(mp3_path),
-    ]
-    result_drums = subprocess.run(cmd_drums, capture_output=True, text=True)
-    if result_drums.returncode != 0:
-        print(f"  WARNING: Demucs drums failed, creating silent fallback")
-        _create_silent_wav(drums_wav)
+    # Use full 4-stem model to get both bass and drums in one pass
+    try:
+        separator = demucs.api.Separator(model="htdemucs_ft", device=device)
+    except Exception:
+        print("  Falling back to htdemucs model")
+        separator = demucs.api.Separator(model="htdemucs", device=device)
+
+    print(f"  Separating {mp3_path.name}...")
+    origin, separated = separator.separate_audio_file(str(mp3_path))
+
+    # Save bass stem
+    bass_tensor = separated["bass"]
+    if bass_tensor.dim() == 2:
+        bass_np = bass_tensor.cpu().numpy()
     else:
-        src_drums = _find_demucs_output(demucs_drums_out, stem_name, "drums.wav")
-        if src_drums is None:
-            print(f"  WARNING: drums.wav not found, creating silent fallback")
-            _create_silent_wav(drums_wav)
-        else:
-            shutil.copy2(src_drums, drums_wav)
+        bass_np = bass_tensor.squeeze(0).cpu().numpy()
+    # Convert to mono if stereo
+    if bass_np.ndim == 2 and bass_np.shape[0] <= 4:
+        bass_mono = bass_np.mean(axis=0)
+    else:
+        bass_mono = bass_np
+    # Normalize to int16
+    import numpy as np
+    bass_int16 = (bass_mono * 32767).clip(-32768, 32767).astype(np.int16)
+    wavfile.write(str(bass_wav), separator.samplerate, bass_int16)
+    print(f"  Saved bass.wav ({bass_int16.shape[0] / separator.samplerate:.1f}s)")
+
+    # Save drums stem
+    drums_tensor = separated["drums"]
+    if drums_tensor.dim() == 2:
+        drums_np = drums_tensor.cpu().numpy()
+    else:
+        drums_np = drums_tensor.squeeze(0).cpu().numpy()
+    if drums_np.ndim == 2 and drums_np.shape[0] <= 4:
+        drums_mono = drums_np.mean(axis=0)
+    else:
+        drums_mono = drums_np
+    drums_int16 = (drums_mono * 32767).clip(-32768, 32767).astype(np.int16)
+    wavfile.write(str(drums_wav), separator.samplerate, drums_int16)
+    print(f"  Saved drums.wav ({drums_int16.shape[0] / separator.samplerate:.1f}s)")
 
     return bass_wav, drums_wav
-
-
-def _find_demucs_output(demucs_dir: Path, stem_name: str, target: str) -> Path | None:
-    """Find a specific stem file in demucs output (handles different model names)."""
-    for model_dir in demucs_dir.iterdir():
-        if not model_dir.is_dir():
-            continue
-        candidate = model_dir / stem_name / target
-        if candidate.exists():
-            return candidate
-    return None
-
-
-def _create_silent_wav(path: Path) -> None:
-    """Create a short silent WAV file as fallback."""
-    import wave
-
-    with wave.open(str(path), "wb") as w:
-        w.setnchannels(1)
-        w.setsampwidth(2)
-        w.setframerate(44100)
-        w.writeframes(b"\x00" * 44100 * 2)
 
 
 def run_pipeline(bass_wav: Path, drums_wav: Path, *, bpm: int) -> object:
@@ -141,7 +124,6 @@ def parse_alphatex_to_fingered_notes(alphatex: str) -> list[FingeredNote]:
     dur_map = {"1": 4.0, "2": 2.0, "4": 1.0, "8": 0.5, "16": 0.25,
                "1d": 6.0, "2d": 3.0, "4d": 1.5, "8d": 0.75, "16d": 0.375}
 
-    # Find the body line (measures separated by |)
     body_line = ""
     for line in alphatex.strip().split("\n"):
         if "|" in line:
@@ -223,6 +205,8 @@ def main() -> None:
             bass_wav, drums_wav = separate_stems(song["mp3"], stem_dir)
         except Exception as e:
             print(f"  FAIL: Stem separation failed: {e}")
+            import traceback
+            traceback.print_exc()
             continue
 
         # 3. Run pipeline
