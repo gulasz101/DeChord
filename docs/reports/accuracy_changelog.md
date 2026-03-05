@@ -69,3 +69,13 @@
   - `docs/reports/baseline_debug.json`
   - `docs/reports/baseline_output.alphatex`
 - That baseline was generated on the provided `La Grenade` track (`AGENTS.md` path), while phase artifacts above use the canonical GP5-backed `hysteria` benchmark.
+
+## Final Verification
+- Reset command:
+  - `make reset`
+- Verification tests:
+  - `cd backend && uv run pytest -q` (`90 passed`)
+- Final benchmark command:
+  - `cd backend && uv run python scripts/evaluate_tab_quality.py --song hysteria --quality high_accuracy_aggressive --phase final`
+- Final metrics artifact:
+  - `docs/reports/muse__hysteria_after_final_metrics.json`

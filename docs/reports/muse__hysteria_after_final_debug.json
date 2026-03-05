@@ -1,0 +1,384 @@
+{
+  "generated": {
+    "notes": 329
+  },
+  "pipeline_debug": {
+    "QUALITY_MODE_SUSPECT_SILENCE": true,
+    "after_cleanup_count": 316,
+    "after_exporting": 329,
+    "after_fingering": 329,
+    "after_fingering_count": 329,
+    "after_onset_recovery_count": 575,
+    "after_quantize_count": 329,
+    "audio_duration_sec": 226.58133786848072,
+    "beat_bpm_estimate_corrected": 93.74999999999784,
+    "beat_bpm_estimate_raw": 187.49999999999983,
+    "beat_count": 316,
+    "bpm_hint": 94.0,
+    "candidate_probe": {
+      "all_ok": true,
+      "candidate_map": {
+        "33": [
+          [
+            3,
+            0
+          ],
+          [
+            4,
+            5
+          ]
+        ],
+        "34": [
+          [
+            3,
+            1
+          ],
+          [
+            4,
+            6
+          ]
+        ],
+        "40": [
+          [
+            2,
+            2
+          ],
+          [
+            3,
+            7
+          ],
+          [
+            4,
+            12
+          ]
+        ],
+        "62": [
+          [
+            1,
+            19
+          ],
+          [
+            2,
+            24
+          ]
+        ]
+      },
+      "checked_pitches": [
+        34,
+        33,
+        40,
+        62
+      ],
+      "failures": {},
+      "max_fret": 24
+    },
+    "cleaned_note_count": 316,
+    "cleanup_params": {
+      "apply_octave_correction": true,
+      "merge_gap_sec": 0.0398936170212766,
+      "min_confidence": 0.15,
+      "min_duration_sec": 0.09574468085106383
+    },
+    "cleanup_stats": {
+      "merged_same_pitch": 0,
+      "merges_blocked_by_onset": 17,
+      "merges_blocked_by_tag": 0,
+      "octave_corrected": 28,
+      "removed_low_conf": 0,
+      "removed_overlap": 0,
+      "removed_short": 277
+    },
+    "cleanup_stats_second_pass": {
+      "merged_same_pitch": 0,
+      "merges_blocked_by_onset": 0,
+      "merges_blocked_by_tag": 0,
+      "octave_corrected": 28,
+      "removed_low_conf": 0,
+      "removed_overlap": 0,
+      "removed_short": 298
+    },
+    "derived_bpm": 93.74999999999784,
+    "downbeat_count": 79,
+    "fingered_note_count": 329,
+    "fingering": {
+      "dropped_note_count": 0,
+      "dropped_reasons": {},
+      "input_note_count": 329,
+      "max_fret": 24,
+      "octave_salvage_enabled": false,
+      "octave_salvaged_notes": 0,
+      "playable_note_count": 329,
+      "tuning_midi": {
+        "1": 43,
+        "2": 38,
+        "3": 33,
+        "4": 28
+      }
+    },
+    "grid_correction_applied": "double_time",
+    "notes_added_second_pass": 20,
+    "notes_per_bar_after_high_accuracy": [
+      2,
+      9,
+      20,
+      11,
+      7,
+      5,
+      6,
+      6,
+      3,
+      4,
+      3,
+      1,
+      2,
+      3,
+      4,
+      5,
+      2,
+      3,
+      3,
+      4,
+      2,
+      1,
+      1,
+      3,
+      8,
+      9,
+      7,
+      6,
+      4,
+      2,
+      3,
+      3,
+      2,
+      1,
+      2,
+      2,
+      1,
+      2,
+      4,
+      4,
+      3,
+      2,
+      5,
+      3,
+      4,
+      5,
+      4,
+      7,
+      4,
+      6,
+      7,
+      4,
+      4,
+      6,
+      5,
+      5,
+      3,
+      5,
+      6,
+      8,
+      3,
+      5,
+      2,
+      5,
+      1,
+      2,
+      4,
+      4,
+      5,
+      3,
+      3,
+      1,
+      4,
+      6,
+      6,
+      2,
+      3,
+      4
+    ],
+    "notes_per_bar_before_high_accuracy": [
+      2,
+      0,
+      20,
+      11,
+      8,
+      5,
+      6,
+      6,
+      3,
+      4,
+      3,
+      1,
+      2,
+      3,
+      4,
+      5,
+      2,
+      3,
+      3,
+      6,
+      3,
+      1,
+      1,
+      0,
+      8,
+      9,
+      7,
+      6,
+      4,
+      2,
+      3,
+      3,
+      2,
+      1,
+      2,
+      2,
+      1,
+      4,
+      5,
+      4,
+      5,
+      2,
+      0,
+      3,
+      4,
+      5,
+      4,
+      7,
+      4,
+      6,
+      7,
+      4,
+      4,
+      7,
+      6,
+      6,
+      4,
+      5,
+      7,
+      8,
+      3,
+      5,
+      0,
+      4,
+      1,
+      0,
+      0,
+      0,
+      0,
+      3,
+      3,
+      1,
+      5,
+      6,
+      6,
+      2,
+      3,
+      4
+    ],
+    "onset_count": 640,
+    "onset_recovery_applied": true,
+    "onset_split_count": 29,
+    "quantized_note_count": 329,
+    "raw_note_count": 551,
+    "raw_notes_count": 551,
+    "rhythm_source": "madmom",
+    "song_bpm": 94.0,
+    "stage_counts": {
+      "cleaned": 316,
+      "exported": 329,
+      "fingered": 329,
+      "quantized": 329,
+      "raw": 551
+    },
+    "suspect_bars": [
+      {
+        "bar_index": 1,
+        "local_median_rms": 0.14002687206308348,
+        "onset_peaks": 69,
+        "rms": 0.07854878395332375,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 23,
+        "local_median_rms": 0.10491204567230651,
+        "onset_peaks": 32,
+        "rms": 0.10002922656851661,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 42,
+        "local_median_rms": 0.10962282682954971,
+        "onset_peaks": 44,
+        "rms": 0.0787532082933464,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 62,
+        "local_median_rms": 0.11071971529019839,
+        "onset_peaks": 37,
+        "rms": 0.11071971529019839,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 65,
+        "local_median_rms": 0.11035831888355233,
+        "onset_peaks": 37,
+        "rms": 0.09029591130971493,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 66,
+        "local_median_rms": 0.11035831888355233,
+        "onset_peaks": 38,
+        "rms": 0.08151471537457856,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 67,
+        "local_median_rms": 0.11035831888355233,
+        "onset_peaks": 38,
+        "rms": 0.08099760544302276,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 68,
+        "local_median_rms": 0.11035831888355233,
+        "onset_peaks": 42,
+        "rms": 0.08620428041985644,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": false
+      }
+    ],
+    "suspect_silence_bars_count": 8,
+    "tab_generation_quality_mode": "high_accuracy_aggressive",
+    "tab_last_sync_ms": 224240,
+    "tempo_used": 94.0,
+    "total_bars": 79
+  },
+  "quality": "high_accuracy_aggressive",
+  "reference": {
+    "bars": 87,
+    "notes": 1339,
+    "tempo": 94.0,
+    "time_signature": [
+      4,
+      4
+    ]
+  },
+  "song": "Muse - Hysteria",
+  "track": {
+    "bass_stem": "/Users/wojciechgula/Projects/DeChord/backend/stems/test_songs/muse__hysteria/bass.wav",
+    "drums_stem": "/Users/wojciechgula/Projects/DeChord/backend/stems/test_songs/muse__hysteria/drums.wav",
+    "gp5": "/Users/wojciechgula/Projects/DeChord/test songs/Muse - Hysteria.gp5",
+    "mp3": "/Users/wojciechgula/Projects/DeChord/test songs/Muse - Hysteria.mp3"
+  }
+}
