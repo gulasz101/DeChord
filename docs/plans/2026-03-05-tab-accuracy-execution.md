@@ -11,7 +11,7 @@
 ---
 
 - [x] Task 1: Establish canonical harness baseline artifacts (Phase 0)
-- [ ] Task 2: Add onset-only and octave-confusion metrics to comparator/harness (Phase 1A, 1B)
+- [x] Task 2: Add onset-only and octave-confusion metrics to comparator/harness (Phase 1A, 1B)
 - [ ] Task 3: Add stage-attribution counters and debug JSON wiring (Phase 1C)
 - [ ] Task 4: Fix second-pass cleanup kwargs reuse and add cleanup counters (Phase 2A)
 - [ ] Task 5: Expose/enable onset recovery in production paths with tempo-adaptive params (Phase 2B)
