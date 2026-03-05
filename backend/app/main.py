@@ -308,6 +308,7 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                             max_fret=24,
                             sync_every_bars=8,
                             tab_generation_quality_mode=tab_generation_quality,
+                            onset_recovery=jobs[job_id].get("tab_onset_recovery"),
                         )
                         midi_id = asyncio.run(
                             _persist_midi(
@@ -432,6 +433,7 @@ async def tab_from_demucs_stems(
     max_fret: int = Form(24),
     sync_every_bars: int = Form(8),
     tabGenerationQuality: Literal["standard", "high_accuracy", "high_accuracy_aggressive"] = Form("standard"),
+    onset_recovery: bool = Form(False),
 ):
     signature = _parse_time_signature(time_signature)
     bass_bytes = await bass.read()
@@ -466,6 +468,7 @@ async def tab_from_demucs_stems(
             max_fret=max_fret,
             sync_every_bars=sync_every_bars,
             tab_generation_quality_mode=tabGenerationQuality,
+            onset_recovery=onset_recovery,
         )
     except FingeringCollapseError as exc:
         raise HTTPException(
@@ -521,6 +524,7 @@ async def analyze(
     file: UploadFile,
     process_mode: ProcessMode = Form("analysis_only"),
     tabGenerationQuality: Literal["standard", "high_accuracy", "high_accuracy_aggressive"] = Form("standard"),
+    onset_recovery: bool | None = Form(None),
 ):
     job_id = uuid.uuid4().hex[:12]
     ext = Path(file.filename).suffix if file.filename else ".mp3"
@@ -541,6 +545,7 @@ async def analyze(
         "stage_progress_pct": 0,
         "process_mode": process_mode,
         "tab_generation_quality": tabGenerationQuality,
+        "tab_onset_recovery": onset_recovery,
         "stems_status": "queued" if process_mode == "analysis_and_stems" else "not_requested",
         "stems_error": None,
         "midi_status": "queued" if process_mode == "analysis_and_stems" else "not_requested",

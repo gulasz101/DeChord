@@ -483,6 +483,42 @@ def test_generate_tab_from_demucs_stems_requires_both_files(tmp_path, monkeypatc
     assert response.status_code == 422
 
 
+def test_generate_tab_from_demucs_stems_forwards_onset_recovery_flag(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+    from app.services.alphatex_exporter import SyncPoint
+    from app.services.rhythm_grid import Bar
+    from app.services.tab_pipeline import TabPipelineResult
+
+    captured: list[object] = []
+
+    def fake_run(*_args, **kwargs):
+        captured.append(kwargs.get("onset_recovery"))
+        return TabPipelineResult(
+            alphatex="\\tempo 120\n\\sync(0 0 0 0)",
+            tempo_used=120.0,
+            bars=[Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])],
+            sync_points=[SyncPoint(bar_index=0, millisecond_offset=0)],
+            midi_bytes=b"MThd\x00\x00\x00\x06",
+            debug_info={"rhythm_source": "madmom"},
+        )
+
+    monkeypatch.setattr(main.tab_pipeline, "run", fake_run)
+
+    files = {
+        "bass": ("bass.wav", b"bass-bytes", "audio/wav"),
+        "drums": ("drums.wav", b"drums-bytes", "audio/wav"),
+    }
+    response = client.post(
+        "/api/tab/from-demucs-stems",
+        data={"onset_recovery": "true"},
+        files=files,
+    )
+
+    assert response.status_code == 200
+    assert captured == [True]
+
+
 def test_analyze_defaults_tab_generation_quality_to_standard(tmp_path, monkeypatch):
     client = _build_client(tmp_path, monkeypatch)
 
@@ -615,3 +651,53 @@ def test_analyze_accepts_high_accuracy_aggressive_tab_generation_quality(tmp_pat
     )
     assert response.status_code == 200
     assert captured_modes == ["high_accuracy_aggressive"]
+
+
+def test_analyze_forwards_optional_onset_recovery_flag(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+
+    import app.main as main
+    from app.services.alphatex_exporter import SyncPoint
+    from app.services.rhythm_grid import Bar
+    from app.services.tab_pipeline import TabPipelineResult
+    from app.stems import StemResult
+
+    captured_onset: list[object] = []
+
+    def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
+        output_dir.mkdir(parents=True, exist_ok=True)
+        bass = output_dir / "bass.wav"
+        drums = output_dir / "drums.wav"
+        bass.write_bytes(b"bass-bytes")
+        drums.write_bytes(b"drums-bytes")
+        return [
+            StemResult(stem_key="bass", relative_path=str(bass), mime_type="audio/x-wav"),
+            StemResult(stem_key="drums", relative_path=str(drums), mime_type="audio/x-wav"),
+        ]
+
+    def fake_run(*_args, **kwargs):
+        captured_onset.append(kwargs.get("onset_recovery"))
+        return TabPipelineResult(
+            alphatex="\\tempo 120\n\\sync(0 0 0 0)",
+            tempo_used=120.0,
+            bars=[Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])],
+            sync_points=[SyncPoint(bar_index=0, millisecond_offset=0)],
+            midi_bytes=b"MThd\x00\x00\x00\x06",
+            debug_info={"rhythm_source": "madmom"},
+        )
+
+    monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
+    monkeypatch.setattr(main.tab_pipeline, "run", fake_run)
+
+    files = {"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")}
+    response = client.post(
+        "/api/analyze",
+        files=files,
+        data={
+            "process_mode": "analysis_and_stems",
+            "tabGenerationQuality": "high_accuracy",
+            "onset_recovery": "true",
+        },
+    )
+    assert response.status_code == 200
+    assert captured_onset == [True]
