@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -212,6 +213,16 @@ def test_evaluate_inputs_runs_full_pipeline_and_writes_deterministic_reports(
         ],
     )
     monkeypatch.setattr("scripts.evaluate_tab_quality.REPORTS_DIR", tmp_path / "reports")
+    monkeypatch.setattr(
+        "scripts.evaluate_tab_quality.BasicPitchTranscriber",
+        lambda: SimpleNamespace(
+            transcribe=lambda _bass: SimpleNamespace(
+                engine="basic_pitch",
+                raw_notes=[SimpleNamespace(start_sec=0.0, end_sec=0.5, pitch_midi=40, confidence=0.8)],
+                debug_info={"basicpitch_octave_corrections_applied": 1},
+            )
+        ),
+    )
 
     run_called: dict[str, object] = {"called": False}
 
@@ -260,3 +271,10 @@ def test_evaluate_inputs_runs_full_pipeline_and_writes_deterministic_reports(
     assert output["metrics_path"].endswith("muse__hysteria_metrics.json")
     assert output["debug_path"].endswith("muse__hysteria_debug.json")
     assert output["alphatex_path"].endswith("muse__hysteria_output.alphatex")
+    assert output["transcription_audit_path"].endswith("muse__hysteria_transcription_audit.json")
+
+    audit = json.loads(Path(output["transcription_audit_path"]).read_text())
+    assert audit["transcription_engine_used"] == "basic_pitch"
+    assert audit["raw_note_count"] == 1
+    assert "octave_error_count" in audit
+    assert "non_octave_pitch_error_count" in audit

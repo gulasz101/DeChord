@@ -6,11 +6,13 @@ import json
 import re
 import subprocess
 import sys
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from app.services.bass_transcriber import BasicPitchTranscriber, RawNoteEvent
 from app.services.gp5_reference import ReferenceNote, ReferenceTab, parse_gp5_bass_track
 from app.services.tab_comparator import compare_tabs
 from app.services.tab_pipeline import TabPipeline
@@ -210,6 +212,91 @@ def _octave_confusion_metrics(source: dict[str, int]) -> dict[str, int]:
     }
 
 
+def _duration_bucket(duration: float) -> str:
+    if duration < 0.1:
+        return "<0.1s"
+    if duration < 0.25:
+        return "0.1-0.25s"
+    if duration < 0.5:
+        return "0.25-0.5s"
+    if duration < 1.0:
+        return "0.5-1.0s"
+    return ">=1.0s"
+
+
+def _reference_note_times_seconds(reference: ReferenceTab) -> list[tuple[float, int]]:
+    numerator, _denominator = reference.time_signature
+    sec_per_beat = 60.0 / float(reference.tempo)
+    results: list[tuple[float, int]] = []
+    for note in reference.notes:
+        onset_beats = (float(note.bar_index) * float(numerator)) + float(note.beat_position)
+        onset_sec = onset_beats * sec_per_beat
+        results.append((onset_sec, int(note.pitch_midi)))
+    results.sort(key=lambda item: item[0])
+    return results
+
+
+def _count_pitch_errors(
+    reference: ReferenceTab,
+    raw_notes: list[RawNoteEvent],
+    *,
+    onset_tolerance_sec: float = 0.12,
+) -> tuple[int, int]:
+    ref_notes = _reference_note_times_seconds(reference)
+    used_ref: set[int] = set()
+    octave_errors = 0
+    non_octave_errors = 0
+    for note in sorted(raw_notes, key=lambda event: event.start_sec):
+        best_idx: int | None = None
+        best_delta = float("inf")
+        for idx, (ref_sec, _ref_pitch) in enumerate(ref_notes):
+            if idx in used_ref:
+                continue
+            delta = abs(float(note.start_sec) - ref_sec)
+            if delta <= onset_tolerance_sec and delta < best_delta:
+                best_delta = delta
+                best_idx = idx
+        if best_idx is None:
+            continue
+        used_ref.add(best_idx)
+        _ref_sec, ref_pitch = ref_notes[best_idx]
+        pitch_delta = int(note.pitch_midi) - int(ref_pitch)
+        if pitch_delta == 0:
+            continue
+        if abs(pitch_delta) == 12:
+            octave_errors += 1
+        else:
+            non_octave_errors += 1
+    return octave_errors, non_octave_errors
+
+
+def build_transcription_audit(
+    reference: ReferenceTab,
+    transcription,
+) -> dict[str, object]:
+    raw_notes = list(transcription.raw_notes)
+    pitch_hist = Counter(str(int(note.pitch_midi)) for note in raw_notes)
+    duration_hist = Counter(_duration_bucket(float(note.end_sec - note.start_sec)) for note in raw_notes)
+    mean_conf = (
+        sum(float(note.confidence) for note in raw_notes) / float(len(raw_notes))
+        if raw_notes
+        else 0.0
+    )
+    octave_error_count, non_octave_pitch_error_count = _count_pitch_errors(reference, raw_notes)
+    debug_info = dict(getattr(transcription, "debug_info", {}) or {})
+    return {
+        "transcription_engine_used": getattr(transcription, "engine", "unknown"),
+        "raw_note_count": len(raw_notes),
+        "pitch_histogram": dict(sorted(pitch_hist.items())),
+        "note_duration_histogram": dict(sorted(duration_hist.items())),
+        "mean_pitch_confidence": mean_conf,
+        "octave_error_count": octave_error_count,
+        "non_octave_pitch_error_count": non_octave_pitch_error_count,
+        "fallback_octave_corrections_applied": int(debug_info.get("fallback_octave_corrections_applied", 0)),
+        "basicpitch_octave_corrections_applied": int(debug_info.get("basicpitch_octave_corrections_applied", 0)),
+    }
+
+
 def evaluate_inputs(resolved: ResolvedInputs, *, quality: str) -> dict[str, object]:
     reference, _duration_seconds = validate_inputs(resolved.mp3_path, resolved.gp5_path)
     song_name = resolved.song_name
@@ -229,6 +316,8 @@ def evaluate_inputs(resolved: ResolvedInputs, *, quality: str) -> dict[str, obje
     stems = split_to_stems(str(resolved.mp3_path), stem_dir)
     bass = next(Path(stem.relative_path) for stem in stems if stem.stem_key == "bass")
     drums = next(Path(stem.relative_path) for stem in stems if stem.stem_key == "drums")
+    transcription = BasicPitchTranscriber().transcribe(bass)
+    transcription_audit = build_transcription_audit(reference, transcription)
 
     result = TabPipeline().run(
         bass,
@@ -255,6 +344,7 @@ def evaluate_inputs(resolved: ResolvedInputs, *, quality: str) -> dict[str, obje
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     metrics_path = REPORTS_DIR / f"{prefix}_metrics.json"
     debug_path = REPORTS_DIR / f"{prefix}_debug.json"
+    transcription_audit_path = REPORTS_DIR / f"{prefix}_transcription_audit.json"
     alphatex_path = REPORTS_DIR / f"{prefix}_output.alphatex"
 
     metrics = {
@@ -294,6 +384,7 @@ def evaluate_inputs(resolved: ResolvedInputs, *, quality: str) -> dict[str, obje
     debug_info = {
         "song": song_name,
         "evaluation_context": evaluation_context,
+        "transcription_audit": transcription_audit,
         "track": {
             "mp3": str(resolved.mp3_path),
             "gp5": str(resolved.gp5_path),
@@ -314,11 +405,13 @@ def evaluate_inputs(resolved: ResolvedInputs, *, quality: str) -> dict[str, obje
 
     metrics_path.write_text(json.dumps(metrics, indent=2, sort_keys=True))
     debug_path.write_text(json.dumps(debug_info, indent=2, sort_keys=True))
+    transcription_audit_path.write_text(json.dumps(transcription_audit, indent=2, sort_keys=True))
     alphatex_path.write_text(result.alphatex)
 
     return {
         "metrics_path": str(metrics_path),
         "debug_path": str(debug_path),
+        "transcription_audit_path": str(transcription_audit_path),
         "alphatex_path": str(alphatex_path),
         "metrics": metrics,
     }
@@ -331,6 +424,7 @@ def main(argv: list[str] | None = None) -> int:
     print(json.dumps(output["metrics"], indent=2, sort_keys=True))
     print(f"metrics: {output['metrics_path']}")
     print(f"debug: {output['debug_path']}")
+    print(f"transcription_audit: {output['transcription_audit_path']}")
     print(f"alphatex: {output['alphatex_path']}")
     return 0
 
