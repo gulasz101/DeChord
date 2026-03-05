@@ -15,4 +15,4 @@
 - [x] Task 1: Add a failing unit test asserting alphaTab cursor/highlight settings (`enableAnimatedBeatCursor`, `enableElementHighlighting`) in `createTabViewerSettings`.
 - [x] Task 2: Implement the minimal `TabViewerPanel` player settings change to satisfy the new test while preserving existing external sync behavior.
 - [x] Task 3: Add global alphaTab cursor/highlight CSS styles (`.at-cursor-bar`, `.at-cursor-beat`, `.at-highlight`) and verify existing TabViewer tests still pass.
-- [ ] Task 4: Run required reset and final verification (`make reset`, focused frontend tests) and mark all plan tasks complete.
+- [x] Task 4: Run required reset and final verification (`make reset`, focused frontend tests) and mark all plan tasks complete.
