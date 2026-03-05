@@ -431,7 +431,7 @@ async def tab_from_demucs_stems(
     subdivision: int = Form(16),
     max_fret: int = Form(24),
     sync_every_bars: int = Form(8),
-    tabGenerationQuality: Literal["standard", "high_accuracy"] = Form("standard"),
+    tabGenerationQuality: Literal["standard", "high_accuracy", "high_accuracy_aggressive"] = Form("standard"),
 ):
     signature = _parse_time_signature(time_signature)
     bass_bytes = await bass.read()
@@ -520,7 +520,7 @@ async def tab_from_demucs_stems(
 async def analyze(
     file: UploadFile,
     process_mode: ProcessMode = Form("analysis_only"),
-    tabGenerationQuality: Literal["standard", "high_accuracy"] = Form("standard"),
+    tabGenerationQuality: Literal["standard", "high_accuracy", "high_accuracy_aggressive"] = Form("standard"),
 ):
     job_id = uuid.uuid4().hex[:12]
     ext = Path(file.filename).suffix if file.filename else ".mp3"
