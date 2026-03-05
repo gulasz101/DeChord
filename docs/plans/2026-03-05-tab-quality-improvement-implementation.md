@@ -1443,7 +1443,7 @@ git commit -m "chore: final verification and quality metrics (docs/plans/2026-03
 ## Task Checklist
 
 - [ ] Task 1: GP5 Reference Parser
-- [ ] Task 2: Tab Comparator Module
+- [x] Task 2: Tab Comparator Module
 - [ ] Task 3: Visual Diff Report Generator
 - [ ] Task 4: Evaluation Script
 - [ ] Task 5: Expose FingeredNotes from Pipeline
