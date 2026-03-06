@@ -65,6 +65,18 @@ def _get_analysis_config_for_quality_mode(
     return replace(config, enable_model_ensemble=should_enable_ensemble)
 
 
+def _get_uploaded_stems_analysis_config(
+    quality_mode: Literal["standard", "high_accuracy", "high_accuracy_aggressive"],
+):
+    config = _get_analysis_config_for_quality_mode(quality_mode)
+    if not config.enable_model_ensemble:
+        return config
+    logger.info(
+        "Uploaded Demucs stems route has no source mix; disabling ensemble candidate reseparation for analysis."
+    )
+    return replace(config, enable_model_ensemble=False)
+
+
 class NoteCreate(BaseModel):
     type: Literal["time", "chord"]
     text: str = Field(min_length=1)
@@ -466,6 +478,8 @@ def _parse_time_signature(time_signature: str) -> tuple[int, int]:
 async def tab_from_demucs_stems(
     bass: UploadFile,
     drums: UploadFile,
+    other: UploadFile | None = None,
+    guitar: UploadFile | None = None,
     song_id: int | None = Form(None),
     bpm: float | None = Form(None),
     time_signature: str = Form("4/4"),
@@ -478,6 +492,8 @@ async def tab_from_demucs_stems(
     signature = _parse_time_signature(time_signature)
     bass_bytes = await bass.read()
     drums_bytes = await drums.read()
+    other_bytes = await other.read() if other is not None else b""
+    guitar_bytes = await guitar.read() if guitar is not None else b""
     if not bass_bytes:
         raise HTTPException(400, "bass file is empty")
     if not drums_bytes:
@@ -497,10 +513,28 @@ async def tab_from_demucs_stems(
     drums_path = stem_tmp_dir / "drums.wav"
     bass_path.write_bytes(bass_bytes)
     drums_path.write_bytes(drums_bytes)
+    uploaded_stems: dict[str, Path] = {
+        "bass": bass_path,
+        "drums": drums_path,
+    }
+    if other_bytes:
+        other_path = stem_tmp_dir / "other.wav"
+        other_path.write_bytes(other_bytes)
+        uploaded_stems["other"] = other_path
+    if guitar_bytes:
+        guitar_path = stem_tmp_dir / "guitar.wav"
+        guitar_path.write_bytes(guitar_bytes)
+        uploaded_stems["guitar"] = guitar_path
 
     try:
+        analysis_stem_result = build_bass_analysis_stem(
+            stems=uploaded_stems,
+            output_dir=stem_tmp_dir / "analysis",
+            analysis_config=_get_uploaded_stems_analysis_config(tabGenerationQuality),
+            source_audio_path=None,
+        )
         result = tab_pipeline.run(
-            bass_path,
+            analysis_stem_result.path,
             drums_path,
             bpm_hint=bpm,
             time_signature=signature,
@@ -555,7 +589,11 @@ async def tab_from_demucs_stems(
             {"bar_index": point.bar_index, "millisecond_offset": point.millisecond_offset}
             for point in result.sync_points
         ],
-        "debug_info": result.debug_info,
+        "debug_info": {
+            **result.debug_info,
+            "analysis_stem_path": str(analysis_stem_result.path),
+            "analysis_stem_diagnostics": analysis_stem_result.diagnostics,
+        },
     }
 
 

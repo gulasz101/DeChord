@@ -256,14 +256,14 @@ The repository now includes a browser-based DeChord practice app (FastAPI backen
   - per-stem stream endpoints (`/api/songs/{song_id}/stems`, `/api/audio/{song_id}/stems/{stem_key}`)
 - Bass artifact pipeline (EADG 4-string v2):
   - drums stem -> beat/downbeat bar grid
-  - bass stem -> MIDI artifact generation
+  - analysis-refined bass stem -> MIDI artifact generation
   - cleaned + quantized notes -> AlphaTex (`.alphatex`) tab generation with `\sync` points
   - status stages: `transcribing_bass_midi`, `generating_tabs`
   - artifact file endpoints:
     - `/api/songs/{song_id}/midi/file`
     - `/api/songs/{song_id}/tabs/file`
   - dedicated stems-to-tab endpoint:
-    - `POST /api/tab/from-demucs-stems`
+    - `POST /api/tab/from-demucs-stems` (accepts `bass` + `drums`, with optional `other` and `guitar` stems for analysis-only bleed cancellation)
 
 ### Start Locally
 
@@ -283,7 +283,7 @@ Open:
 
 ### Stem Separation Configuration (Environment)
 
-The backend stem splitter is configurable through environment variables and loads `backend/.env` at runtime, so Demucs model overrides apply even when the process was imported before env setup. Playback/download stems still use the raw separated files; tab/MIDI generation now builds a dedicated `bass_analysis.wav` artifact for transcription-focused preprocessing and diagnostics.
+The backend stem splitter is configurable through environment variables and loads `backend/.env` at runtime, so Demucs model overrides apply even when the process was imported before env setup. Playback/download stems still use the raw separated files; tab/MIDI generation now builds a dedicated `bass_analysis.wav` artifact for transcription-focused preprocessing and diagnostics. In ensemble mode, each candidate model produces its own temporary analysis stem, gets scored for transcription suitability, and only the selected winner is persisted as the final `bass_analysis.wav`.
 
 | Variable | Default | Description |
 | --- | --- | --- |

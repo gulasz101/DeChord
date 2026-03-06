@@ -87,6 +87,14 @@ class BassAnalysisStemResult:
     diagnostics: dict[str, object]
 
 
+@dataclass(frozen=True)
+class CandidateAnalysisResult:
+    model_name: str
+    analysis_path: Path
+    refined_audio: "np.ndarray"
+    diagnostics: dict[str, object]
+
+
 def check_stem_runtime_ready(
     import_module: Callable[[str], object] = import_module,
 ) -> None:
@@ -533,10 +541,20 @@ def _score_bass_analysis_candidate(
     return float(components["total"])
 
 
-def _select_best_candidate_model(candidate_scores: dict[str, float]) -> str:
-    if not candidate_scores:
+def _select_best_candidate_model(
+    candidate_scores: dict[str, float],
+    candidate_order: list[str],
+) -> str:
+    if not candidate_scores or not candidate_order:
         return DEFAULT_DEMUCS_MODEL
-    return max(candidate_scores.items(), key=lambda item: (item[1], item[0]))[0]
+    best_model = candidate_order[0]
+    best_score = candidate_scores.get(best_model, float("-inf"))
+    for model_name in candidate_order[1:]:
+        score = candidate_scores.get(model_name, float("-inf"))
+        if score > best_score:
+            best_model = model_name
+            best_score = score
+    return best_model
 
 
 def _write_wav_mono(path: Path, *, sample_rate: int, audio: "np.ndarray") -> None:
@@ -619,6 +637,29 @@ def _refine_bass_candidate(
     return refined.astype("float32"), diagnostics
 
 
+def _build_candidate_analysis_from_stems(
+    *,
+    stems: dict[str, Path],
+    candidate_model: str,
+    candidate_output_dir: Path,
+    config: StemAnalysisConfig,
+) -> CandidateAnalysisResult:
+    refined_audio, diagnostics = _refine_bass_candidate(stems, config=config)
+    candidate_output_dir.mkdir(parents=True, exist_ok=True)
+    analysis_path = candidate_output_dir / "bass_analysis_candidate.wav"
+    _write_wav_mono(
+        analysis_path,
+        sample_rate=config.analysis_sample_rate,
+        audio=refined_audio,
+    )
+    return CandidateAnalysisResult(
+        model_name=candidate_model,
+        analysis_path=analysis_path,
+        refined_audio=refined_audio,
+        diagnostics=diagnostics,
+    )
+
+
 def _run_candidate_separation(
     *,
     source_audio_path: Path,
@@ -677,10 +718,12 @@ def build_bass_analysis_stem(
 
     candidate_scores: dict[str, float] = {}
     candidate_diagnostics: dict[str, object] = {}
-    candidate_audio: dict[str, np.ndarray] = {}
+    candidate_results: dict[str, CandidateAnalysisResult] = {}
     unavailable_candidate_models: list[str] = []
+    attempted_candidate_models = _candidate_models_for_analysis(config)
 
-    for candidate_model in _candidate_models_for_analysis(config):
+    for candidate_model in attempted_candidate_models:
+        candidate_output_dir = output_dir / f"candidate_{candidate_model}"
         try:
             if _should_reuse_supplied_stems(
                 config=config,
@@ -694,27 +737,40 @@ def build_bass_analysis_stem(
                 candidate_stems = _run_candidate_separation(
                     source_audio_path=source_audio_path,
                     model_name=candidate_model,
-                    output_dir=output_dir / f"candidate_{candidate_model}",
+                    output_dir=candidate_output_dir,
                     separate_fn=separate_fn,
                 )
 
-            refined_audio, diagnostics = _refine_bass_candidate(candidate_stems, config=config)
-            candidate_audio[candidate_model] = refined_audio
-            candidate_scores[candidate_model] = float(diagnostics["total_score"])
+            candidate_result = _build_candidate_analysis_from_stems(
+                stems=candidate_stems,
+                candidate_model=candidate_model,
+                candidate_output_dir=candidate_output_dir,
+                config=config,
+            )
+            candidate_results[candidate_model] = candidate_result
+            candidate_scores[candidate_model] = float(candidate_result.diagnostics["total_score"])
             candidate_diagnostics[candidate_model] = {
+                "model": candidate_model,
                 "source_model": candidate_model,
+                "available": True,
+                "success": True,
                 "status": "ok",
                 "selected": False,
-                **diagnostics,
+                "error": None,
+                "analysis_path": str(candidate_result.analysis_path),
+                **candidate_result.diagnostics,
             }
         except Exception as exc:
             logger.warning("Bass analysis candidate %s failed: %s", candidate_model, exc)
             unavailable_candidate_models.append(candidate_model)
             candidate_diagnostics[candidate_model] = {
+                "model": candidate_model,
                 "source_model": candidate_model,
+                "available": False,
+                "success": False,
                 "status": "failed",
                 "selected": False,
-                "failure_reason": str(exc),
+                "error": str(exc),
             }
 
     if not candidate_scores:
@@ -723,10 +779,14 @@ def build_bass_analysis_stem(
             shutil.copyfile(bass_path, output_path)
             candidate_diagnostics[config.demucs_model] = {
                 **candidate_diagnostics.get(config.demucs_model, {}),
+                "model": config.demucs_model,
                 "source_model": config.demucs_model,
+                "available": True,
+                "success": False,
                 "status": "fallback_raw_bass",
                 "selected": True,
-                "failure_reason": candidate_diagnostics.get(config.demucs_model, {}).get("failure_reason"),
+                "error": candidate_diagnostics.get(config.demucs_model, {}).get("error"),
+                "analysis_path": str(output_path),
             }
             return BassAnalysisStemResult(
                 path=output_path,
@@ -738,6 +798,8 @@ def build_bass_analysis_stem(
                     "analysis_sample_rate": config.analysis_sample_rate,
                     "analysis_selection_mode": config.analysis_selection_mode,
                     "ensemble_requested": int(config.enable_model_ensemble),
+                    "attempted_candidate_models": attempted_candidate_models,
+                    "successful_candidate_models": [],
                     "candidate_scores": {config.demucs_model: 0.0},
                     "candidate_diagnostics": candidate_diagnostics,
                     "unavailable_candidate_models": unavailable_candidate_models,
@@ -750,10 +812,14 @@ def build_bass_analysis_stem(
             )
         raise RuntimeError("All bass analysis candidate models failed.")
 
-    selected_model = _select_best_candidate_model(candidate_scores)
-    selected_audio = candidate_audio[selected_model]
+    successful_candidate_models = [
+        model_name for model_name in attempted_candidate_models if model_name in candidate_scores
+    ]
+    selected_model = _select_best_candidate_model(candidate_scores, successful_candidate_models)
+    selected_candidate = candidate_results[selected_model]
+    selected_audio = selected_candidate.refined_audio
     candidate_diagnostics[selected_model]["selected"] = True
-    _write_wav_mono(output_path, sample_rate=config.analysis_sample_rate, audio=selected_audio)
+    shutil.copyfile(selected_candidate.analysis_path, output_path)
 
     diagnostics = {
         "selected_model": selected_model,
@@ -762,6 +828,8 @@ def build_bass_analysis_stem(
         "analysis_sample_rate": config.analysis_sample_rate,
         "analysis_selection_mode": config.analysis_selection_mode,
         "ensemble_requested": int(config.enable_model_ensemble),
+        "attempted_candidate_models": attempted_candidate_models,
+        "successful_candidate_models": successful_candidate_models,
         "candidate_scores": candidate_scores,
         "candidate_diagnostics": candidate_diagnostics,
         "unavailable_candidate_models": unavailable_candidate_models,
