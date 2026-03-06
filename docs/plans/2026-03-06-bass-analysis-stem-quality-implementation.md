@@ -30,7 +30,7 @@
 - [x] Step 2: Add failing tests proving the model name is not frozen at import time and invalid env values fall back safely.
 - [x] Step 3: Add failing tests proving the main processing flow routes an analysis bass stem into tab generation instead of raw `bass.wav`.
 - [x] Step 4: Run targeted tests and confirm RED.
-- [ ] Step 5: Commit.
+- [x] Step 5: Commit.
 
 ### Task 3: Implement runtime Demucs config resolution and typed analysis config
 
@@ -42,7 +42,7 @@
 - [x] Step 2: Extend typed stem config parsing with analysis/refinement settings and safe fallback warnings.
 - [x] Step 3: Log effective runtime model/config clearly and preserve default behavior when analysis features are disabled.
 - [x] Step 4: Run targeted stem tests and confirm GREEN for config behavior.
-- [ ] Step 5: Commit.
+- [x] Step 5: Commit.
 
 ### Task 4: Add deterministic bass analysis refinement and diagnostics
 
@@ -54,7 +54,7 @@
 - [x] Step 2: Implement deterministic preprocessing for the analysis path: mono, resample, high-pass, low-pass, optional bleed subtraction, optional gentle gating.
 - [x] Step 3: Add compact serializable diagnostics describing selected model, filters, candidate scores, and refinement actions.
 - [x] Step 4: Run targeted stem tests and confirm GREEN for refinement output and diagnostics.
-- [ ] Step 5: Commit.
+- [x] Step 5: Commit.
 
 ### Task 5: Route the analysis stem into tab and MIDI generation
 
@@ -68,7 +68,7 @@
 - [x] Step 2: Route the refined analysis bass stem into `TabPipeline` and MIDI persistence while keeping persisted playback stems unchanged.
 - [x] Step 3: Improve fallback MIDI preprocessing to use the refined analysis path or equivalent bass-focused preprocessing before monophonic estimation.
 - [x] Step 4: Run targeted API and MIDI tests and confirm GREEN.
-- [ ] Step 5: Commit.
+- [x] Step 5: Commit.
 
 ### Task 6: Add candidate-model experimentation scaffolding and deterministic scoring
 
@@ -80,7 +80,7 @@
 - [x] Step 2: Implement deterministic transcription-suitability scoring and best-candidate selection with graceful degradation when alternate models are unavailable.
 - [x] Step 3: Add tests covering deterministic candidate parsing/scoring behavior.
 - [x] Step 4: Run targeted stem tests and confirm GREEN.
-- [ ] Step 5: Commit.
+- [x] Step 5: Commit.
 
 ### Task 7: Add docs and diagnostics surface updates
 
@@ -90,16 +90,16 @@
 
 - [x] Step 1: Document the new env/config knobs for bass analysis stem quality tuning.
 - [x] Step 2: Ensure the plan file reflects completed implementation tasks accurately.
-- [ ] Step 3: Commit.
+- [x] Step 3: Commit.
 
 ### Task 8: Verify, reset, and finalize
 
 **Files:**
 - Modify: `docs/plans/2026-03-06-bass-analysis-stem-quality-implementation.md`
 
-- [ ] Step 1: Run targeted backend tests for stems, MIDI, API, and tab pipeline.
-- [ ] Step 2: Run broader relevant backend tests.
-- [ ] Step 3: Run `make reset`.
-- [ ] Step 4: Re-run critical verification after reset.
-- [ ] Step 5: Mark all plan steps complete.
+- [x] Step 1: Run targeted backend tests for stems, MIDI, API, and tab pipeline.
+- [x] Step 2: Run broader relevant backend tests.
+- [x] Step 3: Run `make reset`.
+- [x] Step 4: Re-run critical verification after reset.
+- [x] Step 5: Mark all plan steps complete.
 - [ ] Step 6: Commit.

@@ -429,23 +429,80 @@ def build_bass_analysis_stem(
     if bass_path is None:
         raise RuntimeError("Bass stem missing; cannot build analysis stem.")
 
-    if not config.enable_bass_refinement:
+    try:
+        if not config.enable_bass_refinement:
+            bass_rate, bass_audio = _read_wav_mono(bass_path)
+            bass_audio = _resample_audio(bass_audio, bass_rate, config.analysis_sample_rate)
+            candidate_score = _score_bass_analysis_candidate(
+                bass_audio,
+                sample_rate=config.analysis_sample_rate,
+            )
+            candidate_scores = {config.demucs_model: candidate_score}
+            selected_model = _select_best_candidate_model(candidate_scores)
+            shutil.copyfile(bass_path, output_path)
+            diagnostics = {
+                "selected_model": selected_model,
+                "analysis_highpass_hz": config.analysis_highpass_hz,
+                "analysis_lowpass_hz": config.analysis_lowpass_hz,
+                "analysis_sample_rate": config.analysis_sample_rate,
+                "bleed_subtraction_applied": 0,
+                "noise_gate_applied": 0,
+                "refinement_fallback_used": 0,
+                "ensemble_requested": int(config.enable_model_ensemble),
+                "unavailable_candidate_models": [
+                    candidate for candidate in config.candidate_models if candidate not in candidate_scores
+                ],
+                "candidate_scores": candidate_scores,
+            }
+            return BassAnalysisStemResult(
+                path=output_path,
+                source_model=selected_model,
+                diagnostics=diagnostics,
+            )
+
         bass_rate, bass_audio = _read_wav_mono(bass_path)
         bass_audio = _resample_audio(bass_audio, bass_rate, config.analysis_sample_rate)
-        candidate_score = _score_bass_analysis_candidate(
+        refined = _apply_analysis_filters(
             bass_audio,
             sample_rate=config.analysis_sample_rate,
+            highpass_hz=config.analysis_highpass_hz,
+            lowpass_hz=config.analysis_lowpass_hz,
+        )
+
+        bleed_audio = None
+        other_path = stems.get("other")
+        if other_path is not None and other_path.exists():
+            other_rate, other_audio = _read_wav_mono(other_path)
+            other_audio = _resample_audio(other_audio, other_rate, config.analysis_sample_rate)
+            bleed_audio = _apply_analysis_filters(
+                other_audio,
+                sample_rate=config.analysis_sample_rate,
+                highpass_hz=config.analysis_highpass_hz,
+                lowpass_hz=config.analysis_lowpass_hz,
+            )
+        refined, bleed_applied = _maybe_subtract_bleed(refined, bleed_audio)
+        refined, gate_applied = _apply_noise_gate(refined)
+        _write_wav_mono(output_path, sample_rate=config.analysis_sample_rate, audio=refined)
+
+        import numpy as np
+
+        candidate_score = _score_bass_analysis_candidate(
+            refined,
+            sample_rate=config.analysis_sample_rate,
+            bleed_audio=bleed_audio,
         )
         candidate_scores = {config.demucs_model: candidate_score}
         selected_model = _select_best_candidate_model(candidate_scores)
-        shutil.copyfile(bass_path, output_path)
+
         diagnostics = {
             "selected_model": selected_model,
             "analysis_highpass_hz": config.analysis_highpass_hz,
             "analysis_lowpass_hz": config.analysis_lowpass_hz,
             "analysis_sample_rate": config.analysis_sample_rate,
-            "bleed_subtraction_applied": 0,
-            "noise_gate_applied": 0,
+            "bleed_subtraction_applied": bleed_applied,
+            "noise_gate_applied": gate_applied,
+            "analysis_rms": float(np.sqrt(np.mean(np.square(refined))) if refined.size else 0.0),
+            "refinement_fallback_used": 0,
             "ensemble_requested": int(config.enable_model_ensemble),
             "unavailable_candidate_models": [
                 candidate for candidate in config.candidate_models if candidate not in candidate_scores
@@ -457,60 +514,28 @@ def build_bass_analysis_stem(
             source_model=selected_model,
             diagnostics=diagnostics,
         )
-
-    bass_rate, bass_audio = _read_wav_mono(bass_path)
-    bass_audio = _resample_audio(bass_audio, bass_rate, config.analysis_sample_rate)
-    refined = _apply_analysis_filters(
-        bass_audio,
-        sample_rate=config.analysis_sample_rate,
-        highpass_hz=config.analysis_highpass_hz,
-        lowpass_hz=config.analysis_lowpass_hz,
-    )
-
-    bleed_audio = None
-    other_path = stems.get("other")
-    if other_path is not None and other_path.exists():
-        other_rate, other_audio = _read_wav_mono(other_path)
-        other_audio = _resample_audio(other_audio, other_rate, config.analysis_sample_rate)
-        bleed_audio = _apply_analysis_filters(
-            other_audio,
-            sample_rate=config.analysis_sample_rate,
-            highpass_hz=config.analysis_highpass_hz,
-            lowpass_hz=config.analysis_lowpass_hz,
+    except Exception as exc:
+        logger.warning("Bass analysis refinement failed for %s: %s. Falling back to raw bass stem.", bass_path, exc)
+        shutil.copyfile(bass_path, output_path)
+        return BassAnalysisStemResult(
+            path=output_path,
+            source_model=config.demucs_model,
+            diagnostics={
+                "selected_model": config.demucs_model,
+                "analysis_highpass_hz": config.analysis_highpass_hz,
+                "analysis_lowpass_hz": config.analysis_lowpass_hz,
+                "analysis_sample_rate": config.analysis_sample_rate,
+                "bleed_subtraction_applied": 0,
+                "noise_gate_applied": 0,
+                "refinement_fallback_used": 1,
+                "refinement_error": str(exc),
+                "ensemble_requested": int(config.enable_model_ensemble),
+                "unavailable_candidate_models": [
+                    candidate for candidate in config.candidate_models if candidate != config.demucs_model
+                ],
+                "candidate_scores": {config.demucs_model: 0.0},
+            },
         )
-    refined, bleed_applied = _maybe_subtract_bleed(refined, bleed_audio)
-    refined, gate_applied = _apply_noise_gate(refined)
-    _write_wav_mono(output_path, sample_rate=config.analysis_sample_rate, audio=refined)
-
-    import numpy as np
-
-    candidate_score = _score_bass_analysis_candidate(
-        refined,
-        sample_rate=config.analysis_sample_rate,
-        bleed_audio=bleed_audio,
-    )
-    candidate_scores = {config.demucs_model: candidate_score}
-    selected_model = _select_best_candidate_model(candidate_scores)
-
-    diagnostics = {
-        "selected_model": selected_model,
-        "analysis_highpass_hz": config.analysis_highpass_hz,
-        "analysis_lowpass_hz": config.analysis_lowpass_hz,
-        "analysis_sample_rate": config.analysis_sample_rate,
-        "bleed_subtraction_applied": bleed_applied,
-        "noise_gate_applied": gate_applied,
-        "analysis_rms": float(np.sqrt(np.mean(np.square(refined))) if refined.size else 0.0),
-        "ensemble_requested": int(config.enable_model_ensemble),
-        "unavailable_candidate_models": [
-            candidate for candidate in config.candidate_models if candidate not in candidate_scores
-        ],
-        "candidate_scores": candidate_scores,
-    }
-    return BassAnalysisStemResult(
-        path=output_path,
-        source_model=selected_model,
-        diagnostics=diagnostics,
-    )
 
 
 def _separate_with_demucs(
