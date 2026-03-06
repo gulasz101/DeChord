@@ -679,11 +679,10 @@ class TabPipeline:
             anchor_distance = abs(raw_pitch - dominant_pitch)
             local_support_ratio = float(local_counts.get(raw_pitch, 0)) / float(max(1, len(local_reference)))
             octave_inconsistent = abs(anchor_distance - 12) <= 1 and local_support_ratio < 0.2
-            register_ok = 28 <= raw_pitch <= 64
-
-            adjusted_pitch = dominant_pitch if repeated_note_mode or anchor_distance > 2 else raw_pitch
+            adjusted_pitch = dominant_pitch if repeated_note_mode or anchor_distance > 1 else raw_pitch
             if not (28 <= adjusted_pitch <= 64):
                 adjusted_pitch = max(28, min(64, adjusted_pitch))
+            register_ok = 28 <= adjusted_pitch <= 64
 
             duplicate_existing = any(
                 abs(float(existing.start_sec) - float(note.start_sec)) <= 0.08 and int(existing.pitch_midi) == adjusted_pitch
@@ -715,13 +714,13 @@ class TabPipeline:
             elif not register_ok:
                 accepted = False
                 rejection_reason = "out_of_register"
-            elif octave_inconsistent and total_score < 0.6:
+            elif octave_inconsistent and nearest_octave_distance > 4 and onset_support_score < 0.5 and local_support_ratio < 0.1:
                 accepted = False
                 rejection_reason = "octave_inconsistent"
-            elif anchor_distance > 9 and local_support_ratio < 0.2:
+            elif anchor_distance > 18 and local_support_ratio < 0.2:
                 accepted = False
                 rejection_reason = "pitch_far_from_anchor"
-            elif total_score < 0.55:
+            elif total_score < 0.35 and onset_support_score < 0.5 and local_support_ratio < 0.05:
                 accepted = False
                 rejection_reason = "weak_local_support"
 
