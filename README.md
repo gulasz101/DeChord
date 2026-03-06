@@ -302,8 +302,12 @@ The backend stem splitter is configurable through environment variables and load
 | `DECHORD_STEM_ANALYSIS_HIGHPASS_HZ` | `35` | Analysis stem high-pass filter cutoff (`> 0`). |
 | `DECHORD_STEM_ANALYSIS_LOWPASS_HZ` | `300` | Analysis stem low-pass filter cutoff (`> high-pass`). |
 | `DECHORD_STEM_ANALYSIS_SAMPLE_RATE` | `22050` | Analysis stem sample rate for refinement and fallback transcription. |
-| `DECHORD_STEM_ANALYSIS_CANDIDATE_MODELS` | primary model | Comma-separated candidate model list for future analysis-stem experiments. |
-| `DECHORD_STEM_ANALYSIS_ENSEMBLE` | `0` | If `1`, enable candidate-model selection scaffolding for analysis diagnostics. |
+| `DECHORD_STEM_ANALYSIS_CANDIDATE_MODELS` | primary model | Comma-separated candidate Demucs models for analysis-only ensemble selection. |
+| `DECHORD_STEM_ANALYSIS_ENSEMBLE` | `0` | If `1`, run each configured candidate model for analysis-only scoring/selection. |
+| `DECHORD_STEM_ANALYSIS_OTHER_SUBTRACT_WEIGHT` | `0.30` | Generic `other` stem bleed subtraction weight (`0.0` to `1.0`). |
+| `DECHORD_STEM_ANALYSIS_GUITAR_SUBTRACT_WEIGHT` | `0.55` | Dedicated `guitar` stem bleed subtraction weight (`0.0` to `1.0`) when available. |
+| `DECHORD_STEM_ANALYSIS_NOISE_GATE_DB` | `-40` | Absolute post-refinement noise gate threshold in dBFS. |
+| `DECHORD_STEM_ANALYSIS_SELECTION_MODE` | `transcription` | Candidate selection mode for deterministic analysis-stem scoring. |
 
 Example `backend/.env` for local tinkering:
 
@@ -317,10 +321,14 @@ DECHORD_STEM_SHIFTS=0
 DECHORD_STEM_INPUT_GAIN_DB=0.0
 DECHORD_STEM_OUTPUT_GAIN_DB=0.0
 DECHORD_STEM_ANALYSIS_ENABLE=1
+DECHORD_STEM_ANALYSIS_ENSEMBLE=1
+DECHORD_STEM_ANALYSIS_CANDIDATE_MODELS=htdemucs_ft,htdemucs_6s
+DECHORD_STEM_ANALYSIS_OTHER_SUBTRACT_WEIGHT=0.30
+DECHORD_STEM_ANALYSIS_GUITAR_SUBTRACT_WEIGHT=0.55
+DECHORD_STEM_ANALYSIS_NOISE_GATE_DB=-40
 DECHORD_STEM_ANALYSIS_HIGHPASS_HZ=35
 DECHORD_STEM_ANALYSIS_LOWPASS_HZ=300
-DECHORD_STEM_ANALYSIS_CANDIDATE_MODELS=htdemucs_ft,htdemucs_6s
-DECHORD_STEM_ANALYSIS_ENSEMBLE=0
+DECHORD_STEM_ANALYSIS_SELECTION_MODE=transcription
 ```
 
 Example Linux host CPU-focused config:

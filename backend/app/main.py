@@ -302,6 +302,7 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                         analysis_stem_result = build_bass_analysis_stem(
                             stems=stem_paths,
                             output_dir=analysis_output_dir,
+                            source_audio_path=Path(audio_path),
                         )
                         jobs[job_id]["analysis_stem_path"] = str(analysis_stem_result.path)
                         jobs[job_id]["analysis_stem_diagnostics"] = analysis_stem_result.diagnostics

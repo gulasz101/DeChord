@@ -36,22 +36,22 @@
 - Modify: `backend/app/stems.py`
 - Modify: `backend/tests/test_stems.py`
 
-- [ ] Step 1: Extend `StemAnalysisConfig` with typed subtraction, gating, and selection/scoring settings.
-- [ ] Step 2: Add env parsing and validation for the new analysis tuning variables while preserving current defaults.
-- [ ] Step 3: Implement candidate-model execution helpers that separate once per model and record per-model availability/failure diagnostics.
-- [ ] Step 4: Run targeted stem tests and confirm GREEN for config/orchestration behavior.
-- [ ] Step 5: Commit.
+- [x] Step 1: Extend `StemAnalysisConfig` with typed subtraction, gating, and selection/scoring settings.
+- [x] Step 2: Add env parsing and validation for the new analysis tuning variables while preserving current defaults.
+- [x] Step 3: Implement candidate-model execution helpers that separate once per model and record per-model availability/failure diagnostics.
+- [x] Step 4: Run targeted stem tests and confirm GREEN for config/orchestration behavior.
+- [x] Step 5: Commit.
 
 ### Task 4: Add RED tests for guitar-aware refinement and deterministic scoring
 
 **Files:**
 - Modify: `backend/tests/test_stems.py`
 
-- [ ] Step 1: Add failing tests proving guitar stems are used when available and weighted separately from `other`.
-- [ ] Step 2: Add failing tests proving scoring selects the best transcription candidate deterministically with component breakdowns.
-- [ ] Step 3: Add failing tests proving subtraction weights and gate settings influence refinement/scoring directionally.
-- [ ] Step 4: Run targeted stem tests and confirm RED.
-- [ ] Step 5: Commit.
+- [x] Step 1: Add failing tests proving guitar stems are used when available and weighted separately from `other`.
+- [x] Step 2: Add failing tests proving scoring selects the best transcription candidate deterministically with component breakdowns.
+- [x] Step 3: Add failing tests proving subtraction weights and gate settings influence refinement/scoring directionally.
+- [x] Step 4: Run targeted stem tests and confirm RED.
+- [x] Step 5: Commit.
 
 ### Task 5: Implement guitar-aware refinement, scoring, and candidate selection
 
@@ -59,11 +59,11 @@
 - Modify: `backend/app/stems.py`
 - Modify: `backend/tests/test_stems.py`
 
-- [ ] Step 1: Refactor analysis refinement into small pure helpers that can combine bass, other, and guitar bleed sources.
-- [ ] Step 2: Implement deterministic scoring components for transcription suitability and compact serializable per-candidate diagnostics.
-- [ ] Step 3: Select the best successful candidate, persist the winning `bass_analysis.wav`, and preserve graceful fallback behavior.
-- [ ] Step 4: Run targeted stem tests and confirm GREEN for refinement, scoring, and diagnostics.
-- [ ] Step 5: Commit.
+- [x] Step 1: Refactor analysis refinement into small pure helpers that can combine bass, other, and guitar bleed sources.
+- [x] Step 2: Implement deterministic scoring components for transcription suitability and compact serializable per-candidate diagnostics.
+- [x] Step 3: Select the best successful candidate, persist the winning `bass_analysis.wav`, and preserve graceful fallback behavior.
+- [x] Step 4: Run targeted stem tests and confirm GREEN for refinement, scoring, and diagnostics.
+- [x] Step 5: Commit.
 
 ### Task 6: Wire ensemble selection into the analysis-stem generation flow
 
@@ -72,11 +72,11 @@
 - Modify: `backend/tests/test_api.py`
 - Modify: `backend/tests/test_midi.py` (if needed)
 
-- [ ] Step 1: Update the analysis-stem builder entry points to use ensemble selection only for analysis/high-accuracy mode.
-- [ ] Step 2: Preserve current playback/download stem behavior and existing public API responses while expanding diagnostics naturally.
-- [ ] Step 3: Add or adjust integration coverage only where the selected analysis artifact is externally observable.
-- [ ] Step 4: Run targeted tests and confirm GREEN for end-to-end analysis-stem selection behavior.
-- [ ] Step 5: Commit.
+- [x] Step 1: Update the analysis-stem builder entry points to use ensemble selection only for analysis/high-accuracy mode.
+- [x] Step 2: Preserve current playback/download stem behavior and existing public API responses while expanding diagnostics naturally.
+- [x] Step 3: Add or adjust integration coverage only where the selected analysis artifact is externally observable.
+- [x] Step 4: Run targeted tests and confirm GREEN for end-to-end analysis-stem selection behavior.
+- [x] Step 5: Commit.
 
 ### Task 7: Update concise docs and env/config references
 
@@ -84,18 +84,18 @@
 - Modify: `README.md` (if config is documented there)
 - Modify: `docs/plans/2026-03-06-bass-stem-ensemble-selection-implementation.md`
 
-- [ ] Step 1: Document the new analysis ensemble and bleed-cancellation env knobs in the existing config style.
-- [ ] Step 2: Update the plan file to reflect completed task status accurately.
-- [ ] Step 3: Commit.
+- [x] Step 1: Document the new analysis ensemble and bleed-cancellation env knobs in the existing config style.
+- [x] Step 2: Update the plan file to reflect completed task status accurately.
+- [x] Step 3: Commit.
 
 ### Task 8: Verify, reset, and finalize
 
 **Files:**
 - Modify: `docs/plans/2026-03-06-bass-stem-ensemble-selection-implementation.md`
 
-- [ ] Step 1: Run targeted backend tests covering stems and any touched integration points.
-- [ ] Step 2: Run broader backend verification relevant to the changed flow.
-- [ ] Step 3: Run `make reset`.
-- [ ] Step 4: Re-run critical verification after reset.
-- [ ] Step 5: Mark all plan steps complete.
-- [ ] Step 6: Commit.
+- [x] Step 1: Run targeted backend tests covering stems and any touched integration points.
+- [x] Step 2: Run broader backend verification relevant to the changed flow.
+- [x] Step 3: Run `make reset`.
+- [x] Step 4: Re-run critical verification after reset.
+- [x] Step 5: Mark all plan steps complete.
+- [x] Step 6: Commit.

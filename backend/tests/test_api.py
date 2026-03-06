@@ -283,8 +283,9 @@ def test_analyze_with_stems_routes_bass_analysis_wav_into_tab_pipeline(tmp_path,
             StemResult(stem_key="other", relative_path=str(other), mime_type="audio/x-wav"),
         ]
 
-    def fake_build_bass_analysis_stem(*, stems, output_dir):
+    def fake_build_bass_analysis_stem(*, stems, output_dir, source_audio_path=None, analysis_config=None, separate_fn=None):
         assert stems["bass"].name == "bass.wav"
+        assert source_audio_path is not None
         analysis_path = output_dir / "bass_analysis.wav"
         analysis_path.write_bytes(b"analysis-bass")
         return main.BassAnalysisStemResult(
