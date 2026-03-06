@@ -1,0 +1,29 @@
+{
+  "f1_score": 0.2496765847347995,
+  "fingering_accuracy": 0.20207253886010362,
+  "mean_timing_offset": 0.0,
+  "note_density_correlation": 0.23226989796041783,
+  "octave_confusion": {
+    "+12": 1,
+    "-12": 18,
+    "exact": 68,
+    "other": 106
+  },
+  "onset_f1_grid": 0.25614489003880986,
+  "onset_f1_ms": 0.2496765847347995,
+  "onset_precision": 0.9323671497584541,
+  "onset_precision_grid": 0.9565217391304348,
+  "onset_precision_ms": 0.9323671497584541,
+  "onset_recall": 0.1441374159820762,
+  "onset_recall_grid": 0.14787154592979837,
+  "onset_recall_ms": 0.1441374159820762,
+  "pitch_accuracy": 0.35233160621761656,
+  "precision": 0.9323671497584541,
+  "quality": "high_accuracy_aggressive",
+  "recall": 0.1441374159820762,
+  "song": "Muse - Hysteria",
+  "tempo_used": 94.0,
+  "total_gen_notes": 207,
+  "total_matched": 193,
+  "total_ref_notes": 1339
+}

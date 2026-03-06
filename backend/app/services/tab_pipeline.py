@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from statistics import median
@@ -151,6 +152,7 @@ class TabPipeline:
             bar_rms = self._bar_rms_values(bass_wav, bars)
             onset_peaks = self._bar_onset_peaks(bass_wav, bars)
             suspect_rows: list[dict[str, object]] = []
+            dense_bar_fusion_candidates: list[dict[str, object]] = []
 
             if tab_generation_quality_mode == "high_accuracy":
                 median_bar_rms = self._median(bar_rms)
@@ -201,12 +203,16 @@ class TabPipeline:
                     window_end=window_end,
                 )
                 if row.get("triggered_by_dense_sparse"):
-                    window_notes = self._anchor_second_pass_pitches(
+                    window_notes, candidate_rows = self._confidence_gate_dense_bar_candidates(
                         window_notes,
                         reference_notes=pre_cleanup_notes,
+                        base_notes=transcription.raw_notes,
+                        bar_index=bar_index,
+                        onset_peak_count=onset_peaks[bar_index] if bar_index < len(onset_peaks) else 0,
                         window_start=window_start,
                         window_end=window_end,
                     )
+                    dense_bar_fusion_candidates.extend(candidate_rows)
                 second_pass_notes.extend(window_notes)
 
             if second_pass_notes:
@@ -231,6 +237,8 @@ class TabPipeline:
                     "notes_added_second_pass": notes_added_second_pass,
                     "notes_per_bar_before_high_accuracy": notes_per_bar_before,
                     "notes_per_bar_after_high_accuracy": notes_per_bar_after,
+                    "dense_bar_fusion_candidates": dense_bar_fusion_candidates,
+                    "dense_bar_fusion_summary": self._dense_bar_fusion_summary(dense_bar_fusion_candidates),
                 }
             )
 
@@ -628,29 +636,167 @@ class TabPipeline:
         return merged
 
     @staticmethod
-    def _anchor_second_pass_pitches(
+    def _confidence_gate_dense_bar_candidates(
         second_pass_notes: list,
         *,
         reference_notes: list,
+        base_notes: list,
+        bar_index: int,
+        onset_peak_count: int,
         window_start: float,
         window_end: float,
-    ) -> list:
+    ) -> tuple[list, list[dict[str, object]]]:
         local_reference = [note for note in reference_notes if window_start <= note.start_sec < window_end]
         if not local_reference:
-            return second_pass_notes
+            rejected = [
+                {
+                    "bar_index": bar_index,
+                    "candidate_onset_sec": float(note.start_sec),
+                    "candidate_raw_pitch": int(note.pitch_midi),
+                    "adjusted_pitch": int(note.pitch_midi),
+                    "local_pitch_anchor": None,
+                    "accepted": False,
+                    "rejection_reason": "weak_local_support",
+                    "confidence_components": {"total_score": 0.0, "local_support_ratio": 0.0},
+                }
+                for note in second_pass_notes
+            ]
+            return [], rejected
 
         dominant_pitch = max(
             {int(note.pitch_midi) for note in local_reference},
             key=lambda pitch: sum(1 for note in local_reference if int(note.pitch_midi) == pitch),
         )
-        anchored = []
+        local_counts = Counter(int(note.pitch_midi) for note in local_reference)
+        repeated_note_mode = TabPipeline._is_dense_repeated_note_mode(local_counts, onset_peak_count=onset_peak_count)
+        onset_support_score = max(0.0, min(1.0, float(onset_peak_count) / 8.0))
+        accepted_notes: list = []
+        candidate_rows: list[dict[str, object]] = []
+        collision_pool = list(base_notes)
         for note in second_pass_notes:
-            anchored.append(
-                type(note)(
-                    pitch_midi=dominant_pitch,
+            raw_pitch = int(note.pitch_midi)
+            nearest_octave_distance = TabPipeline._nearest_octave_distance(raw_pitch, dominant_pitch)
+            anchor_distance = abs(raw_pitch - dominant_pitch)
+            local_support_ratio = float(local_counts.get(raw_pitch, 0)) / float(max(1, len(local_reference)))
+            octave_inconsistent = abs(anchor_distance - 12) <= 1 and local_support_ratio < 0.2
+            register_ok = 28 <= raw_pitch <= 64
+
+            adjusted_pitch = dominant_pitch if repeated_note_mode or anchor_distance > 2 else raw_pitch
+            if not (28 <= adjusted_pitch <= 64):
+                adjusted_pitch = max(28, min(64, adjusted_pitch))
+
+            duplicate_existing = any(
+                abs(float(existing.start_sec) - float(note.start_sec)) <= 0.08 and int(existing.pitch_midi) == adjusted_pitch
+                for existing in collision_pool
+            )
+            anchor_proximity_score = 1.0 - min(1.0, float(min(anchor_distance, nearest_octave_distance)) / 12.0)
+            register_score = 1.0 if register_ok else 0.0
+            octave_score = 0.0 if octave_inconsistent else 1.0
+            repeated_mode_score = 1.0 if repeated_note_mode and adjusted_pitch == dominant_pitch else 0.0
+            duplicate_score = 0.0 if duplicate_existing else 1.0
+
+            total_score = (
+                (0.35 * onset_support_score)
+                + (0.25 * anchor_proximity_score)
+                + (0.15 * register_score)
+                + (0.1 * octave_score)
+                + (0.1 * local_support_ratio)
+                + (0.05 * repeated_mode_score)
+            )
+
+            accepted = True
+            rejection_reason: str | None = None
+            if duplicate_existing:
+                accepted = False
+                rejection_reason = "duplicate_existing_note"
+            elif onset_support_score < 0.2:
+                accepted = False
+                rejection_reason = "insufficient_onset_support"
+            elif not register_ok:
+                accepted = False
+                rejection_reason = "out_of_register"
+            elif octave_inconsistent and total_score < 0.6:
+                accepted = False
+                rejection_reason = "octave_inconsistent"
+            elif anchor_distance > 9 and local_support_ratio < 0.2:
+                accepted = False
+                rejection_reason = "pitch_far_from_anchor"
+            elif total_score < 0.55:
+                accepted = False
+                rejection_reason = "weak_local_support"
+
+            if accepted:
+                accepted_note = type(note)(
+                    pitch_midi=adjusted_pitch,
                     start_sec=note.start_sec,
                     end_sec=note.end_sec,
                     confidence=note.confidence,
                 )
+                accepted_notes.append(accepted_note)
+                collision_pool.append(accepted_note)
+
+            candidate_rows.append(
+                {
+                    "bar_index": bar_index,
+                    "candidate_onset_sec": float(note.start_sec),
+                    "candidate_raw_pitch": raw_pitch,
+                    "adjusted_pitch": int(adjusted_pitch),
+                    "local_pitch_anchor": int(dominant_pitch),
+                    "accepted": accepted,
+                    "rejection_reason": rejection_reason,
+                    "confidence_components": {
+                        "onset_support_score": float(onset_support_score),
+                        "anchor_proximity_score": float(anchor_proximity_score),
+                        "register_score": float(register_score),
+                        "octave_score": float(octave_score),
+                        "local_support_ratio": float(local_support_ratio),
+                        "repeated_mode_score": float(repeated_mode_score),
+                        "duplicate_score": float(duplicate_score),
+                        "total_score": float(total_score),
+                        "anchor_distance_semitones": int(anchor_distance),
+                        "nearest_octave_distance_semitones": int(nearest_octave_distance),
+                        "repeated_note_mode": bool(repeated_note_mode),
+                    },
+                }
             )
-        return anchored
+        return accepted_notes, candidate_rows
+
+    @staticmethod
+    def _nearest_octave_distance(pitch_midi: int, anchor_pitch: int) -> int:
+        distances = [abs((pitch_midi + (12 * offset)) - anchor_pitch) for offset in (-2, -1, 0, 1, 2)]
+        return int(min(distances))
+
+    @staticmethod
+    def _is_dense_repeated_note_mode(local_counts: Counter[int], *, onset_peak_count: int) -> bool:
+        total = sum(local_counts.values())
+        if total <= 0:
+            return False
+        dominant_share = max(local_counts.values()) / float(total)
+        pitch_diversity = len(local_counts)
+        return onset_peak_count >= 6 and pitch_diversity <= 2 and dominant_share >= 0.6
+
+    @staticmethod
+    def _dense_bar_fusion_summary(candidates: list[dict[str, object]]) -> dict[str, object]:
+        accepted = [row for row in candidates if row.get("accepted") is True]
+        rejected = [row for row in candidates if row.get("accepted") is False]
+        reasons = Counter(str(row.get("rejection_reason")) for row in rejected if row.get("rejection_reason"))
+
+        def avg_distance(rows: list[dict[str, object]]) -> float:
+            distances = []
+            for row in rows:
+                confidence = row.get("confidence_components") if isinstance(row.get("confidence_components"), dict) else {}
+                value = confidence.get("anchor_distance_semitones") if isinstance(confidence, dict) else None
+                if isinstance(value, int | float):
+                    distances.append(float(value))
+            if not distances:
+                return 0.0
+            return sum(distances) / float(len(distances))
+
+        return {
+            "candidates": len(candidates),
+            "accepted": len(accepted),
+            "rejected": len(rejected),
+            "rejection_histogram": dict(sorted(reasons.items())),
+            "avg_pitch_distance_from_anchor_accepted": avg_distance(accepted),
+            "avg_pitch_distance_from_anchor_rejected": avg_distance(rejected),
+        }
