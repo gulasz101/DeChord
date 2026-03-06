@@ -25,11 +25,11 @@
 - Modify: `backend/tests/test_stems.py`
 - Modify: `backend/tests/test_api.py`
 
-- [ ] Step 1: Add failing tests proving ensemble mode re-separates every candidate model, including the configured primary model, even when standard stems are already available.
-- [ ] Step 2: Add failing tests proving standard mode keeps the current single-stem behavior and does not invoke extra candidate separations.
-- [ ] Step 3: Add failing tests proving high-accuracy job flow opts into ensemble analysis while standard mode does not.
-- [ ] Step 4: Run targeted tests and confirm RED.
-- [ ] Step 5: Commit.
+- [x] Step 1: Add failing tests proving ensemble mode re-separates every candidate model, including the configured primary model, even when standard stems are already available.
+- [x] Step 2: Add failing tests proving standard mode keeps the current single-stem behavior and does not invoke extra candidate separations.
+- [x] Step 3: Add failing tests proving high-accuracy job flow opts into ensemble analysis while standard mode does not.
+- [x] Step 4: Run targeted tests and confirm RED.
+- [x] Step 5: Commit.
 
 ### Task 3: Implement explicit ensemble orchestration and high-accuracy wiring
 

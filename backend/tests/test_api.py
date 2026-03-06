@@ -318,6 +318,118 @@ def test_analyze_with_stems_routes_bass_analysis_wav_into_tab_pipeline(tmp_path,
     assert pipeline_call["drums_wav"].endswith("drums.wav")
 
 
+def test_analyze_high_accuracy_enables_ensemble_analysis_config(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+
+    import app.main as main
+    from app.services.alphatex_exporter import SyncPoint
+    from app.services.rhythm_grid import Bar
+    from app.services.tab_pipeline import TabPipelineResult
+    from app.stems import StemResult
+
+    captured: dict[str, object] = {}
+
+    def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
+        output_dir.mkdir(parents=True, exist_ok=True)
+        bass = output_dir / "bass.wav"
+        drums = output_dir / "drums.wav"
+        bass.write_bytes(b"RIFFfakebass")
+        drums.write_bytes(b"RIFFfakedrum")
+        return [
+            StemResult(stem_key="bass", relative_path=str(bass), mime_type="audio/x-wav"),
+            StemResult(stem_key="drums", relative_path=str(drums), mime_type="audio/x-wav"),
+        ]
+
+    def fake_build_bass_analysis_stem(*, stems, output_dir, source_audio_path=None, analysis_config=None, separate_fn=None):
+        captured["analysis_config"] = analysis_config
+        analysis_path = output_dir / "bass_analysis.wav"
+        analysis_path.write_bytes(b"analysis-bass")
+        return main.BassAnalysisStemResult(
+            path=analysis_path,
+            source_model="htdemucs_6s",
+            diagnostics={"selected_model": "htdemucs_6s"},
+        )
+
+    def fake_run(*_args, **_kwargs):
+        return TabPipelineResult(
+            alphatex="\\tempo 120\n\\sync(0 0 0 0)",
+            tempo_used=120.0,
+            bars=[Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])],
+            sync_points=[SyncPoint(bar_index=0, millisecond_offset=0)],
+            midi_bytes=b"MThd\x00\x00\x00\x06",
+            debug_info={"rhythm_source": "madmom"},
+        )
+
+    monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
+    monkeypatch.setattr(main, "build_bass_analysis_stem", fake_build_bass_analysis_stem)
+    monkeypatch.setattr(main.tab_pipeline, "run", fake_run)
+
+    files = {"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")}
+    response = client.post(
+        "/api/analyze",
+        files=files,
+        data={"process_mode": "analysis_and_stems", "tabGenerationQuality": "high_accuracy"},
+    )
+
+    assert response.status_code == 200
+    assert captured["analysis_config"] is not None
+    assert captured["analysis_config"].enable_model_ensemble is True
+
+
+def test_analyze_standard_keeps_single_model_analysis_config(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+
+    import app.main as main
+    from app.services.alphatex_exporter import SyncPoint
+    from app.services.rhythm_grid import Bar
+    from app.services.tab_pipeline import TabPipelineResult
+    from app.stems import StemResult
+
+    captured: dict[str, object] = {}
+
+    def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
+        output_dir.mkdir(parents=True, exist_ok=True)
+        bass = output_dir / "bass.wav"
+        drums = output_dir / "drums.wav"
+        bass.write_bytes(b"RIFFfakebass")
+        drums.write_bytes(b"RIFFfakedrum")
+        return [
+            StemResult(stem_key="bass", relative_path=str(bass), mime_type="audio/x-wav"),
+            StemResult(stem_key="drums", relative_path=str(drums), mime_type="audio/x-wav"),
+        ]
+
+    def fake_build_bass_analysis_stem(*, stems, output_dir, source_audio_path=None, analysis_config=None, separate_fn=None):
+        captured["analysis_config"] = analysis_config
+        analysis_path = output_dir / "bass_analysis.wav"
+        analysis_path.write_bytes(b"analysis-bass")
+        return main.BassAnalysisStemResult(
+            path=analysis_path,
+            source_model="htdemucs_ft",
+            diagnostics={"selected_model": "htdemucs_ft"},
+        )
+
+    def fake_run(*_args, **_kwargs):
+        return TabPipelineResult(
+            alphatex="\\tempo 120\n\\sync(0 0 0 0)",
+            tempo_used=120.0,
+            bars=[Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])],
+            sync_points=[SyncPoint(bar_index=0, millisecond_offset=0)],
+            midi_bytes=b"MThd\x00\x00\x00\x06",
+            debug_info={"rhythm_source": "madmom"},
+        )
+
+    monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
+    monkeypatch.setattr(main, "build_bass_analysis_stem", fake_build_bass_analysis_stem)
+    monkeypatch.setattr(main.tab_pipeline, "run", fake_run)
+
+    files = {"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")}
+    response = client.post("/api/analyze", files=files, data={"process_mode": "analysis_and_stems"})
+
+    assert response.status_code == 200
+    assert captured["analysis_config"] is not None
+    assert captured["analysis_config"].enable_model_ensemble is False
+
+
 def test_stems_are_persisted_and_streamed(tmp_path, monkeypatch):
     client = _build_client(tmp_path, monkeypatch)
 

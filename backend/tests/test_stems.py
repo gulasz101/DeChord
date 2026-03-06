@@ -427,6 +427,106 @@ def test_build_bass_analysis_stem_runs_all_candidate_models_in_ensemble_mode(tmp
     assert len(result.diagnostics["candidate_diagnostics"]) == 2
 
 
+def test_build_bass_analysis_stem_ensemble_reseparates_primary_even_when_stems_exist(tmp_path: Path):
+    audio_path = tmp_path / "track.wav"
+    audio_path.write_bytes(b"audio")
+    sample_rate = 22050
+    times = np.linspace(0.0, 1.0, sample_rate, endpoint=False)
+    calls: list[str] = []
+
+    def write_wav(path: Path, samples: np.ndarray) -> None:
+        pcm = np.clip(samples * 32767.0, -32768, 32767).astype(np.int16)
+        with wave.open(str(path), "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(pcm.tobytes())
+
+    supplied_dir = tmp_path / "supplied"
+    supplied_dir.mkdir()
+    supplied_bass = supplied_dir / "bass.wav"
+    write_wav(supplied_bass, (0.25 * np.sin(2.0 * np.pi * 55.0 * times)).astype(np.float32))
+
+    def fake_separate(_input_audio: str, output_dir: Path, _progress_callback, *, model_name: str):
+        calls.append(model_name)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        bass = output_dir / "bass.wav"
+        drums = output_dir / "drums.wav"
+        write_wav(bass, (0.8 * np.sin(2.0 * np.pi * 55.0 * times)).astype(np.float32))
+        write_wav(drums, np.zeros_like(times, dtype=np.float32))
+        return {"bass": bass, "drums": drums}
+
+    config = stems_mod.StemAnalysisConfig(
+        demucs_model="htdemucs_ft",
+        demucs_fallback_model="htdemucs",
+        enable_bass_refinement=True,
+        analysis_highpass_hz=35.0,
+        analysis_lowpass_hz=300.0,
+        analysis_sample_rate=22050,
+        enable_model_ensemble=True,
+        candidate_models=["htdemucs_ft", "htdemucs_6s"],
+    )
+
+    stems_mod.build_bass_analysis_stem(
+        stems={"bass": supplied_bass},
+        output_dir=tmp_path / "analysis",
+        analysis_config=config,
+        source_audio_path=audio_path,
+        separate_fn=fake_separate,
+    )
+
+    assert calls == ["htdemucs_ft", "htdemucs_6s"]
+
+
+def test_build_bass_analysis_stem_standard_mode_reuses_supplied_primary_stems(tmp_path: Path):
+    audio_path = tmp_path / "track.wav"
+    audio_path.write_bytes(b"audio")
+    sample_rate = 22050
+    times = np.linspace(0.0, 1.0, sample_rate, endpoint=False)
+    calls: list[str] = []
+
+    def write_wav(path: Path, samples: np.ndarray) -> None:
+        pcm = np.clip(samples * 32767.0, -32768, 32767).astype(np.int16)
+        with wave.open(str(path), "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(pcm.tobytes())
+
+    supplied_dir = tmp_path / "supplied"
+    supplied_dir.mkdir()
+    supplied_bass = supplied_dir / "bass.wav"
+    supplied_other = supplied_dir / "other.wav"
+    write_wav(supplied_bass, (0.75 * np.sin(2.0 * np.pi * 55.0 * times)).astype(np.float32))
+    write_wav(supplied_other, (0.02 * np.sin(2.0 * np.pi * 180.0 * times)).astype(np.float32))
+
+    def fake_separate(_input_audio: str, _output_dir: Path, _progress_callback, *, model_name: str):
+        calls.append(model_name)
+        raise AssertionError("standard mode should not trigger candidate reseparation")
+
+    config = stems_mod.StemAnalysisConfig(
+        demucs_model="htdemucs_ft",
+        demucs_fallback_model="htdemucs",
+        enable_bass_refinement=True,
+        analysis_highpass_hz=35.0,
+        analysis_lowpass_hz=300.0,
+        analysis_sample_rate=22050,
+        enable_model_ensemble=False,
+        candidate_models=["htdemucs_ft", "htdemucs_6s"],
+    )
+
+    result = stems_mod.build_bass_analysis_stem(
+        stems={"bass": supplied_bass, "other": supplied_other},
+        output_dir=tmp_path / "analysis",
+        analysis_config=config,
+        source_audio_path=audio_path,
+        separate_fn=fake_separate,
+    )
+
+    assert calls == []
+    assert result.source_model == "htdemucs_ft"
+
+
 def test_build_bass_analysis_stem_selects_best_scoring_candidate_deterministically(tmp_path: Path):
     audio_path = tmp_path / "track.wav"
     audio_path.write_bytes(b"audio")
