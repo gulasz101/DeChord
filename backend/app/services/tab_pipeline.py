@@ -5,11 +5,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from statistics import median
 from tempfile import NamedTemporaryFile
-from typing import Callable, Literal
+from typing import Callable, Literal, Protocol
 import wave
 
 from app.services.alphatex_exporter import SyncPoint, export_alphatex
 from app.services.bass_transcriber import BasicPitchTranscriber, BassTranscriber
+from app.services.dense_note_generator import DenseNoteCandidate, DenseNoteGenerator
 from app.services.fingering import (
     FingeredNote,
     candidate_sanity_probe,
@@ -35,6 +36,19 @@ QuantizeFn = Callable[..., list[QuantizedNote]]
 FingeringFn = Callable[..., list[FingeredNote]]
 ExportFn = Callable[..., tuple[str, list[SyncPoint]]]
 OnsetDetectFn = Callable[[Path], list[float]]
+
+
+class DenseNoteGeneratorLike(Protocol):
+    def generate(
+        self,
+        *,
+        bass_wav: Path,
+        window_start: float,
+        window_end: float,
+        onset_times: list[float],
+        base_notes: list,
+        context_notes: list,
+    ) -> list[DenseNoteCandidate]: ...
 
 
 class FingeringCollapseError(RuntimeError):
@@ -65,6 +79,7 @@ class TabPipeline:
         fingering_fn: FingeringFn | None = None,
         export_fn: ExportFn | None = None,
         onset_detect_fn: OnsetDetectFn | None = None,
+        dense_note_generator: DenseNoteGeneratorLike | None = None,
     ) -> None:
         self._transcriber = transcriber or BasicPitchTranscriber()
         self._rhythm_extract_fn = rhythm_extract_fn or extract_beats_and_downbeats
@@ -74,6 +89,7 @@ class TabPipeline:
         self._fingering_fn = fingering_fn or optimize_fingering
         self._export_fn = export_fn or export_alphatex
         self._onset_detect_fn = onset_detect_fn or self._detect_onsets_librosa
+        self._dense_note_generator = dense_note_generator or DenseNoteGenerator()
 
     def run(
         self,
@@ -111,18 +127,22 @@ class TabPipeline:
         tempo_used = float(song_bpm) if song_bpm is not None else reconcile_tempo(derived_bpm=derived_bpm, bpm_hint=bpm_hint)
 
         transcription = self._transcriber.transcribe(bass_wav)
+        quality_mode_suspect_silence = tab_generation_quality_mode in {"high_accuracy", "high_accuracy_aggressive"}
         should_onset_recovery = (
             onset_recovery
             if onset_recovery is not None
             else tab_generation_quality_mode in {"high_accuracy", "high_accuracy_aggressive"}
         )
         onset_times: list[float] = []
+        analysis_onset_times: list[float] = []
         pre_cleanup_notes = transcription.raw_notes
         onset_recovery_applied = False
         onset_split_starts: set[float] = set()
         onset_split_count = 0
+        if (should_onset_recovery and pre_cleanup_notes) or quality_mode_suspect_silence:
+            analysis_onset_times = self._onset_detect_fn(bass_wav)
         if should_onset_recovery and pre_cleanup_notes:
-            onset_times = self._onset_detect_fn(bass_wav)
+            onset_times = analysis_onset_times
             if onset_times:
                 onset_kwargs = recovery_params_for_bpm(tempo_used)
                 pre_cleanup_notes, onset_split_starts, onset_split_count = recover_missing_onsets(
@@ -142,10 +162,14 @@ class TabPipeline:
             stats=cleanup_stats_pass1,
         )
         quantized_notes = self._quantize_fn(cleaned_notes, BarGrid(bars=bars), subdivision=subdivision)
-        quality_mode_suspect_silence = tab_generation_quality_mode in {"high_accuracy", "high_accuracy_aggressive"}
         quality_diagnostics: dict[str, object] = {
             "QUALITY_MODE_SUSPECT_SILENCE": quality_mode_suspect_silence,
         }
+        raw_note_source_rows = self._build_raw_note_source_rows(
+            pre_cleanup_notes,
+            dense_candidates=[],
+            cleaned_notes=cleaned_notes,
+        )
 
         if quality_mode_suspect_silence:
             notes_per_bar_before = self._notes_per_bar(quantized_notes, len(bars))
@@ -153,6 +177,8 @@ class TabPipeline:
             onset_peaks = self._bar_onset_peaks(bass_wav, bars)
             suspect_rows: list[dict[str, object]] = []
             dense_bar_fusion_candidates: list[dict[str, object]] = []
+            dense_note_fusion_candidates: list[dict[str, object]] = []
+            accepted_dense_candidates: list[DenseNoteCandidate] = []
 
             if tab_generation_quality_mode == "high_accuracy":
                 median_bar_rms = self._median(bar_rms)
@@ -197,6 +223,36 @@ class TabPipeline:
                 bar = bars[bar_index]
                 window_start = max(0.0, bar.start_sec - 0.2)
                 window_end = bar.end_sec + 0.2
+                local_context = [
+                    note
+                    for note in pre_cleanup_notes
+                    if max(0.0, window_start - 0.6) <= float(note.start_sec) < min(audio_duration_sec, window_end + 0.6)
+                ]
+                dense_candidates: list[DenseNoteCandidate] = []
+                if row.get("triggered_by_dense_sparse") and analysis_onset_times:
+                    dense_candidates = self._dense_note_generator.generate(
+                        bass_wav=bass_wav,
+                        window_start=window_start,
+                        window_end=window_end,
+                        onset_times=analysis_onset_times,
+                        base_notes=pre_cleanup_notes,
+                        context_notes=local_context,
+                    )
+                    accepted_candidates, dense_rows = self._confidence_gate_dense_note_candidates(
+                        dense_candidates,
+                        reference_notes=pre_cleanup_notes,
+                        base_notes=pre_cleanup_notes + [candidate.to_raw_note() for candidate in accepted_dense_candidates],
+                        bar_index=bar_index,
+                        onset_peak_count=onset_peaks[bar_index] if bar_index < len(onset_peaks) else 0,
+                        window_start=window_start,
+                        window_end=window_end,
+                    )
+                    accepted_dense_candidates.extend(accepted_candidates)
+                    dense_note_fusion_candidates.extend(dense_rows)
+
+                if row.get("triggered_by_dense_sparse") and accepted_dense_candidates:
+                    continue
+
                 window_notes = self._transcribe_window_with_offset(
                     bass_wav,
                     window_start=window_start,
@@ -215,8 +271,9 @@ class TabPipeline:
                     dense_bar_fusion_candidates.extend(candidate_rows)
                 second_pass_notes.extend(window_notes)
 
-            if second_pass_notes:
-                merged_raw_notes = self._merge_raw_notes(transcription.raw_notes, second_pass_notes)
+            merged_additions = second_pass_notes + [candidate.to_raw_note() for candidate in accepted_dense_candidates]
+            if merged_additions:
+                merged_raw_notes = self._merge_raw_notes(pre_cleanup_notes, merged_additions)
                 cleanup_stats_pass2: dict[str, int] = {}
                 cleaned_notes = self._cleanup_fn(
                     merged_raw_notes,
@@ -227,6 +284,11 @@ class TabPipeline:
                 )
                 quantized_notes = self._quantize_fn(cleaned_notes, BarGrid(bars=bars), subdivision=subdivision)
                 quality_diagnostics["cleanup_stats_second_pass"] = cleanup_stats_pass2
+                raw_note_source_rows = self._build_raw_note_source_rows(
+                    merged_raw_notes,
+                    dense_candidates=accepted_dense_candidates,
+                    cleaned_notes=cleaned_notes,
+                )
 
             notes_per_bar_after = self._notes_per_bar(quantized_notes, len(bars))
             notes_added_second_pass = max(0, sum(notes_per_bar_after) - sum(notes_per_bar_before))
@@ -239,6 +301,8 @@ class TabPipeline:
                     "notes_per_bar_after_high_accuracy": notes_per_bar_after,
                     "dense_bar_fusion_candidates": dense_bar_fusion_candidates,
                     "dense_bar_fusion_summary": self._dense_bar_fusion_summary(dense_bar_fusion_candidates),
+                    "dense_note_fusion_candidates": dense_note_fusion_candidates,
+                    "dense_note_fusion_summary": self._dense_note_fusion_summary(dense_note_fusion_candidates),
                 }
             )
 
@@ -348,7 +412,10 @@ class TabPipeline:
             "cleanup_stats": cleanup_stats_pass1,
             "onset_recovery_applied": onset_recovery_applied,
             "onset_count": len(onset_times),
+            "analysis_onset_count": len(analysis_onset_times),
             "onset_split_count": onset_split_count,
+            "raw_note_source_rows": raw_note_source_rows,
+            "raw_note_source_summary": self._raw_note_source_summary(raw_note_source_rows),
             **quality_diagnostics,
         }
 
@@ -636,6 +703,51 @@ class TabPipeline:
         return merged
 
     @staticmethod
+    def _build_raw_note_source_rows(
+        pre_cleanup_notes: list,
+        *,
+        dense_candidates: list[DenseNoteCandidate],
+        cleaned_notes: list,
+    ) -> list[dict[str, object]]:
+        dense_by_key = {
+            (round(candidate.start_sec, 6), round(candidate.end_sec, 6), int(candidate.pitch_midi)): candidate
+            for candidate in dense_candidates
+        }
+        rows: list[dict[str, object]] = []
+        for note in sorted(pre_cleanup_notes, key=lambda item: (item.start_sec, item.end_sec, item.pitch_midi)):
+            key = (round(note.start_sec, 6), round(note.end_sec, 6), int(note.pitch_midi))
+            dense_candidate = dense_by_key.get(key)
+            source = "basic_pitch"
+            confidence_summary: dict[str, object] = {"confidence": float(note.confidence)}
+            if dense_candidate is not None:
+                raw_pitch = dense_candidate.support.get("raw_pitch_midi")
+                source = "hybrid_merged" if isinstance(raw_pitch, int) and int(raw_pitch) != int(dense_candidate.pitch_midi) else "dense_note_generator"
+                confidence_summary.update(dense_candidate.support)
+            rows.append(
+                {
+                    "source": source,
+                    "pitch_midi": int(note.pitch_midi),
+                    "start_sec": float(note.start_sec),
+                    "end_sec": float(note.end_sec),
+                    "survived_cleanup": TabPipeline._note_survived_cleanup(note, cleaned_notes),
+                    "confidence_summary": confidence_summary,
+                }
+            )
+        return rows
+
+    @staticmethod
+    def _note_survived_cleanup(note, cleaned_notes: list) -> bool:
+        for cleaned in cleaned_notes:
+            if abs(float(cleaned.start_sec) - float(note.start_sec)) <= 0.05 and int(cleaned.pitch_midi) == int(note.pitch_midi):
+                return True
+        return False
+
+    @staticmethod
+    def _raw_note_source_summary(rows: list[dict[str, object]]) -> dict[str, int]:
+        counts = Counter(str(row.get("source", "unknown")) for row in rows)
+        return dict(sorted((key, int(value)) for key, value in counts.items()))
+
+    @staticmethod
     def _confidence_gate_dense_bar_candidates(
         second_pass_notes: list,
         *,
@@ -761,6 +873,109 @@ class TabPipeline:
         return accepted_notes, candidate_rows
 
     @staticmethod
+    def _confidence_gate_dense_note_candidates(
+        dense_candidates: list[DenseNoteCandidate],
+        *,
+        reference_notes: list,
+        base_notes: list,
+        bar_index: int,
+        onset_peak_count: int,
+        window_start: float,
+        window_end: float,
+    ) -> tuple[list[DenseNoteCandidate], list[dict[str, object]]]:
+        local_reference = [note for note in reference_notes if window_start <= note.start_sec < window_end]
+        if not local_reference:
+            rejected = [
+                {
+                    "bar_index": bar_index,
+                    "candidate_onset_sec": float(candidate.start_sec),
+                    "candidate_raw_pitch": int(candidate.support.get("raw_pitch_midi", candidate.pitch_midi)),
+                    "adjusted_pitch": int(candidate.pitch_midi),
+                    "local_pitch_anchor": None,
+                    "accepted": False,
+                    "rejection_reason": "weak_local_support",
+                    "confidence_components": {"total_score": 0.0, "local_support_ratio": 0.0},
+                }
+                for candidate in dense_candidates
+            ]
+            return [], rejected
+
+        dominant_pitch = max(
+            {int(note.pitch_midi) for note in local_reference},
+            key=lambda pitch: sum(1 for note in local_reference if int(note.pitch_midi) == pitch),
+        )
+        local_counts = Counter(int(note.pitch_midi) for note in local_reference)
+        repeated_note_mode = TabPipeline._is_dense_repeated_note_mode(local_counts, onset_peak_count=onset_peak_count)
+        onset_support_score = max(0.0, min(1.0, float(onset_peak_count) / 8.0))
+        accepted_candidates: list[DenseNoteCandidate] = []
+        candidate_rows: list[dict[str, object]] = []
+        collision_pool = list(base_notes)
+
+        for candidate in dense_candidates:
+            adjusted_pitch = int(candidate.pitch_midi)
+            raw_pitch = int(candidate.support.get("raw_pitch_midi", candidate.pitch_midi))
+            anchor_distance = abs(adjusted_pitch - dominant_pitch)
+            local_support_ratio = float(local_counts.get(adjusted_pitch, 0)) / float(max(1, len(local_reference)))
+            duplicate_existing = any(
+                abs(float(existing.start_sec) - float(candidate.start_sec)) <= 0.08 and int(existing.pitch_midi) == adjusted_pitch
+                for existing in collision_pool
+            )
+            anchor_proximity_score = 1.0 - min(1.0, float(TabPipeline._nearest_octave_distance(adjusted_pitch, dominant_pitch)) / 12.0)
+            repeated_mode_score = 1.0 if repeated_note_mode and adjusted_pitch == dominant_pitch else 0.0
+            register_score = 1.0 if 28 <= adjusted_pitch <= 64 else 0.0
+            total_score = (
+                (0.4 * float(candidate.confidence))
+                + (0.2 * onset_support_score)
+                + (0.15 * anchor_proximity_score)
+                + (0.1 * local_support_ratio)
+                + (0.1 * register_score)
+                + (0.05 * repeated_mode_score)
+            )
+
+            accepted = True
+            rejection_reason: str | None = None
+            if duplicate_existing:
+                accepted = False
+                rejection_reason = "duplicate_existing_note"
+            elif adjusted_pitch < 28 or adjusted_pitch > 64:
+                accepted = False
+                rejection_reason = "out_of_register"
+            elif anchor_distance > 18 and local_support_ratio < 0.2:
+                accepted = False
+                rejection_reason = "pitch_far_from_anchor"
+            elif total_score < 0.4:
+                accepted = False
+                rejection_reason = "weak_local_support"
+
+            if accepted:
+                accepted_candidates.append(candidate)
+                collision_pool.append(candidate.to_raw_note())
+
+            candidate_rows.append(
+                {
+                    "bar_index": bar_index,
+                    "candidate_onset_sec": float(candidate.start_sec),
+                    "candidate_raw_pitch": raw_pitch,
+                    "adjusted_pitch": adjusted_pitch,
+                    "local_pitch_anchor": int(dominant_pitch),
+                    "accepted": accepted,
+                    "rejection_reason": rejection_reason,
+                    "confidence_components": {
+                        "candidate_confidence": float(candidate.confidence),
+                        "onset_support_score": float(onset_support_score),
+                        "anchor_proximity_score": float(anchor_proximity_score),
+                        "local_support_ratio": float(local_support_ratio),
+                        "repeated_mode_score": float(repeated_mode_score),
+                        "total_score": float(total_score),
+                        "anchor_distance_semitones": int(anchor_distance),
+                        "repeated_note_mode": bool(repeated_note_mode),
+                    },
+                }
+            )
+
+        return accepted_candidates, candidate_rows
+
+    @staticmethod
     def _nearest_octave_distance(pitch_midi: int, anchor_pitch: int) -> int:
         distances = [abs((pitch_midi + (12 * offset)) - anchor_pitch) for offset in (-2, -1, 0, 1, 2)]
         return int(min(distances))
@@ -798,4 +1013,16 @@ class TabPipeline:
             "rejection_histogram": dict(sorted(reasons.items())),
             "avg_pitch_distance_from_anchor_accepted": avg_distance(accepted),
             "avg_pitch_distance_from_anchor_rejected": avg_distance(rejected),
+        }
+
+    @staticmethod
+    def _dense_note_fusion_summary(candidates: list[dict[str, object]]) -> dict[str, object]:
+        accepted = [row for row in candidates if row.get("accepted") is True]
+        rejected = [row for row in candidates if row.get("accepted") is False]
+        reasons = Counter(str(row.get("rejection_reason")) for row in rejected if row.get("rejection_reason"))
+        return {
+            "candidates": len(candidates),
+            "accepted": len(accepted),
+            "rejected": len(rejected),
+            "rejection_histogram": dict(sorted(reasons.items())),
         }

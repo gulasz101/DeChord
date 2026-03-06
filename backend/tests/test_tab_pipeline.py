@@ -8,6 +8,7 @@ import pytest
 
 from app.services.alphatex_exporter import SyncPoint
 from app.services.bass_transcriber import BassTranscriptionResult, RawNoteEvent
+from app.services.dense_note_generator import DenseNoteCandidate
 from app.services.fingering import FingeredNote
 from app.services.note_cleanup import cleanup_params_for_bpm
 from app.services.quantization import QuantizedNote
@@ -772,8 +773,24 @@ def test_high_accuracy_aggressive_second_pass_targets_dense_sparse_bars(tmp_path
 
     pipeline = TabPipeline(
         transcriber=FakeTranscriber(),
+        dense_note_generator=type(
+            "FakeDenseGenerator",
+            (),
+            {
+                "generate": lambda self, **_kwargs: [
+                    DenseNoteCandidate(
+                        pitch_midi=40,
+                        start_sec=1.45,
+                        end_sec=1.8,
+                        confidence=0.76,
+                        support={"anchor_pitch": 40, "repeated_note_mode": True, "raw_pitch_midi": 52},
+                    )
+                ]
+            },
+        )(),
         rhythm_extract_fn=lambda _drums, **_kwargs: ([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5], [0.0, 2.0], "madmom"),
         bar_builder_fn=lambda _beats, _downbeats, **_kwargs: bars,
+        onset_detect_fn=lambda _bass: [0.2, 1.45, 1.8],
         cleanup_fn=lambda events, **_kwargs: events,
         quantize_fn=fake_quantize,
         fingering_fn=lambda notes, **_kwargs: [
@@ -803,7 +820,7 @@ def test_high_accuracy_aggressive_second_pass_targets_dense_sparse_bars(tmp_path
     assert result.debug_info["suspect_silence_bars_count"] == 1
     assert result.debug_info["notes_added_second_pass"] > 0
     assert result.debug_info["suspect_bars"][0]["triggered_by_dense_sparse"] is True
-    fusion_summary = result.debug_info["dense_bar_fusion_summary"]
+    fusion_summary = result.debug_info["dense_note_fusion_summary"]
     assert fusion_summary["candidates"] >= 1
     assert fusion_summary["accepted"] >= 1
     assert fusion_summary["rejected"] == 0
@@ -865,8 +882,24 @@ def test_dense_sparse_second_pass_reuses_local_pitch_track(tmp_path: Path, monke
 
     pipeline = TabPipeline(
         transcriber=FakeTranscriber(),
+        dense_note_generator=type(
+            "FakeDenseGenerator",
+            (),
+            {
+                "generate": lambda self, **_kwargs: [
+                    DenseNoteCandidate(
+                        pitch_midi=62,
+                        start_sec=1.45,
+                        end_sec=1.8,
+                        confidence=0.42,
+                        support={"anchor_pitch": 40, "repeated_note_mode": False, "raw_pitch_midi": 62},
+                    )
+                ]
+            },
+        )(),
         rhythm_extract_fn=lambda _drums, **_kwargs: ([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5], [0.0, 2.0], "madmom"),
         bar_builder_fn=lambda _beats, _downbeats, **_kwargs: bars,
+        onset_detect_fn=lambda _bass: [0.2, 1.45, 1.8],
         cleanup_fn=lambda events, **_kwargs: events,
         quantize_fn=fake_quantize,
         fingering_fn=lambda notes, **_kwargs: [
@@ -947,8 +980,24 @@ def test_dense_sparse_second_pass_rejects_pitch_outlier_and_logs_reason(tmp_path
 
     pipeline = TabPipeline(
         transcriber=FakeTranscriber(),
+        dense_note_generator=type(
+            "FakeDenseGenerator",
+            (),
+            {
+                "generate": lambda self, **_kwargs: [
+                    DenseNoteCandidate(
+                        pitch_midi=62,
+                        start_sec=1.45,
+                        end_sec=1.8,
+                        confidence=0.42,
+                        support={"anchor_pitch": 40, "repeated_note_mode": False, "raw_pitch_midi": 62},
+                    )
+                ]
+            },
+        )(),
         rhythm_extract_fn=lambda _drums, **_kwargs: ([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5], [0.0, 2.0], "madmom"),
         bar_builder_fn=lambda _beats, _downbeats, **_kwargs: bars,
+        onset_detect_fn=lambda _bass: [0.2, 1.45, 1.8],
         cleanup_fn=lambda events, **_kwargs: events,
         quantize_fn=fake_quantize,
         fingering_fn=lambda notes, **_kwargs: [
@@ -975,11 +1024,178 @@ def test_dense_sparse_second_pass_rejects_pitch_outlier_and_logs_reason(tmp_path
         onset_recovery=False,
     )
 
-    summary = result.debug_info["dense_bar_fusion_summary"]
+    summary = result.debug_info["dense_note_fusion_summary"]
     assert summary["candidates"] == 1
     assert summary["accepted"] == 0
     assert summary["rejected"] == 1
     assert summary["rejection_histogram"]["pitch_far_from_anchor"] == 1
-    candidate = result.debug_info["dense_bar_fusion_candidates"][0]
+    candidate = result.debug_info["dense_note_fusion_candidates"][0]
     assert candidate["accepted"] is False
     assert candidate["rejection_reason"] == "pitch_far_from_anchor"
+
+
+def test_high_accuracy_aggressive_fuses_dense_candidates_before_cleanup(tmp_path: Path, monkeypatch) -> None:
+    class FakeTranscriber:
+        def transcribe(self, _bass_wav: Path, **_kwargs) -> BassTranscriptionResult:
+            return BassTranscriptionResult(
+                engine="basic_pitch",
+                midi_bytes=b"MThd",
+                raw_notes=[
+                    RawNoteEvent(pitch_midi=40, start_sec=0.2, end_sec=0.8, confidence=0.9),
+                    RawNoteEvent(pitch_midi=35, start_sec=2.2, end_sec=2.6, confidence=0.9),
+                ],
+            )
+
+    class FakeDenseGenerator:
+        def generate(self, **_kwargs):
+            return [
+                DenseNoteCandidate(
+                    pitch_midi=40,
+                    start_sec=1.0,
+                    end_sec=1.16,
+                    confidence=0.74,
+                    support={"anchor_pitch": 40, "repeated_note_mode": True},
+                )
+            ]
+
+    bars = [
+        Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5]),
+        Bar(index=1, start_sec=2.0, end_sec=4.0, beats_sec=[2.0, 2.5, 3.0, 3.5]),
+    ]
+    cleanup_inputs: list[list[RawNoteEvent]] = []
+
+    def fake_cleanup(events, **_kwargs):
+        cleanup_inputs.append(list(events))
+        return events
+
+    pipeline = TabPipeline(
+        transcriber=FakeTranscriber(),
+        dense_note_generator=FakeDenseGenerator(),
+        rhythm_extract_fn=lambda _drums, **_kwargs: ([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5], [0.0, 2.0], "madmom"),
+        bar_builder_fn=lambda _beats, _downbeats, **_kwargs: bars,
+        onset_detect_fn=lambda _bass: [0.2, 1.0, 1.5],
+        cleanup_fn=fake_cleanup,
+        quantize_fn=lambda events, _grid, **_kwargs: [
+            QuantizedNote(
+                bar_index=0 if event.start_sec < 2.0 else 1,
+                beat_position=0.0,
+                duration_beats=1.0,
+                pitch_midi=event.pitch_midi,
+                start_sec=event.start_sec,
+                end_sec=event.end_sec,
+            )
+            for event in events
+        ],
+        fingering_fn=lambda notes, **_kwargs: [
+            FingeredNote(
+                bar_index=note.bar_index,
+                beat_position=note.beat_position,
+                duration_beats=note.duration_beats,
+                pitch_midi=note.pitch_midi,
+                start_sec=note.start_sec,
+                end_sec=note.end_sec,
+                string=4,
+                fret=max(0, note.pitch_midi - 28),
+            )
+            for note in notes
+        ],
+        export_fn=lambda notes, _bars, **_kwargs: ("\\tempo 120", [SyncPoint(bar_index=0, millisecond_offset=0)]),
+    )
+
+    monkeypatch.setattr(TabPipeline, "_bar_rms_values", staticmethod(lambda _bass, _bars: [1.0, 1.0]), raising=False)
+    monkeypatch.setattr(TabPipeline, "_bar_onset_peaks", staticmethod(lambda _bass, _bars: [8, 0]), raising=False)
+
+    result = pipeline.run(
+        tmp_path / "bass.wav",
+        tmp_path / "drums.wav",
+        bpm_hint=120.0,
+        tab_generation_quality_mode="high_accuracy_aggressive",
+        onset_recovery=False,
+    )
+
+    assert len(cleanup_inputs) == 2
+    assert [(round(note.start_sec, 2), note.pitch_midi) for note in cleanup_inputs[-1]] == [(0.2, 40), (1.0, 40), (2.2, 35)]
+    source_summary = result.debug_info["raw_note_source_summary"]
+    assert source_summary["basic_pitch"] == 2
+    assert source_summary["dense_note_generator"] == 1
+    assert result.debug_info["dense_note_fusion_summary"]["accepted"] == 1
+
+
+def test_pipeline_records_raw_note_source_attribution_and_cleanup_survival(tmp_path: Path, monkeypatch) -> None:
+    class FakeTranscriber:
+        def transcribe(self, _bass_wav: Path, **_kwargs) -> BassTranscriptionResult:
+            return BassTranscriptionResult(
+                engine="basic_pitch",
+                midi_bytes=b"MThd",
+                raw_notes=[RawNoteEvent(pitch_midi=40, start_sec=0.2, end_sec=0.8, confidence=0.9)],
+            )
+
+    class FakeDenseGenerator:
+        def generate(self, **_kwargs):
+            return [
+                DenseNoteCandidate(
+                    pitch_midi=40,
+                    start_sec=1.0,
+                    end_sec=1.16,
+                    confidence=0.74,
+                    support={"anchor_pitch": 40, "repeated_note_mode": True, "raw_pitch_midi": 52},
+                )
+            ]
+
+    bars = [Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])]
+
+    def fake_cleanup(events, **_kwargs):
+        return [event for event in events if event.start_sec < 0.5]
+
+    pipeline = TabPipeline(
+        transcriber=FakeTranscriber(),
+        dense_note_generator=FakeDenseGenerator(),
+        rhythm_extract_fn=lambda _drums, **_kwargs: ([0.0, 0.5, 1.0, 1.5], [0.0], "madmom"),
+        bar_builder_fn=lambda _beats, _downbeats, **_kwargs: bars,
+        onset_detect_fn=lambda _bass: [0.2, 1.0, 1.4],
+        cleanup_fn=fake_cleanup,
+        quantize_fn=lambda events, _grid, **_kwargs: [
+            QuantizedNote(
+                bar_index=0,
+                beat_position=0.0,
+                duration_beats=1.0,
+                pitch_midi=event.pitch_midi,
+                start_sec=event.start_sec,
+                end_sec=event.end_sec,
+            )
+            for event in events
+        ],
+        fingering_fn=lambda notes, **_kwargs: [
+            FingeredNote(
+                bar_index=note.bar_index,
+                beat_position=note.beat_position,
+                duration_beats=note.duration_beats,
+                pitch_midi=note.pitch_midi,
+                start_sec=note.start_sec,
+                end_sec=note.end_sec,
+                string=4,
+                fret=max(0, note.pitch_midi - 28),
+            )
+            for note in notes
+        ],
+        export_fn=lambda notes, _bars, **_kwargs: ("\\tempo 120", [SyncPoint(bar_index=0, millisecond_offset=0)]),
+    )
+
+    monkeypatch.setattr(TabPipeline, "_bar_rms_values", staticmethod(lambda _bass, _bars: [1.0]), raising=False)
+    monkeypatch.setattr(TabPipeline, "_bar_onset_peaks", staticmethod(lambda _bass, _bars: [8]), raising=False)
+
+    result = pipeline.run(
+        tmp_path / "bass.wav",
+        tmp_path / "drums.wav",
+        bpm_hint=120.0,
+        tab_generation_quality_mode="high_accuracy_aggressive",
+        onset_recovery=False,
+    )
+
+    rows = result.debug_info["raw_note_source_rows"]
+    assert len(rows) == 2
+    assert rows[0]["source"] == "basic_pitch"
+    assert rows[0]["survived_cleanup"] is True
+    assert rows[1]["source"] == "hybrid_merged"
+    assert rows[1]["survived_cleanup"] is False
+    assert rows[1]["confidence_summary"]["raw_pitch_midi"] == 52
