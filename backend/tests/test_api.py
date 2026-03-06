@@ -611,6 +611,62 @@ def test_generate_tab_from_demucs_stems_endpoint_persists_midi_and_alphatex(tmp_
     assert tab_rs.rows[0][1] == "alphatex"
 
 
+def test_generate_tab_from_demucs_stems_routes_analysis_bass_into_tab_pipeline(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+    from app.services.alphatex_exporter import SyncPoint
+    from app.services.rhythm_grid import Bar
+    from app.services.tab_pipeline import TabPipelineResult
+
+    captured: dict[str, object] = {}
+
+    def fake_build_bass_analysis_stem(*, stems, output_dir, source_audio_path=None, analysis_config=None, separate_fn=None):
+        captured["stems"] = stems
+        captured["analysis_config"] = analysis_config
+        captured["source_audio_path"] = source_audio_path
+        analysis_path = output_dir / "bass_analysis.wav"
+        analysis_path.parent.mkdir(parents=True, exist_ok=True)
+        analysis_path.write_bytes(b"analysis-bass")
+        return main.BassAnalysisStemResult(
+            path=analysis_path,
+            source_model="uploaded_refined",
+            diagnostics={"selected_model": "uploaded_refined"},
+        )
+
+    def fake_run(bass_wav, drums_wav, **_kwargs):
+        captured["bass_wav"] = str(bass_wav)
+        captured["drums_wav"] = str(drums_wav)
+        return TabPipelineResult(
+            alphatex="\\tempo 120\n\\sync(0 0 0 0)",
+            tempo_used=120.0,
+            bars=[Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])],
+            sync_points=[SyncPoint(bar_index=0, millisecond_offset=0)],
+            midi_bytes=b"MThd\x00\x00\x00\x06",
+            debug_info={"rhythm_source": "madmom"},
+        )
+
+    monkeypatch.setattr(main, "build_bass_analysis_stem", fake_build_bass_analysis_stem)
+    monkeypatch.setattr(main.tab_pipeline, "run", fake_run)
+
+    files = {
+        "bass": ("bass.wav", b"bass-bytes", "audio/wav"),
+        "drums": ("drums.wav", b"drums-bytes", "audio/wav"),
+    }
+    response = client.post(
+        "/api/tab/from-demucs-stems",
+        data={"tabGenerationQuality": "high_accuracy"},
+        files=files,
+    )
+
+    assert response.status_code == 200
+    assert captured["stems"]["bass"].name == "bass.wav"
+    assert captured["stems"]["drums"].name == "drums.wav"
+    assert captured["source_audio_path"] is None
+    assert captured["analysis_config"] is not None
+    assert captured["bass_wav"].endswith("bass_analysis.wav")
+    assert captured["drums_wav"].endswith("drums.wav")
+
+
 def test_generate_tab_from_demucs_stems_returns_structured_debug_on_fingering_collapse(tmp_path, monkeypatch):
     client = _build_client(tmp_path, monkeypatch)
     import app.main as main

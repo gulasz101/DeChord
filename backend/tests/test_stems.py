@@ -642,6 +642,9 @@ def test_build_bass_analysis_stem_reports_score_breakdown_for_each_successful_ca
     for model_name in ("htdemucs_ft", "htdemucs_6s"):
         diagnostics = result.diagnostics["candidate_diagnostics"][model_name]
         assert diagnostics["status"] == "ok"
+        assert diagnostics["success"] is True
+        assert diagnostics["available"] is True
+        assert Path(diagnostics["analysis_path"]).exists()
         assert set(diagnostics["scoring_components"].keys()) >= {
             "bass_energy",
             "low_energy",
@@ -821,6 +824,10 @@ def test_build_bass_analysis_stem_skips_failed_candidate_when_another_succeeds(t
 
     assert result.source_model == "htdemucs_ft"
     assert result.diagnostics["candidate_diagnostics"]["broken_model"]["status"] == "failed"
+    assert result.diagnostics["candidate_diagnostics"]["broken_model"]["success"] is False
+    assert result.diagnostics["candidate_diagnostics"]["broken_model"]["available"] is False
+    assert result.diagnostics["candidate_diagnostics"]["broken_model"]["error"] == "model unavailable"
+    assert result.diagnostics["candidate_diagnostics"]["broken_model"]["selected"] is False
     assert result.diagnostics["candidate_diagnostics"]["htdemucs_ft"]["status"] == "ok"
 
 
@@ -855,3 +862,50 @@ def test_build_bass_analysis_stem_raises_explicitly_when_all_candidates_fail(tmp
             source_audio_path=audio_path,
             separate_fn=fake_separate,
         )
+
+
+def test_build_bass_analysis_stem_breaks_score_ties_by_candidate_order(tmp_path: Path):
+    audio_path = tmp_path / "track.wav"
+    audio_path.write_bytes(b"audio")
+    sample_rate = 22050
+    times = np.linspace(0.0, 1.0, sample_rate, endpoint=False)
+
+    def write_wav(path: Path, samples: np.ndarray) -> None:
+        pcm = np.clip(samples * 32767.0, -32768, 32767).astype(np.int16)
+        with wave.open(str(path), "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(pcm.tobytes())
+
+    def fake_separate(_input_audio: str, output_dir: Path, _progress_callback, *, model_name: str):
+        output_dir.mkdir(parents=True, exist_ok=True)
+        bass = output_dir / "bass.wav"
+        drums = output_dir / "drums.wav"
+        bass_audio = (0.75 * np.sin(2.0 * np.pi * 55.0 * times)).astype(np.float32)
+        write_wav(bass, bass_audio)
+        write_wav(drums, np.zeros_like(times, dtype=np.float32))
+        return {"bass": bass, "drums": drums}
+
+    config = stems_mod.StemAnalysisConfig(
+        demucs_model="a_model",
+        demucs_fallback_model="htdemucs",
+        enable_bass_refinement=True,
+        analysis_highpass_hz=35.0,
+        analysis_lowpass_hz=300.0,
+        analysis_sample_rate=22050,
+        enable_model_ensemble=True,
+        candidate_models=["a_model", "z_model"],
+    )
+
+    result = stems_mod.build_bass_analysis_stem(
+        stems={},
+        output_dir=tmp_path / "analysis",
+        analysis_config=config,
+        source_audio_path=audio_path,
+        separate_fn=fake_separate,
+    )
+
+    assert result.source_model == "a_model"
+    assert result.diagnostics["candidate_diagnostics"]["a_model"]["selected"] is True
+    assert result.diagnostics["candidate_diagnostics"]["z_model"]["selected"] is False
