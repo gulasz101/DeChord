@@ -174,11 +174,10 @@ class TabPipeline:
                     rms = bar_rms[bar_index]
                     local_median = local_medians[bar_index]
                     onsets = onset_peaks[bar_index] if bar_index < len(onset_peaks) else 0
-                    if note_count != 0:
-                        continue
-                    triggered_by_rms = rms > 0 and local_median > 0 and rms >= (local_median * 0.9)
-                    triggered_by_onsets = onsets >= 2
-                    if triggered_by_rms or triggered_by_onsets:
+                    triggered_by_dense_sparse = onsets >= 6 and note_count <= max(2, int(onsets * 0.25))
+                    triggered_by_rms = note_count == 0 and rms > 0 and local_median > 0 and rms >= (local_median * 0.9)
+                    triggered_by_onsets = note_count == 0 and onsets >= 2
+                    if triggered_by_rms or triggered_by_onsets or triggered_by_dense_sparse:
                         suspect_rows.append(
                             {
                                 "bar_index": bar_index,
@@ -187,16 +186,28 @@ class TabPipeline:
                                 "onset_peaks": onsets,
                                 "triggered_by_rms": triggered_by_rms,
                                 "triggered_by_onsets": triggered_by_onsets,
+                                "triggered_by_dense_sparse": triggered_by_dense_sparse,
                             }
                         )
-            suspect_indices = [int(row["bar_index"]) for row in suspect_rows]
-
             second_pass_notes: list = []
-            for bar_index in suspect_indices:
+            for row in suspect_rows:
+                bar_index = int(row["bar_index"])
                 bar = bars[bar_index]
                 window_start = max(0.0, bar.start_sec - 0.2)
                 window_end = bar.end_sec + 0.2
-                second_pass_notes.extend(self._transcribe_window_with_offset(bass_wav, window_start=window_start, window_end=window_end))
+                window_notes = self._transcribe_window_with_offset(
+                    bass_wav,
+                    window_start=window_start,
+                    window_end=window_end,
+                )
+                if row.get("triggered_by_dense_sparse"):
+                    window_notes = self._anchor_second_pass_pitches(
+                        window_notes,
+                        reference_notes=pre_cleanup_notes,
+                        window_start=window_start,
+                        window_end=window_end,
+                    )
+                second_pass_notes.extend(window_notes)
 
             if second_pass_notes:
                 merged_raw_notes = self._merge_raw_notes(transcription.raw_notes, second_pass_notes)
@@ -215,7 +226,7 @@ class TabPipeline:
             notes_added_second_pass = max(0, sum(notes_per_bar_after) - sum(notes_per_bar_before))
             quality_diagnostics.update(
                 {
-                    "suspect_silence_bars_count": len(suspect_indices),
+                    "suspect_silence_bars_count": len(suspect_rows),
                     "suspect_bars": suspect_rows,
                     "notes_added_second_pass": notes_added_second_pass,
                     "notes_per_bar_before_high_accuracy": notes_per_bar_before,
@@ -615,3 +626,31 @@ class TabPipeline:
             seen.add(key)
         merged.sort(key=lambda note: (note.start_sec, note.end_sec, note.pitch_midi))
         return merged
+
+    @staticmethod
+    def _anchor_second_pass_pitches(
+        second_pass_notes: list,
+        *,
+        reference_notes: list,
+        window_start: float,
+        window_end: float,
+    ) -> list:
+        local_reference = [note for note in reference_notes if window_start <= note.start_sec < window_end]
+        if not local_reference:
+            return second_pass_notes
+
+        dominant_pitch = max(
+            {int(note.pitch_midi) for note in local_reference},
+            key=lambda pitch: sum(1 for note in local_reference if int(note.pitch_midi) == pitch),
+        )
+        anchored = []
+        for note in second_pass_notes:
+            anchored.append(
+                type(note)(
+                    pitch_midi=dominant_pitch,
+                    start_sec=note.start_sec,
+                    end_sec=note.end_sec,
+                    confidence=note.confidence,
+                )
+            )
+        return anchored

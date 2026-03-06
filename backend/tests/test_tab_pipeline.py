@@ -712,3 +712,182 @@ def test_pipeline_enables_onset_recovery_for_high_accuracy_by_default(tmp_path: 
 
     assert result.debug_info["onset_recovery_applied"] is True
     assert result.debug_info["after_onset_recovery_count"] == 2
+
+
+def test_high_accuracy_aggressive_second_pass_targets_dense_sparse_bars(tmp_path: Path, monkeypatch) -> None:
+    bars = [
+        Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5]),
+        Bar(index=1, start_sec=2.0, end_sec=4.0, beats_sec=[2.0, 2.5, 3.0, 3.5]),
+    ]
+
+    class FakeTranscriber:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def transcribe(self, _bass_wav: Path, **_kwargs) -> BassTranscriptionResult:
+            self.calls += 1
+            if self.calls == 1:
+                return BassTranscriptionResult(
+                    engine="basic_pitch",
+                    midi_bytes=b"MThd",
+                    raw_notes=[
+                        RawNoteEvent(pitch_midi=40, start_sec=0.2, end_sec=1.4, confidence=0.9),
+                        RawNoteEvent(pitch_midi=35, start_sec=2.2, end_sec=2.6, confidence=0.9),
+                    ],
+                )
+            return BassTranscriptionResult(
+                engine="basic_pitch",
+                midi_bytes=b"MThd",
+                raw_notes=[RawNoteEvent(pitch_midi=40, start_sec=1.45, end_sec=1.8, confidence=0.9)],
+            )
+
+    def fake_quantize(events, _grid, **_kwargs):
+        quantized: list[QuantizedNote] = []
+        for event in events:
+            bar_index = 0 if event.start_sec < 2.0 else 1
+            quantized.append(
+                QuantizedNote(
+                    bar_index=bar_index,
+                    beat_position=0.0,
+                    duration_beats=1.0,
+                    pitch_midi=event.pitch_midi,
+                    start_sec=event.start_sec,
+                    end_sec=event.end_sec,
+                )
+            )
+        return quantized
+
+    bass_wav = tmp_path / "bass.wav"
+    drums_wav = tmp_path / "drums.wav"
+    _write_test_wav(bass_wav, amplitudes=[6000, 6000])
+    _write_test_wav(drums_wav, amplitudes=[1000, 1000])
+
+    monkeypatch.setattr(TabPipeline, "_bar_rms_values", staticmethod(lambda _bass, _bars: [1.0, 1.0]), raising=False)
+    monkeypatch.setattr(
+        TabPipeline,
+        "_bar_onset_peaks",
+        staticmethod(lambda _bass, _bars: [8, 0]),
+        raising=False,
+    )
+
+    pipeline = TabPipeline(
+        transcriber=FakeTranscriber(),
+        rhythm_extract_fn=lambda _drums, **_kwargs: ([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5], [0.0, 2.0], "madmom"),
+        bar_builder_fn=lambda _beats, _downbeats, **_kwargs: bars,
+        cleanup_fn=lambda events, **_kwargs: events,
+        quantize_fn=fake_quantize,
+        fingering_fn=lambda notes, **_kwargs: [
+            FingeredNote(
+                bar_index=note.bar_index,
+                beat_position=note.beat_position,
+                duration_beats=note.duration_beats,
+                pitch_midi=note.pitch_midi,
+                start_sec=note.start_sec,
+                end_sec=note.end_sec,
+                string=4,
+                fret=0,
+            )
+            for note in notes
+        ],
+        export_fn=lambda notes, _bars, **_kwargs: ("\\tempo 120", [SyncPoint(bar_index=0, millisecond_offset=0)]),
+    )
+
+    result = pipeline.run(
+        bass_wav,
+        drums_wav,
+        bpm_hint=120.0,
+        tab_generation_quality_mode="high_accuracy_aggressive",
+        onset_recovery=False,
+    )
+
+    assert result.debug_info["suspect_silence_bars_count"] == 1
+    assert result.debug_info["notes_added_second_pass"] > 0
+    assert result.debug_info["suspect_bars"][0]["triggered_by_dense_sparse"] is True
+
+
+def test_dense_sparse_second_pass_reuses_local_pitch_track(tmp_path: Path, monkeypatch) -> None:
+    bars = [
+        Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5]),
+        Bar(index=1, start_sec=2.0, end_sec=4.0, beats_sec=[2.0, 2.5, 3.0, 3.5]),
+    ]
+
+    class FakeTranscriber:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def transcribe(self, _bass_wav: Path, **_kwargs) -> BassTranscriptionResult:
+            self.calls += 1
+            if self.calls == 1:
+                return BassTranscriptionResult(
+                    engine="basic_pitch",
+                    midi_bytes=b"MThd",
+                    raw_notes=[
+                        RawNoteEvent(pitch_midi=40, start_sec=0.2, end_sec=1.2, confidence=0.9),
+                        RawNoteEvent(pitch_midi=35, start_sec=2.2, end_sec=2.6, confidence=0.9),
+                    ],
+                )
+            return BassTranscriptionResult(
+                engine="basic_pitch",
+                midi_bytes=b"MThd",
+                raw_notes=[RawNoteEvent(pitch_midi=52, start_sec=1.25, end_sec=1.55, confidence=0.9)],
+            )
+
+    def fake_quantize(events, _grid, **_kwargs):
+        return [
+            QuantizedNote(
+                bar_index=0 if event.start_sec < 2.0 else 1,
+                beat_position=0.0,
+                duration_beats=1.0,
+                pitch_midi=event.pitch_midi,
+                start_sec=event.start_sec,
+                end_sec=event.end_sec,
+            )
+            for event in events
+        ]
+
+    exported_pitches: list[int] = []
+
+    def fake_export(notes, _bars, **_kwargs):
+        exported_pitches.extend(note.pitch_midi for note in notes)
+        return "\\tempo 120", [SyncPoint(bar_index=0, millisecond_offset=0)]
+
+    bass_wav = tmp_path / "bass.wav"
+    drums_wav = tmp_path / "drums.wav"
+    _write_test_wav(bass_wav, amplitudes=[6000, 6000])
+    _write_test_wav(drums_wav, amplitudes=[1000, 1000])
+
+    monkeypatch.setattr(TabPipeline, "_bar_rms_values", staticmethod(lambda _bass, _bars: [1.0, 1.0]), raising=False)
+    monkeypatch.setattr(TabPipeline, "_bar_onset_peaks", staticmethod(lambda _bass, _bars: [8, 0]), raising=False)
+
+    pipeline = TabPipeline(
+        transcriber=FakeTranscriber(),
+        rhythm_extract_fn=lambda _drums, **_kwargs: ([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5], [0.0, 2.0], "madmom"),
+        bar_builder_fn=lambda _beats, _downbeats, **_kwargs: bars,
+        cleanup_fn=lambda events, **_kwargs: events,
+        quantize_fn=fake_quantize,
+        fingering_fn=lambda notes, **_kwargs: [
+            FingeredNote(
+                bar_index=note.bar_index,
+                beat_position=note.beat_position,
+                duration_beats=note.duration_beats,
+                pitch_midi=note.pitch_midi,
+                start_sec=note.start_sec,
+                end_sec=note.end_sec,
+                string=4,
+                fret=0,
+            )
+            for note in notes
+        ],
+        export_fn=fake_export,
+    )
+
+    pipeline.run(
+        bass_wav,
+        drums_wav,
+        bpm_hint=120.0,
+        tab_generation_quality_mode="high_accuracy_aggressive",
+        onset_recovery=False,
+    )
+
+    assert 40 in exported_pitches
+    assert 52 not in exported_pitches

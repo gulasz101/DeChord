@@ -11,5 +11,5 @@
 ---
 
 - [x] Task 1: Add deterministic Phase 4 stage-attribution reporting (JSON/Markdown artifacts + Hysteria worst-bars analysis) and phase-aware output naming in the evaluation harness.
-- [ ] Task 2: Implement one narrow fix at the measured bottleneck stage (with TDD and dense-bar/repeated-note protection if justified by attribution evidence).
+- [x] Task 2: Implement one narrow fix at the measured bottleneck stage (with TDD and dense-bar/repeated-note protection if justified by attribution evidence).
 - [ ] Task 3: Run reset + targeted/full verification, execute canonical Hysteria/Trooper evaluations, generate Phase 4 report artifacts, and finalize plan checkboxes.
