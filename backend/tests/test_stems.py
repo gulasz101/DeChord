@@ -210,3 +210,37 @@ def test_load_dotenv_settings_for_separation(tmp_path, monkeypatch):
     assert config.segment == pytest.approx(9.5)
     assert config.overlap == pytest.approx(0.30)
     assert config.shifts == 1
+
+
+def test_get_demucs_model_name_loads_dotenv_at_runtime(tmp_path, monkeypatch):
+    env_file = tmp_path / ".env"
+    env_file.write_text("DECHORD_DEMUCS_MODEL=htdemucs_6s\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("DECHORD_DEMUCS_MODEL", raising=False)
+
+    assert stems_mod._get_demucs_model_name() == "htdemucs_6s"
+
+
+def test_get_demucs_model_name_is_not_frozen_at_import_time(monkeypatch):
+    monkeypatch.setenv("DECHORD_DEMUCS_MODEL", "mdx_extra_q")
+    assert stems_mod._get_demucs_model_name() == "mdx_extra_q"
+
+    monkeypatch.setenv("DECHORD_DEMUCS_MODEL", "htdemucs_ft")
+    assert stems_mod._get_demucs_model_name() == "htdemucs_ft"
+
+
+def test_get_demucs_runtime_config_invalid_values_fall_back_with_warning(monkeypatch, caplog):
+    monkeypatch.setenv("DECHORD_DEMUCS_MODEL", "")
+    monkeypatch.setenv("DECHORD_DEMUCS_FALLBACK_MODEL", "")
+    monkeypatch.setenv("DECHORD_STEM_ANALYSIS_HIGHPASS_HZ", "oops")
+    monkeypatch.setenv("DECHORD_STEM_ANALYSIS_LOWPASS_HZ", "-10")
+
+    with caplog.at_level("WARNING"):
+        config = stems_mod._get_stem_analysis_config()
+
+    assert config.demucs_model == "htdemucs_ft"
+    assert config.demucs_fallback_model == "htdemucs"
+    assert config.analysis_highpass_hz == pytest.approx(35.0)
+    assert config.analysis_lowpass_hz == pytest.approx(300.0)
+    assert "DECHORD_DEMUCS_MODEL" in caplog.text
+    assert "DECHORD_STEM_ANALYSIS_HIGHPASS_HZ" in caplog.text

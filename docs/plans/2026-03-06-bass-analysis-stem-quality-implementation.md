@@ -17,7 +17,7 @@
 
 - [x] Step 1: Add the new implementation plan file under `docs/plans/`.
 - [x] Step 2: Review the current stem/main/midi/test flow and align task scopes with repo conventions.
-- [ ] Step 3: Commit the new plan file with the plan path in the commit message.
+- [x] Step 3: Commit the new plan file with the plan path in the commit message.
 
 ### Task 2: Add RED tests for runtime model resolution and analysis stem routing
 
@@ -26,10 +26,10 @@
 - Modify: `backend/tests/test_api.py`
 - Modify: `backend/tests/test_tab_pipeline.py`
 
-- [ ] Step 1: Add failing tests proving Demucs model selection is resolved at runtime after `.env` loading.
-- [ ] Step 2: Add failing tests proving the model name is not frozen at import time and invalid env values fall back safely.
-- [ ] Step 3: Add failing tests proving the main processing flow routes an analysis bass stem into tab generation instead of raw `bass.wav`.
-- [ ] Step 4: Run targeted tests and confirm RED.
+- [x] Step 1: Add failing tests proving Demucs model selection is resolved at runtime after `.env` loading.
+- [x] Step 2: Add failing tests proving the model name is not frozen at import time and invalid env values fall back safely.
+- [x] Step 3: Add failing tests proving the main processing flow routes an analysis bass stem into tab generation instead of raw `bass.wav`.
+- [x] Step 4: Run targeted tests and confirm RED.
 - [ ] Step 5: Commit.
 
 ### Task 3: Implement runtime Demucs config resolution and typed analysis config
