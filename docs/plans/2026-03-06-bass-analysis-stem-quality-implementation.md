@@ -50,10 +50,10 @@
 - Modify: `backend/app/stems.py`
 - Modify: `backend/tests/test_stems.py`
 
-- [ ] Step 1: Add a pure analysis-stem refinement path that produces `bass_analysis.wav` from separated stems while leaving playback stems unchanged.
-- [ ] Step 2: Implement deterministic preprocessing for the analysis path: mono, resample, high-pass, low-pass, optional bleed subtraction, optional gentle gating.
-- [ ] Step 3: Add compact serializable diagnostics describing selected model, filters, candidate scores, and refinement actions.
-- [ ] Step 4: Run targeted stem tests and confirm GREEN for refinement output and diagnostics.
+- [x] Step 1: Add a pure analysis-stem refinement path that produces `bass_analysis.wav` from separated stems while leaving playback stems unchanged.
+- [x] Step 2: Implement deterministic preprocessing for the analysis path: mono, resample, high-pass, low-pass, optional bleed subtraction, optional gentle gating.
+- [x] Step 3: Add compact serializable diagnostics describing selected model, filters, candidate scores, and refinement actions.
+- [x] Step 4: Run targeted stem tests and confirm GREEN for refinement output and diagnostics.
 - [ ] Step 5: Commit.
 
 ### Task 5: Route the analysis stem into tab and MIDI generation

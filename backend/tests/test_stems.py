@@ -1,6 +1,8 @@
 import os
+import wave
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 import app.stems as stems_mod
@@ -244,3 +246,57 @@ def test_get_demucs_runtime_config_invalid_values_fall_back_with_warning(monkeyp
     assert config.analysis_lowpass_hz == pytest.approx(300.0)
     assert "DECHORD_DEMUCS_MODEL" in caplog.text
     assert "DECHORD_STEM_ANALYSIS_HIGHPASS_HZ" in caplog.text
+
+
+def test_build_bass_analysis_stem_creates_analysis_wav_and_reports_diagnostics(tmp_path: Path):
+    sample_rate = 22050
+    duration_sec = 1.0
+    times = np.linspace(0.0, duration_sec, int(sample_rate * duration_sec), endpoint=False)
+
+    bass_audio = (
+        0.55 * np.sin(2.0 * np.pi * 55.0 * times)
+        + 0.12 * np.sin(2.0 * np.pi * 440.0 * times)
+    )
+    other_audio = 0.08 * np.sin(2.0 * np.pi * 110.0 * times)
+
+    def write_wav(path: Path, samples: np.ndarray) -> None:
+        pcm = np.clip(samples * 32767.0, -32768, 32767).astype(np.int16)
+        with wave.open(str(path), "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(pcm.tobytes())
+
+    stems_dir = tmp_path / "stems"
+    stems_dir.mkdir()
+    bass_path = stems_dir / "bass.wav"
+    other_path = stems_dir / "other.wav"
+    drums_path = stems_dir / "drums.wav"
+    write_wav(bass_path, bass_audio.astype(np.float32))
+    write_wav(other_path, other_audio.astype(np.float32))
+    write_wav(drums_path, np.zeros_like(times, dtype=np.float32))
+
+    config = stems_mod.StemAnalysisConfig(
+        demucs_model="htdemucs_ft",
+        demucs_fallback_model="htdemucs",
+        enable_bass_refinement=True,
+        analysis_highpass_hz=35.0,
+        analysis_lowpass_hz=300.0,
+        analysis_sample_rate=22050,
+        enable_model_ensemble=False,
+        candidate_models=["htdemucs_ft"],
+    )
+
+    result = stems_mod.build_bass_analysis_stem(
+        stems={"bass": bass_path, "other": other_path, "drums": drums_path},
+        output_dir=tmp_path / "analysis",
+        analysis_config=config,
+    )
+
+    assert result.path.exists()
+    assert result.path.name == "bass_analysis.wav"
+    assert result.source_model == "htdemucs_ft"
+    assert result.diagnostics["selected_model"] == "htdemucs_ft"
+    assert result.diagnostics["analysis_highpass_hz"] == pytest.approx(35.0)
+    assert result.diagnostics["analysis_lowpass_hz"] == pytest.approx(300.0)
+    assert result.diagnostics["bleed_subtraction_applied"] == 1

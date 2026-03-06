@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import mimetypes
 import os
+import shutil
 import subprocess
 import tempfile
 from importlib import import_module
@@ -55,6 +56,13 @@ class StemAnalysisConfig:
     analysis_sample_rate: int
     enable_model_ensemble: bool
     candidate_models: list[str]
+
+
+@dataclass(frozen=True)
+class BassAnalysisStemResult:
+    path: Path
+    source_model: str
+    diagnostics: dict[str, object]
 
 
 def check_stem_runtime_ready(
@@ -269,6 +277,159 @@ def _get_separation_config(model_name: str | None = None) -> SeparationConfig:
 
 def _db_to_linear(gain_db: float) -> float:
     return 10 ** (gain_db / 20.0)
+
+
+def _read_wav_mono(path: Path) -> tuple[int, "np.ndarray"]:
+    import numpy as np
+    from scipy.io import wavfile as scipy_wav
+
+    sample_rate, audio = scipy_wav.read(str(path))
+    audio_f32 = audio.astype(np.float32)
+    if np.issubdtype(audio.dtype, np.integer):
+        audio_f32 /= max(float(np.iinfo(audio.dtype).max), 1.0)
+    elif audio_f32.size:
+        audio_f32 = np.clip(audio_f32, -1.0, 1.0)
+    if audio_f32.ndim == 2:
+        audio_f32 = np.mean(audio_f32, axis=1)
+    return int(sample_rate), np.asarray(audio_f32, dtype=np.float32)
+
+
+def _resample_audio(audio: "np.ndarray", source_rate: int, target_rate: int) -> "np.ndarray":
+    if source_rate == target_rate:
+        return audio
+    from scipy.signal import resample_poly
+
+    return resample_poly(audio, target_rate, source_rate).astype("float32")
+
+
+def _apply_analysis_filters(
+    audio: "np.ndarray",
+    *,
+    sample_rate: int,
+    highpass_hz: float,
+    lowpass_hz: float,
+) -> "np.ndarray":
+    from scipy.signal import butter, sosfiltfilt
+
+    nyquist = max(sample_rate / 2.0, 1.0)
+    hp = min(max(highpass_hz, 1.0), nyquist * 0.95)
+    lp = min(max(lowpass_hz, hp + 1.0), nyquist * 0.99)
+    highpass = butter(4, hp, btype="highpass", fs=sample_rate, output="sos")
+    lowpass = butter(4, lp, btype="lowpass", fs=sample_rate, output="sos")
+    filtered = sosfiltfilt(highpass, audio)
+    filtered = sosfiltfilt(lowpass, filtered)
+    return filtered.astype("float32")
+
+
+def _maybe_subtract_bleed(target: "np.ndarray", bleed: "np.ndarray | None") -> tuple["np.ndarray", int]:
+    import numpy as np
+
+    if bleed is None or bleed.size == 0 or target.size == 0:
+        return target, 0
+    frame_count = min(target.size, bleed.size)
+    target_view = target[:frame_count]
+    bleed_view = bleed[:frame_count]
+    target_rms = float(np.sqrt(np.mean(np.square(target_view))) + 1e-9)
+    bleed_rms = float(np.sqrt(np.mean(np.square(bleed_view))) + 1e-9)
+    if bleed_rms <= 1e-6:
+        return target, 0
+    subtraction_gain = min(0.35, max(0.0, bleed_rms / max(target_rms, 1e-6)) * 0.2)
+    adjusted = np.array(target, copy=True)
+    adjusted[:frame_count] = target_view - (bleed_view * subtraction_gain)
+    return adjusted.astype("float32"), int(subtraction_gain > 0.0)
+
+
+def _apply_noise_gate(audio: "np.ndarray") -> tuple["np.ndarray", int]:
+    import numpy as np
+
+    if audio.size == 0:
+        return audio, 0
+    rms = float(np.sqrt(np.mean(np.square(audio))) + 1e-9)
+    threshold = max(rms * 0.08, 1e-4)
+    gated = np.where(np.abs(audio) >= threshold, audio, 0.0).astype("float32")
+    return gated, int(np.any(gated != audio))
+
+
+def _write_wav_mono(path: Path, *, sample_rate: int, audio: "np.ndarray") -> None:
+    import numpy as np
+    from scipy.io import wavfile as scipy_wav
+
+    clipped = np.clip(audio, -1.0, 1.0)
+    pcm = (clipped * 32767.0).astype(np.int16)
+    scipy_wav.write(str(path), sample_rate, pcm)
+
+
+def build_bass_analysis_stem(
+    *,
+    stems: dict[str, Path],
+    output_dir: Path,
+    analysis_config: StemAnalysisConfig | None = None,
+) -> BassAnalysisStemResult:
+    config = analysis_config or _get_stem_analysis_config()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / "bass_analysis.wav"
+    bass_path = stems.get("bass")
+    if bass_path is None:
+        raise RuntimeError("Bass stem missing; cannot build analysis stem.")
+
+    if not config.enable_bass_refinement:
+        shutil.copyfile(bass_path, output_path)
+        diagnostics = {
+            "selected_model": config.demucs_model,
+            "analysis_highpass_hz": config.analysis_highpass_hz,
+            "analysis_lowpass_hz": config.analysis_lowpass_hz,
+            "analysis_sample_rate": config.analysis_sample_rate,
+            "bleed_subtraction_applied": 0,
+            "noise_gate_applied": 0,
+            "candidate_scores": {config.demucs_model: 0.0},
+        }
+        return BassAnalysisStemResult(
+            path=output_path,
+            source_model=config.demucs_model,
+            diagnostics=diagnostics,
+        )
+
+    bass_rate, bass_audio = _read_wav_mono(bass_path)
+    bass_audio = _resample_audio(bass_audio, bass_rate, config.analysis_sample_rate)
+    refined = _apply_analysis_filters(
+        bass_audio,
+        sample_rate=config.analysis_sample_rate,
+        highpass_hz=config.analysis_highpass_hz,
+        lowpass_hz=config.analysis_lowpass_hz,
+    )
+
+    bleed_audio = None
+    other_path = stems.get("other")
+    if other_path is not None and other_path.exists():
+        other_rate, other_audio = _read_wav_mono(other_path)
+        other_audio = _resample_audio(other_audio, other_rate, config.analysis_sample_rate)
+        bleed_audio = _apply_analysis_filters(
+            other_audio,
+            sample_rate=config.analysis_sample_rate,
+            highpass_hz=config.analysis_highpass_hz,
+            lowpass_hz=config.analysis_lowpass_hz,
+        )
+    refined, bleed_applied = _maybe_subtract_bleed(refined, bleed_audio)
+    refined, gate_applied = _apply_noise_gate(refined)
+    _write_wav_mono(output_path, sample_rate=config.analysis_sample_rate, audio=refined)
+
+    import numpy as np
+
+    diagnostics = {
+        "selected_model": config.demucs_model,
+        "analysis_highpass_hz": config.analysis_highpass_hz,
+        "analysis_lowpass_hz": config.analysis_lowpass_hz,
+        "analysis_sample_rate": config.analysis_sample_rate,
+        "bleed_subtraction_applied": bleed_applied,
+        "noise_gate_applied": gate_applied,
+        "analysis_rms": float(np.sqrt(np.mean(np.square(refined))) if refined.size else 0.0),
+        "candidate_scores": {config.demucs_model: 0.0},
+    }
+    return BassAnalysisStemResult(
+        path=output_path,
+        source_model=config.demucs_model,
+        diagnostics=diagnostics,
+    )
 
 
 def _separate_with_demucs(
