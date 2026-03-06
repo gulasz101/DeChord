@@ -11,5 +11,5 @@
 ---
 
 - [x] Task 1: Instrument dense-bar fusion candidate diagnostics and export Phase 5 fusion debug artifacts for Hysteria/Trooper plus summary report.
-- [ ] Task 2: Implement confidence-gated dense-bar rescue fusion (including repeated-note mode and timing-preserving pitch normalization) with TDD coverage.
-- [ ] Task 3: Run reset + targeted/full verification, execute deterministic Phase 5 evaluations for both songs, generate final comparison report, and mark plan complete.
+- [x] Task 2: Implement confidence-gated dense-bar rescue fusion (including repeated-note mode and timing-preserving pitch normalization) with TDD coverage.
+- [x] Task 3: Run reset + targeted/full verification, execute deterministic Phase 5 evaluations for both songs, generate final comparison report, and mark plan complete.

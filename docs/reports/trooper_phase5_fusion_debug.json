@@ -1,7 +1,7 @@
 {
-  "accepted_dense_pass_notes": 44,
-  "avg_pitch_distance_from_anchor_accepted": 5.7272727272727275,
-  "avg_pitch_distance_from_anchor_rejected": 14.874213836477987,
+  "accepted_dense_pass_notes": 318,
+  "avg_pitch_distance_from_anchor_accepted": 12.732704402515724,
+  "avg_pitch_distance_from_anchor_rejected": 15.643646408839778,
   "dense_bar_fusion_candidates": [
     {
       "accepted": false,
@@ -92,7 +92,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 0,
       "candidate_onset_sec": 1.7660416666666667,
@@ -111,7 +111,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -246,7 +246,7 @@
       "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 52,
       "bar_index": 2,
       "candidate_onset_sec": 4.531041666666667,
@@ -265,7 +265,7 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 52,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": true,
@@ -312,7 +312,7 @@
       "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 48,
       "bar_index": 3,
       "candidate_onset_sec": 5.44,
@@ -331,7 +331,7 @@
         "total_score": 0.75
       },
       "local_pitch_anchor": 48,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": true,
@@ -620,7 +620,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 52,
       "bar_index": 6,
       "candidate_onset_sec": 10.663125,
@@ -639,7 +639,7 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 52,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": true,
@@ -708,7 +708,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 48,
       "bar_index": 7,
       "candidate_onset_sec": 11.591041666666667,
@@ -727,7 +727,7 @@
         "total_score": 0.75
       },
       "local_pitch_anchor": 48,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": true,
@@ -818,7 +818,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 8,
       "candidate_onset_sec": 13.889583333333334,
@@ -837,10 +837,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 9,
       "candidate_onset_sec": 14.238125,
@@ -859,7 +859,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -884,7 +884,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 9,
       "candidate_onset_sec": 14.795416666666668,
@@ -903,10 +903,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 9,
       "candidate_onset_sec": 14.980833333333335,
@@ -925,10 +925,10 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 9,
       "candidate_onset_sec": 15.167291666666667,
@@ -947,7 +947,7 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -1016,7 +1016,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 10,
       "candidate_onset_sec": 16.919583333333335,
@@ -1035,7 +1035,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -1082,7 +1082,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 11,
       "candidate_onset_sec": 18.010833333333334,
@@ -1101,10 +1101,10 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 11,
       "candidate_onset_sec": 18.19729166666667,
@@ -1123,10 +1123,10 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 11,
       "candidate_onset_sec": 18.569166666666668,
@@ -1145,7 +1145,7 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -1236,7 +1236,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 13,
       "candidate_onset_sec": 20.66,
@@ -1255,10 +1255,10 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 13,
       "candidate_onset_sec": 20.799583333333334,
@@ -1277,7 +1277,7 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -1302,7 +1302,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 13,
       "candidate_onset_sec": 21.218333333333334,
@@ -1321,7 +1321,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -1434,7 +1434,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 14,
       "candidate_onset_sec": 23.273541666666667,
@@ -1453,10 +1453,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 15,
       "candidate_onset_sec": 23.262291666666666,
@@ -1475,7 +1475,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -1500,7 +1500,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 15,
       "candidate_onset_sec": 24.050833333333333,
@@ -1519,10 +1519,10 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 15,
       "candidate_onset_sec": 24.236250000000002,
@@ -1541,7 +1541,7 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -1610,7 +1610,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 16,
       "candidate_onset_sec": 25.168958333333332,
@@ -1629,10 +1629,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 16,
       "candidate_onset_sec": 25.261666666666667,
@@ -1651,10 +1651,10 @@
         "total_score": 0.7791666666666667
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 16,
       "candidate_onset_sec": 25.539791666666666,
@@ -1673,10 +1673,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 16,
       "candidate_onset_sec": 26.329375,
@@ -1695,10 +1695,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 17,
       "candidate_onset_sec": 26.335,
@@ -1717,10 +1717,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 17,
       "candidate_onset_sec": 27.031875000000003,
@@ -1739,10 +1739,10 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 17,
       "candidate_onset_sec": 27.218333333333334,
@@ -1761,7 +1761,7 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -1808,7 +1808,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 18,
       "candidate_onset_sec": 28.216874999999998,
@@ -1827,10 +1827,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 18,
       "candidate_onset_sec": 28.541875,
@@ -1849,7 +1849,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -1896,7 +1896,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 19,
       "candidate_onset_sec": 29.669999999999998,
@@ -1915,10 +1915,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 19,
       "candidate_onset_sec": 30.041875,
@@ -1937,10 +1937,10 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 19,
       "candidate_onset_sec": 30.274166666666666,
@@ -1959,10 +1959,10 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 19,
       "candidate_onset_sec": 30.599166666666665,
@@ -1981,7 +1981,7 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -2116,7 +2116,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 22,
       "candidate_onset_sec": 34.58770833333333,
@@ -2135,7 +2135,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -2270,7 +2270,7 @@
       "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 25,
       "candidate_onset_sec": 39.04770833333333,
@@ -2289,10 +2289,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 25,
       "candidate_onset_sec": 39.233124999999994,
@@ -2311,10 +2311,10 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 25,
       "candidate_onset_sec": 39.41854166666666,
@@ -2333,7 +2333,7 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": true,
@@ -2447,7 +2447,7 @@
     },
     {
       "accepted": true,
-      "adjusted_pitch": 38,
+      "adjusted_pitch": 36,
       "bar_index": 27,
       "candidate_onset_sec": 42.231458333333336,
       "candidate_raw_pitch": 38,
@@ -2490,7 +2490,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 36,
       "bar_index": 27,
       "candidate_onset_sec": 42.46375,
@@ -2509,7 +2509,7 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 36,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -2534,7 +2534,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 29,
       "candidate_onset_sec": 45.055,
@@ -2553,10 +2553,10 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 29,
       "candidate_onset_sec": 45.28729166666667,
@@ -2575,10 +2575,10 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 29,
       "candidate_onset_sec": 45.51958333333333,
@@ -2597,7 +2597,7 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -2710,7 +2710,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 30,
       "candidate_onset_sec": 45.935,
@@ -2729,10 +2729,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 30,
       "candidate_onset_sec": 46.07458333333333,
@@ -2751,7 +2751,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": true,
@@ -2776,7 +2776,7 @@
       "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 31,
       "candidate_onset_sec": 48.151875,
@@ -2795,10 +2795,10 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 31,
       "candidate_onset_sec": 48.337291666666665,
@@ -2817,10 +2817,10 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 31,
       "candidate_onset_sec": 48.52270833333333,
@@ -2839,10 +2839,10 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 31,
       "candidate_onset_sec": 48.66229166666666,
@@ -2861,7 +2861,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -2996,7 +2996,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 33,
       "candidate_onset_sec": 51.119791666666664,
@@ -3015,10 +3015,10 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 33,
       "candidate_onset_sec": 51.30624999999999,
@@ -3037,7 +3037,7 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -3238,7 +3238,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 35,
       "candidate_onset_sec": 54.151875,
@@ -3257,10 +3257,10 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 35,
       "candidate_onset_sec": 54.33833333333333,
@@ -3279,10 +3279,10 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 35,
       "candidate_onset_sec": 54.71020833333333,
@@ -3301,7 +3301,7 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -3326,7 +3326,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 36,
       "bar_index": 36,
       "candidate_onset_sec": 56.053749999999994,
@@ -3345,10 +3345,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 36,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 37,
       "candidate_onset_sec": 56.97541666666667,
@@ -3367,10 +3367,10 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 37,
       "candidate_onset_sec": 57.115,
@@ -3389,10 +3389,10 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 37,
       "candidate_onset_sec": 57.34729166666667,
@@ -3411,10 +3411,10 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 37,
       "candidate_onset_sec": 57.486875,
@@ -3433,7 +3433,7 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -3612,7 +3612,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 39,
       "candidate_onset_sec": 59.83166666666666,
@@ -3631,10 +3631,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 39,
       "candidate_onset_sec": 60.34208333333333,
@@ -3653,10 +3653,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 39,
       "candidate_onset_sec": 60.62020833333333,
@@ -3675,7 +3675,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -3876,7 +3876,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 41,
       "candidate_onset_sec": 63.668124999999996,
@@ -3895,7 +3895,7 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -4052,7 +4052,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 43,
       "candidate_onset_sec": 66.63229166666666,
@@ -4071,7 +4071,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -4250,7 +4250,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 45,
       "candidate_onset_sec": 69.65916666666666,
@@ -4269,7 +4269,7 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -4316,7 +4316,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 46,
       "candidate_onset_sec": 70.35958333333333,
@@ -4335,7 +4335,7 @@
         "total_score": 0.7791666666666667
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -4360,7 +4360,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 47,
       "candidate_onset_sec": 71.91229166666666,
@@ -4379,10 +4379,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 47,
       "candidate_onset_sec": 72.09770833333333,
@@ -4401,10 +4401,10 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 47,
       "candidate_onset_sec": 72.283125,
@@ -4423,10 +4423,10 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 47,
       "candidate_onset_sec": 72.42270833333333,
@@ -4445,7 +4445,7 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -4514,7 +4514,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 48,
       "candidate_onset_sec": 73.551875,
@@ -4533,10 +4533,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 48,
       "candidate_onset_sec": 74.15604166666667,
@@ -4555,10 +4555,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 49,
       "candidate_onset_sec": 74.15958333333333,
@@ -4577,7 +4577,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -4602,7 +4602,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 49,
       "candidate_onset_sec": 74.85541666666666,
@@ -4621,10 +4621,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 49,
       "candidate_onset_sec": 75.04083333333332,
@@ -4643,10 +4643,10 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 49,
       "candidate_onset_sec": 75.22729166666666,
@@ -4665,7 +4665,7 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -4756,7 +4756,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 50,
       "candidate_onset_sec": 76.92270833333333,
@@ -4775,10 +4775,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 51,
       "candidate_onset_sec": 77.08687499999999,
@@ -4797,10 +4797,10 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 51,
       "candidate_onset_sec": 77.87645833333333,
@@ -4819,7 +4819,7 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -4844,7 +4844,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 51,
       "candidate_onset_sec": 78.24729166666665,
@@ -4863,10 +4863,10 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 51,
       "candidate_onset_sec": 78.66499999999999,
@@ -4885,7 +4885,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -5020,7 +5020,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 36,
       "bar_index": 53,
       "candidate_onset_sec": 80.89645833333334,
@@ -5039,7 +5039,7 @@
         "total_score": 0.8166666666666667
       },
       "local_pitch_anchor": 36,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -5064,7 +5064,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 36,
       "bar_index": 53,
       "candidate_onset_sec": 81.26833333333333,
@@ -5083,7 +5083,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 36,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -5240,7 +5240,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 55,
       "candidate_onset_sec": 84.26729166666667,
@@ -5259,7 +5259,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -5284,7 +5284,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 55,
       "candidate_onset_sec": 84.68604166666667,
@@ -5303,7 +5303,7 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -5350,7 +5350,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 56,
       "candidate_onset_sec": 85.56083333333332,
@@ -5369,7 +5369,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -5394,7 +5394,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 57,
       "candidate_onset_sec": 86.318125,
@@ -5413,10 +5413,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 57,
       "candidate_onset_sec": 86.87541666666665,
@@ -5435,10 +5435,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 57,
       "candidate_onset_sec": 87.06083333333332,
@@ -5457,10 +5457,10 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 57,
       "candidate_onset_sec": 87.24729166666665,
@@ -5479,7 +5479,7 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -5592,7 +5592,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 58,
       "candidate_onset_sec": 89.30562499999999,
@@ -5611,10 +5611,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 59,
       "candidate_onset_sec": 89.298125,
@@ -5633,10 +5633,10 @@
         "total_score": 0.75
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 59,
       "candidate_onset_sec": 89.67,
@@ -5655,10 +5655,10 @@
         "total_score": 0.75
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 59,
       "candidate_onset_sec": 90.04083333333332,
@@ -5677,10 +5677,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 59,
       "candidate_onset_sec": 90.22625,
@@ -5699,10 +5699,10 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 59,
       "candidate_onset_sec": 90.31895833333333,
@@ -5721,10 +5721,10 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 59,
       "candidate_onset_sec": 90.55125,
@@ -5743,7 +5743,7 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -5834,7 +5834,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 36,
       "bar_index": 61,
       "candidate_onset_sec": 92.80645833333334,
@@ -5853,7 +5853,7 @@
         "total_score": 0.7666666666666666
       },
       "local_pitch_anchor": 36,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -5878,7 +5878,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 36,
       "bar_index": 61,
       "candidate_onset_sec": 93.17833333333333,
@@ -5897,7 +5897,7 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 36,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -6054,7 +6054,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 63,
       "candidate_onset_sec": 95.77541666666666,
@@ -6073,7 +6073,7 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -6098,7 +6098,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 63,
       "candidate_onset_sec": 96.10041666666666,
@@ -6117,7 +6117,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -6142,7 +6142,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 63,
       "candidate_onset_sec": 96.51916666666666,
@@ -6161,7 +6161,7 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -6230,7 +6230,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 64,
       "candidate_onset_sec": 97.83958333333332,
@@ -6249,7 +6249,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -6318,7 +6318,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 65,
       "candidate_onset_sec": 98.58583333333334,
@@ -6337,10 +6337,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 65,
       "candidate_onset_sec": 99.09625,
@@ -6359,10 +6359,10 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 65,
       "candidate_onset_sec": 99.28270833333333,
@@ -6381,7 +6381,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -6494,7 +6494,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 66,
       "candidate_onset_sec": 100.49249999999999,
@@ -6513,7 +6513,7 @@
         "total_score": 0.7791666666666667
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -6582,7 +6582,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 67,
       "candidate_onset_sec": 101.881875,
@@ -6601,10 +6601,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 67,
       "candidate_onset_sec": 102.02145833333333,
@@ -6623,10 +6623,10 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 67,
       "candidate_onset_sec": 102.43916666666667,
@@ -6645,7 +6645,7 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -6714,7 +6714,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 69,
       "candidate_onset_sec": 104.48,
@@ -6733,10 +6733,10 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 69,
       "candidate_onset_sec": 104.80499999999999,
@@ -6755,10 +6755,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 69,
       "candidate_onset_sec": 105.03729166666666,
@@ -6777,7 +6777,7 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -6912,7 +6912,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 70,
       "candidate_onset_sec": 106.83020833333333,
@@ -6931,7 +6931,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -7000,7 +7000,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 71,
       "candidate_onset_sec": 107.81083333333332,
@@ -7019,10 +7019,10 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 71,
       "candidate_onset_sec": 107.99624999999999,
@@ -7041,10 +7041,10 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 71,
       "candidate_onset_sec": 108.13583333333332,
@@ -7063,7 +7063,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -7154,7 +7154,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 73,
       "candidate_onset_sec": 110.075,
@@ -7173,10 +7173,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 73,
       "candidate_onset_sec": 110.4,
@@ -7195,10 +7195,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 73,
       "candidate_onset_sec": 110.63229166666666,
@@ -7217,10 +7217,10 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 73,
       "candidate_onset_sec": 110.771875,
@@ -7239,10 +7239,10 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 73,
       "candidate_onset_sec": 110.95729166666666,
@@ -7261,7 +7261,7 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -7352,7 +7352,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 77,
       "candidate_onset_sec": 116.21729166666667,
@@ -7371,10 +7371,10 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 77,
       "candidate_onset_sec": 116.68083333333333,
@@ -7393,10 +7393,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 77,
       "candidate_onset_sec": 116.86729166666666,
@@ -7415,7 +7415,7 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -7528,7 +7528,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 79,
       "candidate_onset_sec": 119.96687499999999,
@@ -7547,10 +7547,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 79,
       "candidate_onset_sec": 120.15333333333332,
@@ -7569,7 +7569,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -7726,7 +7726,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 81,
       "candidate_onset_sec": 123.09229166666667,
@@ -7745,7 +7745,7 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -7814,7 +7814,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 82,
       "candidate_onset_sec": 123.78270833333333,
@@ -7833,10 +7833,10 @@
         "total_score": 0.7791666666666667
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 82,
       "candidate_onset_sec": 124.10770833333332,
@@ -7855,10 +7855,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 82,
       "candidate_onset_sec": 124.38583333333332,
@@ -7877,7 +7877,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -7968,7 +7968,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 83,
       "candidate_onset_sec": 126.09916666666666,
@@ -7987,7 +7987,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -8012,7 +8012,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 85,
       "candidate_onset_sec": 129.00229166666668,
@@ -8031,7 +8031,7 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -8078,7 +8078,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 86,
       "candidate_onset_sec": 130.3685416666667,
@@ -8097,10 +8097,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 89,
       "candidate_onset_sec": 133.376875,
@@ -8119,10 +8119,10 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 89,
       "candidate_onset_sec": 133.56333333333333,
@@ -8141,7 +8141,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -8188,7 +8188,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 89,
       "candidate_onset_sec": 135.04875,
@@ -8207,7 +8207,7 @@
         "total_score": 0.8166666666666667
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -8276,7 +8276,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 35,
       "bar_index": 90,
       "candidate_onset_sec": 136.34229166666668,
@@ -8295,7 +8295,7 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 35,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -8386,7 +8386,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 36,
       "bar_index": 91,
       "candidate_onset_sec": 137.2660416666667,
@@ -8405,10 +8405,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 36,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 36,
       "bar_index": 91,
       "candidate_onset_sec": 138.0097916666667,
@@ -8427,7 +8427,7 @@
         "total_score": 0.7666666666666666
       },
       "local_pitch_anchor": 36,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -8496,7 +8496,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 92,
       "candidate_onset_sec": 138.89354166666666,
@@ -8515,10 +8515,10 @@
         "total_score": 0.7791666666666667
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 92,
       "candidate_onset_sec": 139.17166666666668,
@@ -8537,10 +8537,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 92,
       "candidate_onset_sec": 139.49666666666667,
@@ -8559,10 +8559,10 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 93,
       "candidate_onset_sec": 139.316875,
@@ -8581,7 +8581,7 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -8650,7 +8650,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 93,
       "candidate_onset_sec": 140.43145833333335,
@@ -8669,10 +8669,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 93,
       "candidate_onset_sec": 140.8022916666667,
@@ -8691,10 +8691,10 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 93,
       "candidate_onset_sec": 140.98770833333333,
@@ -8713,10 +8713,10 @@
         "total_score": 0.8166666666666667
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 35,
       "bar_index": 94,
       "candidate_onset_sec": 140.796875,
@@ -8735,7 +8735,7 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 35,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -8826,7 +8826,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 95,
       "candidate_onset_sec": 142.296875,
@@ -8845,10 +8845,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 95,
       "candidate_onset_sec": 142.48229166666667,
@@ -8867,7 +8867,7 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -9046,7 +9046,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 96,
       "candidate_onset_sec": 145.42666666666668,
@@ -9065,10 +9065,10 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 97,
       "candidate_onset_sec": 145.24687500000002,
@@ -9087,7 +9087,7 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -9156,7 +9156,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 97,
       "candidate_onset_sec": 146.73333333333335,
@@ -9175,10 +9175,10 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 97,
       "candidate_onset_sec": 146.9197916666667,
@@ -9197,10 +9197,10 @@
         "total_score": 0.8166666666666667
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 35,
       "bar_index": 98,
       "candidate_onset_sec": 146.74687500000002,
@@ -9219,7 +9219,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 35,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -9288,7 +9288,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 35,
       "bar_index": 98,
       "candidate_onset_sec": 148.2322916666667,
@@ -9307,7 +9307,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 35,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -9332,7 +9332,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 99,
       "candidate_onset_sec": 148.458125,
@@ -9351,10 +9351,10 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 99,
       "candidate_onset_sec": 148.59770833333334,
@@ -9373,7 +9373,7 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -9508,7 +9508,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 100,
       "candidate_onset_sec": 151.37875000000003,
@@ -9527,10 +9527,10 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 101,
       "candidate_onset_sec": 151.196875,
@@ -9549,10 +9549,10 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 101,
       "candidate_onset_sec": 151.38333333333333,
@@ -9571,7 +9571,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -9640,7 +9640,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 101,
       "candidate_onset_sec": 152.68229166666669,
@@ -9659,10 +9659,10 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 101,
       "candidate_onset_sec": 152.91458333333333,
@@ -9681,10 +9681,10 @@
         "total_score": 0.8166666666666667
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 35,
       "bar_index": 102,
       "candidate_onset_sec": 152.72270833333334,
@@ -9703,7 +9703,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 35,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -9794,7 +9794,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 35,
       "bar_index": 102,
       "candidate_onset_sec": 154.1622916666667,
@@ -9813,7 +9813,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 35,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -9838,7 +9838,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 105,
       "candidate_onset_sec": 157.096875,
@@ -9857,7 +9857,7 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -9882,7 +9882,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 105,
       "candidate_onset_sec": 157.46770833333335,
@@ -9901,7 +9901,7 @@
         "total_score": 0.75
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -9926,7 +9926,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 105,
       "candidate_onset_sec": 158.21041666666667,
@@ -9945,10 +9945,10 @@
         "total_score": 0.75
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 105,
       "candidate_onset_sec": 158.5822916666667,
@@ -9967,10 +9967,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 105,
       "candidate_onset_sec": 158.76770833333333,
@@ -9989,10 +9989,10 @@
         "total_score": 0.7666666666666666
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 106,
       "candidate_onset_sec": 158.58687500000002,
@@ -10011,7 +10011,7 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -10102,7 +10102,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 106,
       "candidate_onset_sec": 160.07333333333335,
@@ -10121,10 +10121,10 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 106,
       "candidate_onset_sec": 160.25875000000002,
@@ -10143,10 +10143,10 @@
         "total_score": 0.7291666666666666
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 107,
       "candidate_onset_sec": 160.258125,
@@ -10165,10 +10165,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 107,
       "candidate_onset_sec": 160.44354166666668,
@@ -10187,10 +10187,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 107,
       "candidate_onset_sec": 160.67583333333334,
@@ -10209,7 +10209,7 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -10278,7 +10278,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 107,
       "candidate_onset_sec": 161.74458333333334,
@@ -10297,10 +10297,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 45,
       "bar_index": 108,
       "candidate_onset_sec": 161.56270833333332,
@@ -10319,7 +10319,7 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 45,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -10388,7 +10388,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 45,
       "bar_index": 108,
       "candidate_onset_sec": 162.86270833333333,
@@ -10407,10 +10407,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 45,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 45,
       "bar_index": 108,
       "candidate_onset_sec": 163.048125,
@@ -10429,10 +10429,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 45,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 109,
       "candidate_onset_sec": 163.06270833333332,
@@ -10451,10 +10451,10 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 109,
       "candidate_onset_sec": 163.38770833333334,
@@ -10473,7 +10473,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -10520,7 +10520,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 109,
       "candidate_onset_sec": 164.50229166666668,
@@ -10539,10 +10539,10 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 109,
       "candidate_onset_sec": 164.68875,
@@ -10561,7 +10561,7 @@
         "total_score": 0.8166666666666667
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -10630,7 +10630,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 110,
       "candidate_onset_sec": 165.70520833333336,
@@ -10649,7 +10649,7 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -10674,7 +10674,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 110,
       "candidate_onset_sec": 166.17083333333335,
@@ -10693,10 +10693,10 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 45,
       "bar_index": 112,
       "candidate_onset_sec": 167.52270833333333,
@@ -10715,7 +10715,7 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 45,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -10740,7 +10740,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 45,
       "bar_index": 112,
       "candidate_onset_sec": 168.12583333333333,
@@ -10759,10 +10759,10 @@
         "total_score": 0.75
       },
       "local_pitch_anchor": 45,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 45,
       "bar_index": 112,
       "candidate_onset_sec": 168.45083333333335,
@@ -10781,10 +10781,10 @@
         "total_score": 0.75
       },
       "local_pitch_anchor": 45,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 45,
       "bar_index": 112,
       "candidate_onset_sec": 168.8216666666667,
@@ -10803,10 +10803,10 @@
         "total_score": 0.75
       },
       "local_pitch_anchor": 45,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 45,
       "bar_index": 112,
       "candidate_onset_sec": 169.1925,
@@ -10825,10 +10825,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 45,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 113,
       "candidate_onset_sec": 168.986875,
@@ -10847,10 +10847,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 113,
       "candidate_onset_sec": 169.35875,
@@ -10869,7 +10869,7 @@
         "total_score": 0.75
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -10894,7 +10894,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 113,
       "candidate_onset_sec": 170.474375,
@@ -10913,10 +10913,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 113,
       "candidate_onset_sec": 170.65979166666668,
@@ -10935,10 +10935,10 @@
         "total_score": 0.7666666666666666
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 114,
       "candidate_onset_sec": 170.46687500000002,
@@ -10957,7 +10957,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -11026,7 +11026,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 114,
       "candidate_onset_sec": 172.13875000000002,
@@ -11045,7 +11045,7 @@
         "total_score": 0.7791666666666667
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -11070,7 +11070,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 116,
       "candidate_onset_sec": 173.59229166666668,
@@ -11089,10 +11089,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 116,
       "candidate_onset_sec": 174.05687500000002,
@@ -11111,10 +11111,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 116,
       "candidate_onset_sec": 174.335,
@@ -11133,10 +11133,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 116,
       "candidate_onset_sec": 174.75270833333335,
@@ -11155,10 +11155,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 43,
       "bar_index": 116,
       "candidate_onset_sec": 175.07770833333333,
@@ -11177,7 +11177,7 @@
         "total_score": 0.75
       },
       "local_pitch_anchor": 43,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -11271,7 +11271,7 @@
       "rejection_reason": "weak_local_support"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 118,
       "candidate_onset_sec": 176.42270833333333,
@@ -11290,7 +11290,7 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -11359,7 +11359,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 118,
       "candidate_onset_sec": 177.8622916666667,
@@ -11378,10 +11378,10 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 118,
       "candidate_onset_sec": 178.04875,
@@ -11400,10 +11400,10 @@
         "total_score": 0.7291666666666666
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 119,
       "candidate_onset_sec": 178.088125,
@@ -11422,10 +11422,10 @@
         "total_score": 0.7291666666666666
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 119,
       "candidate_onset_sec": 178.27354166666666,
@@ -11444,10 +11444,10 @@
         "total_score": 0.7291666666666666
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 119,
       "candidate_onset_sec": 178.785,
@@ -11466,10 +11466,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 119,
       "candidate_onset_sec": 178.97145833333335,
@@ -11488,7 +11488,7 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -11557,7 +11557,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 120,
       "candidate_onset_sec": 179.93104166666666,
@@ -11576,10 +11576,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 120,
       "candidate_onset_sec": 180.301875,
@@ -11598,10 +11598,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 120,
       "candidate_onset_sec": 180.39458333333334,
@@ -11620,10 +11620,10 @@
         "total_score": 0.7791666666666667
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 120,
       "candidate_onset_sec": 181.04458333333332,
@@ -11642,10 +11642,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 121,
       "candidate_onset_sec": 181.028125,
@@ -11664,7 +11664,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -11689,7 +11689,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 121,
       "candidate_onset_sec": 181.72395833333334,
@@ -11708,10 +11708,10 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 121,
       "candidate_onset_sec": 181.95625,
@@ -11730,7 +11730,7 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -11777,7 +11777,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 122,
       "candidate_onset_sec": 182.88000000000002,
@@ -11796,7 +11796,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -11821,7 +11821,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 122,
       "candidate_onset_sec": 183.62270833333335,
@@ -11840,10 +11840,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 36,
       "bar_index": 123,
       "candidate_onset_sec": 183.988125,
@@ -11862,10 +11862,10 @@
         "total_score": 0.7666666666666666
       },
       "local_pitch_anchor": 36,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 36,
       "bar_index": 123,
       "candidate_onset_sec": 184.35895833333333,
@@ -11884,10 +11884,10 @@
         "total_score": 0.7666666666666666
       },
       "local_pitch_anchor": 36,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 36,
       "bar_index": 123,
       "candidate_onset_sec": 184.72979166666667,
@@ -11906,7 +11906,7 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 36,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -12019,7 +12019,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 125,
       "candidate_onset_sec": 187.25416666666666,
@@ -12038,10 +12038,10 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 125,
       "candidate_onset_sec": 187.48645833333333,
@@ -12060,10 +12060,10 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 125,
       "candidate_onset_sec": 187.62604166666668,
@@ -12082,10 +12082,10 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 125,
       "candidate_onset_sec": 187.81145833333335,
@@ -12104,7 +12104,7 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -12217,7 +12217,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 127,
       "candidate_onset_sec": 190.21416666666667,
@@ -12236,10 +12236,10 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 127,
       "candidate_onset_sec": 190.631875,
@@ -12258,10 +12258,10 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 127,
       "candidate_onset_sec": 190.81729166666668,
@@ -12280,10 +12280,10 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 127,
       "candidate_onset_sec": 190.95687500000003,
@@ -12302,7 +12302,7 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -12371,7 +12371,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 128,
       "candidate_onset_sec": 191.76583333333335,
@@ -12390,10 +12390,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 128,
       "candidate_onset_sec": 192.09083333333336,
@@ -12412,10 +12412,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 128,
       "candidate_onset_sec": 192.55437500000002,
@@ -12434,7 +12434,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": true,
@@ -12459,7 +12459,7 @@
       "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 129,
       "candidate_onset_sec": 192.941875,
@@ -12478,10 +12478,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 129,
       "candidate_onset_sec": 193.22000000000003,
@@ -12500,10 +12500,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 129,
       "candidate_onset_sec": 193.77729166666668,
@@ -12522,7 +12522,7 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -12547,7 +12547,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 131,
       "candidate_onset_sec": 196.19000000000003,
@@ -12566,10 +12566,10 @@
         "total_score": 0.75
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 131,
       "candidate_onset_sec": 196.51500000000001,
@@ -12588,10 +12588,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 131,
       "candidate_onset_sec": 196.70145833333336,
@@ -12610,10 +12610,10 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 131,
       "candidate_onset_sec": 197.07333333333335,
@@ -12632,7 +12632,7 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -12789,7 +12789,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 36,
       "bar_index": 133,
       "candidate_onset_sec": 199.64041666666668,
@@ -12808,7 +12808,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 36,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -12855,7 +12855,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 134,
       "candidate_onset_sec": 200.42354166666667,
@@ -12874,7 +12874,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -13009,7 +13009,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 135,
       "candidate_onset_sec": 202.59041666666667,
@@ -13028,10 +13028,10 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 135,
       "candidate_onset_sec": 202.9622916666667,
@@ -13050,7 +13050,7 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": true,
@@ -13075,7 +13075,7 @@
       "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 139,
       "candidate_onset_sec": 207.93,
@@ -13094,10 +13094,10 @@
         "total_score": 0.75
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 139,
       "candidate_onset_sec": 208.30083333333334,
@@ -13116,10 +13116,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 139,
       "candidate_onset_sec": 208.48625,
@@ -13138,10 +13138,10 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 139,
       "candidate_onset_sec": 208.62583333333333,
@@ -13160,10 +13160,10 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 139,
       "candidate_onset_sec": 208.858125,
@@ -13182,7 +13182,7 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -13229,7 +13229,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 141,
       "candidate_onset_sec": 210.66458333333335,
@@ -13248,10 +13248,10 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 141,
       "candidate_onset_sec": 211.221875,
@@ -13270,10 +13270,10 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 141,
       "candidate_onset_sec": 211.36145833333336,
@@ -13292,7 +13292,7 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -13339,7 +13339,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 143,
       "candidate_onset_sec": 214.28041666666667,
@@ -13358,7 +13358,7 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -13405,7 +13405,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 145,
       "candidate_onset_sec": 216.68,
@@ -13424,10 +13424,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 145,
       "candidate_onset_sec": 217.05083333333334,
@@ -13446,10 +13446,10 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 145,
       "candidate_onset_sec": 217.23625,
@@ -13468,7 +13468,7 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -13515,7 +13515,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 147,
       "candidate_onset_sec": 219.62,
@@ -13534,10 +13534,10 @@
         "total_score": 0.75
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 147,
       "candidate_onset_sec": 219.99083333333334,
@@ -13556,10 +13556,10 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 147,
       "candidate_onset_sec": 220.13041666666666,
@@ -13578,10 +13578,10 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 147,
       "candidate_onset_sec": 220.50125,
@@ -13600,7 +13600,7 @@
         "total_score": 0.7875
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -13691,7 +13691,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 149,
       "candidate_onset_sec": 222.13229166666667,
@@ -13710,10 +13710,10 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 149,
       "candidate_onset_sec": 222.921875,
@@ -13732,10 +13732,10 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 149,
       "candidate_onset_sec": 223.06145833333335,
@@ -13754,7 +13754,7 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -13801,7 +13801,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 151,
       "candidate_onset_sec": 226.04833333333335,
@@ -13820,10 +13820,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 151,
       "candidate_onset_sec": 226.37333333333333,
@@ -13842,7 +13842,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -14021,7 +14021,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 38,
       "bar_index": 153,
       "candidate_onset_sec": 229.30125,
@@ -14040,7 +14040,7 @@
         "total_score": 0.8583333333333334
       },
       "local_pitch_anchor": 38,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -14109,7 +14109,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 155,
       "candidate_onset_sec": 231.16458333333335,
@@ -14128,7 +14128,7 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -14153,7 +14153,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 155,
       "candidate_onset_sec": 231.90729166666668,
@@ -14172,10 +14172,10 @@
         "total_score": 0.8
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 155,
       "candidate_onset_sec": 232.27812500000002,
@@ -14194,7 +14194,7 @@
         "total_score": 0.7958333333333333
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -14417,7 +14417,7 @@
       "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 159,
       "candidate_onset_sec": 237.76145833333337,
@@ -14436,7 +14436,7 @@
         "total_score": 0.8375
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -14483,7 +14483,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 160,
       "candidate_onset_sec": 238.46770833333335,
@@ -14502,10 +14502,10 @@
         "total_score": 0.7666666666666667
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 160,
       "candidate_onset_sec": 238.60729166666667,
@@ -14524,7 +14524,7 @@
         "total_score": 0.7666666666666667
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": false,
@@ -14549,7 +14549,7 @@
       "rejection_reason": "pitch_far_from_anchor"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 40,
       "bar_index": 160,
       "candidate_onset_sec": 239.5822916666667,
@@ -14568,7 +14568,7 @@
         "total_score": 0.7458333333333332
       },
       "local_pitch_anchor": 40,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": true,
@@ -14726,7 +14726,7 @@
     },
     {
       "accepted": true,
-      "adjusted_pitch": 52,
+      "adjusted_pitch": 50,
       "bar_index": 164,
       "candidate_onset_sec": 244.02270833333333,
       "candidate_raw_pitch": 52,
@@ -14747,15 +14747,15 @@
       "rejection_reason": null
     },
     {
-      "accepted": false,
-      "adjusted_pitch": 52,
+      "accepted": true,
+      "adjusted_pitch": 50,
       "bar_index": 164,
       "candidate_onset_sec": 244.39458333333334,
       "candidate_raw_pitch": 52,
       "confidence_components": {
         "anchor_distance_semitones": 2,
         "anchor_proximity_score": 0.8333333333333334,
-        "duplicate_score": 0.0,
+        "duplicate_score": 1.0,
         "local_support_ratio": 0.25,
         "nearest_octave_distance_semitones": 2,
         "octave_score": 1.0,
@@ -14766,11 +14766,11 @@
         "total_score": 0.8333333333333334
       },
       "local_pitch_anchor": 50,
-      "rejection_reason": "duplicate_existing_note"
+      "rejection_reason": null
     },
     {
       "accepted": true,
-      "adjusted_pitch": 52,
+      "adjusted_pitch": 50,
       "bar_index": 164,
       "candidate_onset_sec": 244.48729166666666,
       "candidate_raw_pitch": 52,
@@ -14879,7 +14879,7 @@
       "rejection_reason": "duplicate_existing_note"
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 48,
       "bar_index": 165,
       "candidate_onset_sec": 246.164375,
@@ -14898,7 +14898,7 @@
         "total_score": 0.7791666666666667
       },
       "local_pitch_anchor": 48,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": true,
@@ -14945,7 +14945,7 @@
       "rejection_reason": null
     },
     {
-      "accepted": false,
+      "accepted": true,
       "adjusted_pitch": 48,
       "bar_index": 167,
       "candidate_onset_sec": 248.26270833333334,
@@ -14964,7 +14964,7 @@
         "total_score": 0.8083333333333333
       },
       "local_pitch_anchor": 48,
-      "rejection_reason": "pitch_far_from_anchor"
+      "rejection_reason": null
     },
     {
       "accepted": true,
@@ -15056,10 +15056,10 @@
     }
   ],
   "quality": "high_accuracy_aggressive",
-  "rejected_dense_pass_notes": 643,
+  "rejected_dense_pass_notes": 369,
   "rejection_reasons": {
-    "duplicate_existing_note": 270,
-    "pitch_far_from_anchor": 366,
+    "duplicate_existing_note": 269,
+    "pitch_far_from_anchor": 93,
     "weak_local_support": 7
   },
   "resolved_gp5_path": "/Users/wojciechgula/Projects/DeChord/test songs/Iron Maiden - The Trooper.gp5",
