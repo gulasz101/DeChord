@@ -76,10 +76,10 @@
 - Modify: `backend/app/stems.py`
 - Modify: `backend/tests/test_stems.py`
 
-- [ ] Step 1: Add typed parsing for candidate models and ensemble enablement.
-- [ ] Step 2: Implement deterministic transcription-suitability scoring and best-candidate selection with graceful degradation when alternate models are unavailable.
-- [ ] Step 3: Add tests covering deterministic candidate parsing/scoring behavior.
-- [ ] Step 4: Run targeted stem tests and confirm GREEN.
+- [x] Step 1: Add typed parsing for candidate models and ensemble enablement.
+- [x] Step 2: Implement deterministic transcription-suitability scoring and best-candidate selection with graceful degradation when alternate models are unavailable.
+- [x] Step 3: Add tests covering deterministic candidate parsing/scoring behavior.
+- [x] Step 4: Run targeted stem tests and confirm GREEN.
 - [ ] Step 5: Commit.
 
 ### Task 7: Add docs and diagnostics surface updates

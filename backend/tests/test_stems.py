@@ -300,3 +300,47 @@ def test_build_bass_analysis_stem_creates_analysis_wav_and_reports_diagnostics(t
     assert result.diagnostics["analysis_highpass_hz"] == pytest.approx(35.0)
     assert result.diagnostics["analysis_lowpass_hz"] == pytest.approx(300.0)
     assert result.diagnostics["bleed_subtraction_applied"] == 1
+
+
+def test_get_stem_analysis_config_parses_candidate_models(monkeypatch):
+    monkeypatch.setenv("DECHORD_DEMUCS_MODEL", "htdemucs_ft")
+    monkeypatch.setenv(
+        "DECHORD_STEM_ANALYSIS_CANDIDATE_MODELS",
+        "htdemucs_6s, htdemucs_ft, htdemucs_6s, mdx_extra_q",
+    )
+
+    config = stems_mod._get_stem_analysis_config()
+
+    assert config.candidate_models == ["htdemucs_ft", "htdemucs_6s", "mdx_extra_q"]
+
+
+def test_score_bass_analysis_candidate_is_deterministic() -> None:
+    sample_rate = 22050
+    times = np.linspace(0.0, 1.0, sample_rate, endpoint=False)
+    clean_audio = (0.7 * np.sin(2.0 * np.pi * 55.0 * times)).astype(np.float32)
+    noisy_audio = (
+        0.2 * np.sin(2.0 * np.pi * 55.0 * times)
+        + 0.3 * np.sin(2.0 * np.pi * 600.0 * times)
+        + 0.1 * np.random.default_rng(42).standard_normal(sample_rate)
+    ).astype(np.float32)
+    bleed_audio = (0.2 * np.sin(2.0 * np.pi * 110.0 * times)).astype(np.float32)
+
+    clean_score = stems_mod._score_bass_analysis_candidate(
+        clean_audio,
+        sample_rate=sample_rate,
+        bleed_audio=bleed_audio,
+    )
+    noisy_score = stems_mod._score_bass_analysis_candidate(
+        noisy_audio,
+        sample_rate=sample_rate,
+        bleed_audio=bleed_audio,
+    )
+
+    assert clean_score == pytest.approx(
+        stems_mod._score_bass_analysis_candidate(
+            clean_audio,
+            sample_rate=sample_rate,
+            bleed_audio=bleed_audio,
+        )
+    )
+    assert clean_score > noisy_score

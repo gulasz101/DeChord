@@ -350,6 +350,63 @@ def _apply_noise_gate(audio: "np.ndarray") -> tuple["np.ndarray", int]:
     return gated, int(np.any(gated != audio))
 
 
+def _score_bass_analysis_candidate(
+    audio: "np.ndarray",
+    *,
+    sample_rate: int,
+    bleed_audio: "np.ndarray | None" = None,
+) -> float:
+    import numpy as np
+
+    if audio.size == 0:
+        return 0.0
+
+    spectrum = np.abs(np.fft.rfft(audio))
+    freqs = np.fft.rfftfreq(audio.size, d=1.0 / sample_rate)
+    bass_band = (freqs >= 35.0) & (freqs <= 320.0)
+    low_band = (freqs >= 35.0) & (freqs <= 120.0)
+    bleed_band = (freqs >= 120.0) & (freqs <= 320.0)
+    total_energy = float(np.sum(spectrum) + 1e-9)
+    bass_energy = float(np.sum(spectrum[bass_band]))
+    low_energy = float(np.sum(spectrum[low_band]))
+    bleed_energy = float(np.sum(spectrum[bleed_band]))
+    normalized_spectrum = spectrum[bass_band]
+    spectral_flatness = 1.0
+    if normalized_spectrum.size and float(np.mean(normalized_spectrum)) > 0.0:
+        spectral_flatness = float(
+            np.exp(np.mean(np.log(np.maximum(normalized_spectrum, 1e-9))))
+            / np.mean(np.maximum(normalized_spectrum, 1e-9))
+        )
+
+    bleed_penalty = 0.0
+    if bleed_audio is not None and bleed_audio.size:
+        frame_count = min(audio.size, bleed_audio.size)
+        if frame_count > 8:
+            corr = float(
+                np.corrcoef(
+                    audio[:frame_count],
+                    bleed_audio[:frame_count],
+                )[0, 1]
+            )
+            if np.isfinite(corr):
+                bleed_penalty = max(corr, 0.0)
+
+    score = (
+        (bass_energy / total_energy) * 3.0
+        + (low_energy / max(bass_energy, 1e-9)) * 1.5
+        - (bleed_energy / total_energy) * 1.5
+        - spectral_flatness * 1.25
+        - bleed_penalty
+    )
+    return float(score)
+
+
+def _select_best_candidate_model(candidate_scores: dict[str, float]) -> str:
+    if not candidate_scores:
+        return DEFAULT_DEMUCS_MODEL
+    return max(candidate_scores.items(), key=lambda item: (item[1], item[0]))[0]
+
+
 def _write_wav_mono(path: Path, *, sample_rate: int, audio: "np.ndarray") -> None:
     import numpy as np
     from scipy.io import wavfile as scipy_wav
@@ -373,19 +430,31 @@ def build_bass_analysis_stem(
         raise RuntimeError("Bass stem missing; cannot build analysis stem.")
 
     if not config.enable_bass_refinement:
+        bass_rate, bass_audio = _read_wav_mono(bass_path)
+        bass_audio = _resample_audio(bass_audio, bass_rate, config.analysis_sample_rate)
+        candidate_score = _score_bass_analysis_candidate(
+            bass_audio,
+            sample_rate=config.analysis_sample_rate,
+        )
+        candidate_scores = {config.demucs_model: candidate_score}
+        selected_model = _select_best_candidate_model(candidate_scores)
         shutil.copyfile(bass_path, output_path)
         diagnostics = {
-            "selected_model": config.demucs_model,
+            "selected_model": selected_model,
             "analysis_highpass_hz": config.analysis_highpass_hz,
             "analysis_lowpass_hz": config.analysis_lowpass_hz,
             "analysis_sample_rate": config.analysis_sample_rate,
             "bleed_subtraction_applied": 0,
             "noise_gate_applied": 0,
-            "candidate_scores": {config.demucs_model: 0.0},
+            "ensemble_requested": int(config.enable_model_ensemble),
+            "unavailable_candidate_models": [
+                candidate for candidate in config.candidate_models if candidate not in candidate_scores
+            ],
+            "candidate_scores": candidate_scores,
         }
         return BassAnalysisStemResult(
             path=output_path,
-            source_model=config.demucs_model,
+            source_model=selected_model,
             diagnostics=diagnostics,
         )
 
@@ -415,19 +484,31 @@ def build_bass_analysis_stem(
 
     import numpy as np
 
+    candidate_score = _score_bass_analysis_candidate(
+        refined,
+        sample_rate=config.analysis_sample_rate,
+        bleed_audio=bleed_audio,
+    )
+    candidate_scores = {config.demucs_model: candidate_score}
+    selected_model = _select_best_candidate_model(candidate_scores)
+
     diagnostics = {
-        "selected_model": config.demucs_model,
+        "selected_model": selected_model,
         "analysis_highpass_hz": config.analysis_highpass_hz,
         "analysis_lowpass_hz": config.analysis_lowpass_hz,
         "analysis_sample_rate": config.analysis_sample_rate,
         "bleed_subtraction_applied": bleed_applied,
         "noise_gate_applied": gate_applied,
         "analysis_rms": float(np.sqrt(np.mean(np.square(refined))) if refined.size else 0.0),
-        "candidate_scores": {config.demucs_model: 0.0},
+        "ensemble_requested": int(config.enable_model_ensemble),
+        "unavailable_candidate_models": [
+            candidate for candidate in config.candidate_models if candidate not in candidate_scores
+        ],
+        "candidate_scores": candidate_scores,
     }
     return BassAnalysisStemResult(
         path=output_path,
-        source_model=config.demucs_model,
+        source_model=selected_model,
         diagnostics=diagnostics,
     )
 
