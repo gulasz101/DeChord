@@ -344,3 +344,296 @@ def test_score_bass_analysis_candidate_is_deterministic() -> None:
         )
     )
     assert clean_score > noisy_score
+
+
+def test_get_stem_analysis_config_parses_extended_weights_and_selection(monkeypatch):
+    monkeypatch.setenv("DECHORD_DEMUCS_MODEL", "htdemucs_ft")
+    monkeypatch.setenv("DECHORD_STEM_ANALYSIS_ENABLE", "1")
+    monkeypatch.setenv("DECHORD_STEM_ANALYSIS_ENSEMBLE", "1")
+    monkeypatch.setenv("DECHORD_STEM_ANALYSIS_CANDIDATE_MODELS", "htdemucs_6s,mdx_extra_q")
+    monkeypatch.setenv("DECHORD_STEM_ANALYSIS_OTHER_SUBTRACT_WEIGHT", "0.30")
+    monkeypatch.setenv("DECHORD_STEM_ANALYSIS_GUITAR_SUBTRACT_WEIGHT", "0.55")
+    monkeypatch.setenv("DECHORD_STEM_ANALYSIS_NOISE_GATE_DB", "-38")
+    monkeypatch.setenv("DECHORD_STEM_ANALYSIS_SELECTION_MODE", "transcription")
+
+    config = stems_mod._get_stem_analysis_config()
+
+    assert config.enable_model_ensemble is True
+    assert config.candidate_models == ["htdemucs_ft", "htdemucs_6s", "mdx_extra_q"]
+    assert config.analysis_other_subtract_weight == pytest.approx(0.30)
+    assert config.analysis_guitar_subtract_weight == pytest.approx(0.55)
+    assert config.analysis_noise_gate_db == pytest.approx(-38.0)
+    assert config.analysis_selection_mode == "transcription"
+
+
+def test_build_bass_analysis_stem_runs_all_candidate_models_in_ensemble_mode(tmp_path: Path):
+    audio_path = tmp_path / "track.wav"
+    audio_path.write_bytes(b"audio")
+    sample_rate = 22050
+    times = np.linspace(0.0, 1.0, sample_rate, endpoint=False)
+
+    calls: list[str] = []
+
+    def write_wav(path: Path, samples: np.ndarray) -> None:
+        pcm = np.clip(samples * 32767.0, -32768, 32767).astype(np.int16)
+        with wave.open(str(path), "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(pcm.tobytes())
+
+    def fake_separate(input_audio: str, output_dir: Path, progress_callback, *, model_name: str):
+        assert input_audio == str(audio_path)
+        calls.append(model_name)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        bass = output_dir / "bass.wav"
+        other = output_dir / "other.wav"
+        drums = output_dir / "drums.wav"
+        guitar = output_dir / "guitar.wav"
+        write_wav(bass, (0.7 * np.sin(2.0 * np.pi * 55.0 * times)).astype(np.float32))
+        write_wav(other, (0.02 * np.sin(2.0 * np.pi * 180.0 * times)).astype(np.float32))
+        write_wav(drums, np.zeros_like(times, dtype=np.float32))
+        write_wav(guitar, (0.03 * np.sin(2.0 * np.pi * 220.0 * times)).astype(np.float32))
+        progress_callback(1.0, f"{model_name} done")
+        return {"bass": bass, "other": other, "drums": drums, "guitar": guitar}
+
+    config = stems_mod.StemAnalysisConfig(
+        demucs_model="htdemucs_ft",
+        demucs_fallback_model="htdemucs",
+        enable_bass_refinement=True,
+        analysis_highpass_hz=35.0,
+        analysis_lowpass_hz=300.0,
+        analysis_sample_rate=22050,
+        enable_model_ensemble=True,
+        candidate_models=["htdemucs_ft", "htdemucs_6s"],
+        analysis_other_subtract_weight=0.30,
+        analysis_guitar_subtract_weight=0.55,
+        analysis_noise_gate_db=-40.0,
+        analysis_selection_mode="transcription",
+        scoring_weights={},
+    )
+
+    result = stems_mod.build_bass_analysis_stem(
+        stems={},
+        output_dir=tmp_path / "analysis",
+        analysis_config=config,
+        source_audio_path=audio_path,
+        separate_fn=fake_separate,
+    )
+
+    assert calls == ["htdemucs_ft", "htdemucs_6s"]
+    assert result.path.name == "bass_analysis.wav"
+    assert result.diagnostics["selected_model"] in {"htdemucs_ft", "htdemucs_6s"}
+    assert len(result.diagnostics["candidate_diagnostics"]) == 2
+
+
+def test_build_bass_analysis_stem_selects_best_scoring_candidate_deterministically(tmp_path: Path):
+    audio_path = tmp_path / "track.wav"
+    audio_path.write_bytes(b"audio")
+    sample_rate = 22050
+    times = np.linspace(0.0, 1.0, sample_rate, endpoint=False)
+
+    def write_wav(path: Path, samples: np.ndarray) -> None:
+        pcm = np.clip(samples * 32767.0, -32768, 32767).astype(np.int16)
+        with wave.open(str(path), "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(pcm.tobytes())
+
+    def fake_separate(_input_audio: str, output_dir: Path, _progress_callback, *, model_name: str):
+        output_dir.mkdir(parents=True, exist_ok=True)
+        bass = output_dir / "bass.wav"
+        other = output_dir / "other.wav"
+        guitar = output_dir / "guitar.wav"
+        drums = output_dir / "drums.wav"
+        if model_name == "htdemucs_6s":
+            bass_audio = (0.85 * np.sin(2.0 * np.pi * 55.0 * times)).astype(np.float32)
+            other_audio = (0.01 * np.sin(2.0 * np.pi * 240.0 * times)).astype(np.float32)
+            guitar_audio = (0.01 * np.sin(2.0 * np.pi * 110.0 * times)).astype(np.float32)
+        else:
+            bass_audio = (
+                0.35 * np.sin(2.0 * np.pi * 55.0 * times)
+                + 0.22 * np.sin(2.0 * np.pi * 220.0 * times)
+            ).astype(np.float32)
+            other_audio = (0.18 * np.sin(2.0 * np.pi * 180.0 * times)).astype(np.float32)
+            guitar_audio = (0.15 * np.sin(2.0 * np.pi * 110.0 * times)).astype(np.float32)
+        write_wav(bass, bass_audio)
+        write_wav(other, other_audio)
+        write_wav(guitar, guitar_audio)
+        write_wav(drums, np.zeros_like(times, dtype=np.float32))
+        return {"bass": bass, "other": other, "guitar": guitar, "drums": drums}
+
+    config = stems_mod.StemAnalysisConfig(
+        demucs_model="htdemucs_ft",
+        demucs_fallback_model="htdemucs",
+        enable_bass_refinement=True,
+        analysis_highpass_hz=35.0,
+        analysis_lowpass_hz=300.0,
+        analysis_sample_rate=22050,
+        enable_model_ensemble=True,
+        candidate_models=["htdemucs_ft", "htdemucs_6s"],
+        analysis_other_subtract_weight=0.30,
+        analysis_guitar_subtract_weight=0.55,
+        analysis_noise_gate_db=-40.0,
+        analysis_selection_mode="transcription",
+        scoring_weights={},
+    )
+
+    result = stems_mod.build_bass_analysis_stem(
+        stems={},
+        output_dir=tmp_path / "analysis",
+        analysis_config=config,
+        source_audio_path=audio_path,
+        separate_fn=fake_separate,
+    )
+
+    assert result.source_model == "htdemucs_6s"
+    assert result.diagnostics["selected_model"] == "htdemucs_6s"
+    assert result.diagnostics["candidate_diagnostics"]["htdemucs_6s"]["selected"] is True
+    assert (
+        result.diagnostics["candidate_diagnostics"]["htdemucs_6s"]["total_score"]
+        > result.diagnostics["candidate_diagnostics"]["htdemucs_ft"]["total_score"]
+    )
+
+
+def test_build_bass_analysis_stem_uses_guitar_bleed_when_available(tmp_path: Path):
+    sample_rate = 22050
+    times = np.linspace(0.0, 1.0, sample_rate, endpoint=False)
+
+    def write_wav(path: Path, samples: np.ndarray) -> None:
+        pcm = np.clip(samples * 32767.0, -32768, 32767).astype(np.int16)
+        with wave.open(str(path), "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(pcm.tobytes())
+
+    stems_dir = tmp_path / "stems"
+    stems_dir.mkdir()
+    bass_path = stems_dir / "bass.wav"
+    other_path = stems_dir / "other.wav"
+    guitar_path = stems_dir / "guitar.wav"
+    drums_path = stems_dir / "drums.wav"
+    write_wav(
+        bass_path,
+        (
+            0.70 * np.sin(2.0 * np.pi * 55.0 * times)
+            + 0.30 * np.sin(2.0 * np.pi * 110.0 * times)
+        ).astype(np.float32),
+    )
+    write_wav(other_path, (0.05 * np.sin(2.0 * np.pi * 180.0 * times)).astype(np.float32))
+    write_wav(guitar_path, (0.28 * np.sin(2.0 * np.pi * 110.0 * times)).astype(np.float32))
+    write_wav(drums_path, np.zeros_like(times, dtype=np.float32))
+
+    config = stems_mod.StemAnalysisConfig(
+        demucs_model="htdemucs_6s",
+        demucs_fallback_model="htdemucs",
+        enable_bass_refinement=True,
+        analysis_highpass_hz=35.0,
+        analysis_lowpass_hz=300.0,
+        analysis_sample_rate=22050,
+        enable_model_ensemble=False,
+        candidate_models=["htdemucs_6s"],
+        analysis_other_subtract_weight=0.20,
+        analysis_guitar_subtract_weight=0.70,
+        analysis_noise_gate_db=-40.0,
+        analysis_selection_mode="transcription",
+        scoring_weights={},
+    )
+
+    result = stems_mod.build_bass_analysis_stem(
+        stems={"bass": bass_path, "other": other_path, "guitar": guitar_path, "drums": drums_path},
+        output_dir=tmp_path / "analysis",
+        analysis_config=config,
+    )
+
+    assert result.diagnostics["candidate_diagnostics"]["htdemucs_6s"]["has_guitar"] is True
+    assert result.diagnostics["candidate_diagnostics"]["htdemucs_6s"]["subtract_weights"]["guitar"] == pytest.approx(0.70)
+    assert result.diagnostics["candidate_diagnostics"]["htdemucs_6s"]["bleed_sources_used"] == ["other", "guitar"]
+
+
+def test_build_bass_analysis_stem_skips_failed_candidate_when_another_succeeds(tmp_path: Path):
+    audio_path = tmp_path / "track.wav"
+    audio_path.write_bytes(b"audio")
+    sample_rate = 22050
+    times = np.linspace(0.0, 1.0, sample_rate, endpoint=False)
+
+    def write_wav(path: Path, samples: np.ndarray) -> None:
+        pcm = np.clip(samples * 32767.0, -32768, 32767).astype(np.int16)
+        with wave.open(str(path), "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(pcm.tobytes())
+
+    def fake_separate(_input_audio: str, output_dir: Path, _progress_callback, *, model_name: str):
+        if model_name == "broken_model":
+            raise RuntimeError("model unavailable")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        bass = output_dir / "bass.wav"
+        drums = output_dir / "drums.wav"
+        write_wav(bass, (0.75 * np.sin(2.0 * np.pi * 55.0 * times)).astype(np.float32))
+        write_wav(drums, np.zeros_like(times, dtype=np.float32))
+        return {"bass": bass, "drums": drums}
+
+    config = stems_mod.StemAnalysisConfig(
+        demucs_model="htdemucs_ft",
+        demucs_fallback_model="htdemucs",
+        enable_bass_refinement=True,
+        analysis_highpass_hz=35.0,
+        analysis_lowpass_hz=300.0,
+        analysis_sample_rate=22050,
+        enable_model_ensemble=True,
+        candidate_models=["broken_model", "htdemucs_ft"],
+        analysis_other_subtract_weight=0.30,
+        analysis_guitar_subtract_weight=0.55,
+        analysis_noise_gate_db=-40.0,
+        analysis_selection_mode="transcription",
+        scoring_weights={},
+    )
+
+    result = stems_mod.build_bass_analysis_stem(
+        stems={},
+        output_dir=tmp_path / "analysis",
+        analysis_config=config,
+        source_audio_path=audio_path,
+        separate_fn=fake_separate,
+    )
+
+    assert result.source_model == "htdemucs_ft"
+    assert result.diagnostics["candidate_diagnostics"]["broken_model"]["status"] == "failed"
+    assert result.diagnostics["candidate_diagnostics"]["htdemucs_ft"]["status"] == "ok"
+
+
+def test_build_bass_analysis_stem_raises_explicitly_when_all_candidates_fail(tmp_path: Path):
+    audio_path = tmp_path / "track.wav"
+    audio_path.write_bytes(b"audio")
+
+    def fake_separate(_input_audio: str, _output_dir: Path, _progress_callback, *, model_name: str):
+        raise RuntimeError(f"{model_name} unavailable")
+
+    config = stems_mod.StemAnalysisConfig(
+        demucs_model="htdemucs_ft",
+        demucs_fallback_model="htdemucs",
+        enable_bass_refinement=True,
+        analysis_highpass_hz=35.0,
+        analysis_lowpass_hz=300.0,
+        analysis_sample_rate=22050,
+        enable_model_ensemble=True,
+        candidate_models=["broken_a", "broken_b"],
+        analysis_other_subtract_weight=0.30,
+        analysis_guitar_subtract_weight=0.55,
+        analysis_noise_gate_db=-40.0,
+        analysis_selection_mode="transcription",
+        scoring_weights={},
+    )
+
+    with pytest.raises(RuntimeError, match="All bass analysis candidate models failed"):
+        stems_mod.build_bass_analysis_stem(
+            stems={},
+            output_dir=tmp_path / "analysis",
+            analysis_config=config,
+            source_audio_path=audio_path,
+            separate_fn=fake_separate,
+        )

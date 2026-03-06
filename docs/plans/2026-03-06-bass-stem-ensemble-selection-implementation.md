@@ -24,11 +24,11 @@
 **Files:**
 - Modify: `backend/tests/test_stems.py`
 
-- [ ] Step 1: Add failing tests for deterministic candidate-model parsing, deduplication, and new typed analysis config fields.
-- [ ] Step 2: Add failing tests proving ensemble mode runs multiple candidate models and default mode stays single-model.
-- [ ] Step 3: Add failing tests proving one candidate failure can be skipped and all-candidate failure is explicit and safe.
-- [ ] Step 4: Run targeted stem tests and confirm RED.
-- [ ] Step 5: Commit.
+- [x] Step 1: Add failing tests for deterministic candidate-model parsing, deduplication, and new typed analysis config fields.
+- [x] Step 2: Add failing tests proving ensemble mode runs multiple candidate models and default mode stays single-model.
+- [x] Step 3: Add failing tests proving one candidate failure can be skipped and all-candidate failure is explicit and safe.
+- [x] Step 4: Run targeted stem tests and confirm RED.
+- [x] Step 5: Commit.
 
 ### Task 3: Implement typed config and candidate execution scaffolding
 
