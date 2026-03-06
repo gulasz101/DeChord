@@ -15,9 +15,11 @@ from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
-# Model preference order: fine-tuned first, then standard
-DEMUCS_MODEL = os.getenv("DECHORD_DEMUCS_MODEL", "htdemucs_ft")
-DEMUCS_FALLBACK_MODEL = "htdemucs"
+DEFAULT_DEMUCS_MODEL = "htdemucs_ft"
+DEFAULT_DEMUCS_FALLBACK_MODEL = "htdemucs"
+DEFAULT_ANALYSIS_HIGHPASS_HZ = 35.0
+DEFAULT_ANALYSIS_LOWPASS_HZ = 300.0
+DEFAULT_ANALYSIS_SAMPLE_RATE = 22050
 
 
 @dataclass
@@ -41,6 +43,18 @@ class SeparationConfig:
     input_gain_db: float
     output_gain_db: float
     jobs: int | None
+
+
+@dataclass(frozen=True)
+class StemAnalysisConfig:
+    demucs_model: str
+    demucs_fallback_model: str
+    enable_bass_refinement: bool
+    analysis_highpass_hz: float
+    analysis_lowpass_hz: float
+    analysis_sample_rate: int
+    enable_model_ensemble: bool
+    candidate_models: list[str]
 
 
 def check_stem_runtime_ready(
@@ -79,6 +93,23 @@ def _get_model_params(model_name: str) -> dict:
     }
 
 
+def _load_stem_env() -> None:
+    load_dotenv(dotenv_path=Path.cwd() / ".env", override=False)
+
+
+def _parse_bool_env(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    logger.warning("Invalid bool for %s=%r. Using default %s", name, raw, default)
+    return default
+
+
 def _parse_float_env(name: str, default: float) -> float:
     raw = os.getenv(name)
     if raw is None:
@@ -101,10 +132,99 @@ def _parse_int_env(name: str, default: int | None) -> int | None:
         return default
 
 
-def _get_separation_config(model_name: str = DEMUCS_MODEL) -> SeparationConfig:
-    load_dotenv(dotenv_path=Path.cwd() / ".env", override=False)
+def _get_nonempty_env(name: str, default: str) -> str:
+    _load_stem_env()
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    value = raw.strip()
+    if value:
+        return value
+    logger.warning("Invalid empty value for %s. Using default %s", name, default)
+    return default
 
-    defaults = _get_model_params(model_name)
+
+def _get_demucs_model_name() -> str:
+    return _get_nonempty_env("DECHORD_DEMUCS_MODEL", DEFAULT_DEMUCS_MODEL)
+
+
+def _get_demucs_fallback_model_name() -> str:
+    return _get_nonempty_env("DECHORD_DEMUCS_FALLBACK_MODEL", DEFAULT_DEMUCS_FALLBACK_MODEL)
+
+
+def _parse_candidate_models_env(primary_model: str) -> list[str]:
+    raw = os.getenv("DECHORD_STEM_ANALYSIS_CANDIDATE_MODELS")
+    if raw is None:
+        return [primary_model]
+    candidates = [value.strip() for value in raw.split(",") if value.strip()]
+    if not candidates:
+        logger.warning(
+            "Invalid empty value for DECHORD_STEM_ANALYSIS_CANDIDATE_MODELS. Using default %s",
+            primary_model,
+        )
+        return [primary_model]
+    deduped: list[str] = []
+    for candidate in [primary_model, *candidates]:
+        if candidate not in deduped:
+            deduped.append(candidate)
+    return deduped
+
+
+def _get_stem_analysis_config() -> StemAnalysisConfig:
+    _load_stem_env()
+    demucs_model = _get_demucs_model_name()
+    demucs_fallback_model = _get_demucs_fallback_model_name()
+    analysis_highpass_hz = _parse_float_env(
+        "DECHORD_STEM_ANALYSIS_HIGHPASS_HZ",
+        DEFAULT_ANALYSIS_HIGHPASS_HZ,
+    )
+    if analysis_highpass_hz <= 0:
+        logger.warning(
+            "DECHORD_STEM_ANALYSIS_HIGHPASS_HZ must be > 0. Falling back to %s",
+            DEFAULT_ANALYSIS_HIGHPASS_HZ,
+        )
+        analysis_highpass_hz = DEFAULT_ANALYSIS_HIGHPASS_HZ
+
+    analysis_lowpass_hz = _parse_float_env(
+        "DECHORD_STEM_ANALYSIS_LOWPASS_HZ",
+        DEFAULT_ANALYSIS_LOWPASS_HZ,
+    )
+    if analysis_lowpass_hz <= analysis_highpass_hz:
+        logger.warning(
+            "DECHORD_STEM_ANALYSIS_LOWPASS_HZ must be > analysis highpass (%s). Falling back to %s",
+            analysis_highpass_hz,
+            DEFAULT_ANALYSIS_LOWPASS_HZ,
+        )
+        analysis_lowpass_hz = DEFAULT_ANALYSIS_LOWPASS_HZ
+
+    analysis_sample_rate = _parse_int_env(
+        "DECHORD_STEM_ANALYSIS_SAMPLE_RATE",
+        DEFAULT_ANALYSIS_SAMPLE_RATE,
+    )
+    if analysis_sample_rate is None or analysis_sample_rate <= 0:
+        logger.warning(
+            "DECHORD_STEM_ANALYSIS_SAMPLE_RATE must be > 0. Falling back to %s",
+            DEFAULT_ANALYSIS_SAMPLE_RATE,
+        )
+        analysis_sample_rate = DEFAULT_ANALYSIS_SAMPLE_RATE
+
+    return StemAnalysisConfig(
+        demucs_model=demucs_model,
+        demucs_fallback_model=demucs_fallback_model,
+        enable_bass_refinement=_parse_bool_env("DECHORD_STEM_ANALYSIS_ENABLE", True),
+        analysis_highpass_hz=analysis_highpass_hz,
+        analysis_lowpass_hz=analysis_lowpass_hz,
+        analysis_sample_rate=analysis_sample_rate,
+        enable_model_ensemble=_parse_bool_env("DECHORD_STEM_ANALYSIS_ENSEMBLE", False),
+        candidate_models=_parse_candidate_models_env(demucs_model),
+    )
+
+
+def _get_separation_config(model_name: str | None = None) -> SeparationConfig:
+    _load_stem_env()
+    resolved_model_name = model_name or _get_demucs_model_name()
+
+    defaults = _get_model_params(resolved_model_name)
     device = os.getenv("DECHORD_STEM_DEVICE", defaults["device"]).strip().lower()
     if device not in {"auto", "cpu", "mps", "cuda"}:
         logger.warning("Invalid DECHORD_STEM_DEVICE=%r. Falling back to 'auto'.", device)
@@ -164,17 +284,25 @@ def _separate_with_demucs(
     output_dir.mkdir(parents=True, exist_ok=True)
     config = _get_separation_config()
     device = _detect_device() if config.device == "auto" else config.device
-    model_name = DEMUCS_MODEL
+    model_name = _get_demucs_model_name()
+    fallback_model_name = _get_demucs_fallback_model_name()
 
-    logger.info("Demucs: initializing separator model=%s device=%s", model_name, device)
+    logger.info(
+        "Demucs: initializing separator model=%s fallback_model=%s device=%s config=%s",
+        model_name,
+        fallback_model_name,
+        device,
+        config,
+    )
     try:
         separator = demucs.api.Separator(model=model_name, device=device)
     except Exception:
         logger.warning(
             "Demucs: model %s unavailable, falling back to %s",
-            model_name, DEMUCS_FALLBACK_MODEL,
+            model_name,
+            fallback_model_name,
         )
-        model_name = DEMUCS_FALLBACK_MODEL
+        model_name = fallback_model_name
         separator = demucs.api.Separator(model=model_name, device=device)
 
     params = _get_separation_config(model_name)

@@ -38,10 +38,10 @@
 - Modify: `backend/app/stems.py`
 - Modify: `backend/tests/test_stems.py`
 
-- [ ] Step 1: Add runtime env loading helpers for Demucs model and fallback model selection.
-- [ ] Step 2: Extend typed stem config parsing with analysis/refinement settings and safe fallback warnings.
-- [ ] Step 3: Log effective runtime model/config clearly and preserve default behavior when analysis features are disabled.
-- [ ] Step 4: Run targeted stem tests and confirm GREEN for config behavior.
+- [x] Step 1: Add runtime env loading helpers for Demucs model and fallback model selection.
+- [x] Step 2: Extend typed stem config parsing with analysis/refinement settings and safe fallback warnings.
+- [x] Step 3: Log effective runtime model/config clearly and preserve default behavior when analysis features are disabled.
+- [x] Step 4: Run targeted stem tests and confirm GREEN for config behavior.
 - [ ] Step 5: Commit.
 
 ### Task 4: Add deterministic bass analysis refinement and diagnostics
