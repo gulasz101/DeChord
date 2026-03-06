@@ -14,5 +14,5 @@
 - [x] Update docs
 - [x] Run targeted tests
 - [x] Run broader backend tests
-- [ ] Run `make reset`
-- [ ] Mark all tasks complete
+- [x] Run `make reset`
+- [x] Mark all tasks complete
