@@ -48,6 +48,21 @@ def test_parse_cli_args_accepts_mp3_and_gp5_pair() -> None:
     assert args.gp5 == "../test songs/Muse - Hysteria.gp5"
 
 
+def test_parse_cli_args_accepts_optional_phase_suffix() -> None:
+    args = parse_cli_args(
+        [
+            "--mp3",
+            "../test songs/Muse - Hysteria.mp3",
+            "--gp5",
+            "../test songs/Muse - Hysteria.gp5",
+            "--phase",
+            "phase4_hysteria_final",
+        ]
+    )
+
+    assert args.phase == "phase4_hysteria_final"
+
+
 @pytest.mark.parametrize(
     "argv",
     [
@@ -278,3 +293,93 @@ def test_evaluate_inputs_runs_full_pipeline_and_writes_deterministic_reports(
     assert audit["raw_note_count"] == 1
     assert "octave_error_count" in audit
     assert "non_octave_pitch_error_count" in audit
+
+
+def test_evaluate_inputs_with_phase_writes_phase_suffixed_artifacts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mp3 = tmp_path / "Muse - Hysteria.mp3"
+    gp5 = tmp_path / "Muse - Hysteria.gp5"
+    mp3.write_text("fake")
+    gp5.write_text("fake")
+
+    reference = ReferenceTab(
+        tempo=120.0,
+        time_signature=(4, 4),
+        bars=[],
+        notes=[
+            ReferenceNote(
+                bar_index=0,
+                beat_position=0.0,
+                duration_beats=1.0,
+                pitch_midi=40,
+                string=4,
+                fret=12,
+            )
+        ],
+    )
+    monkeypatch.setattr("scripts.evaluate_tab_quality.validate_inputs", lambda _mp3, _gp5: (reference, 20.0))
+    monkeypatch.setattr(
+        "scripts.evaluate_tab_quality.split_to_stems",
+        lambda _audio, _dir: [
+            SimpleNamespace(stem_key="bass", relative_path=str(tmp_path / "bass.wav")),
+            SimpleNamespace(stem_key="drums", relative_path=str(tmp_path / "drums.wav")),
+        ],
+    )
+    monkeypatch.setattr("scripts.evaluate_tab_quality.REPORTS_DIR", tmp_path / "reports")
+    monkeypatch.setattr(
+        "scripts.evaluate_tab_quality.BasicPitchTranscriber",
+        lambda: SimpleNamespace(
+            transcribe=lambda _bass: SimpleNamespace(
+                engine="basic_pitch",
+                raw_notes=[SimpleNamespace(start_sec=0.0, end_sec=0.5, pitch_midi=40, confidence=0.8)],
+                debug_info={"basicpitch_octave_corrections_applied": 1},
+            )
+        ),
+    )
+
+    class FakePipeline:
+        def run(self, bass_wav, drums_wav, *, bpm_hint, tab_generation_quality_mode):
+            return SimpleNamespace(
+                alphatex="0.4.4 |",
+                tempo_used=120.0,
+                debug_info={"derived_bpm": 120.0, "rhythm_source": "librosa"},
+            )
+
+    monkeypatch.setattr("scripts.evaluate_tab_quality.TabPipeline", FakePipeline)
+    monkeypatch.setattr(
+        "scripts.evaluate_tab_quality.compare_tabs",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            precision=1.0,
+            recall=1.0,
+            f1_score=1.0,
+            pitch_accuracy=1.0,
+            fingering_accuracy=1.0,
+            note_density_correlation=1.0,
+            mean_timing_offset=0.0,
+            onset_precision_ms=1.0,
+            onset_recall_ms=1.0,
+            onset_f1_ms=1.0,
+            onset_precision_grid=1.0,
+            onset_recall_grid=1.0,
+            onset_f1_grid=1.0,
+            octave_confusion={"exact": 1, "octave_plus_12": 0, "octave_minus_12": 0, "other": 0},
+            total_ref_notes=1,
+            total_gen_notes=1,
+            total_matched=1,
+        ),
+    )
+
+    output = evaluate_inputs(
+        ResolvedInputs(song_name="Muse - Hysteria", mp3_path=mp3, gp5_path=gp5),
+        quality="high_accuracy_aggressive",
+        phase="phase4_hysteria_final",
+    )
+
+    assert output["metrics_path"].endswith("muse__hysteria_phase4_hysteria_final_metrics.json")
+    assert output["debug_path"].endswith("muse__hysteria_phase4_hysteria_final_debug.json")
+    assert output["alphatex_path"].endswith("muse__hysteria_phase4_hysteria_final_output.alphatex")
+    assert output["transcription_audit_path"].endswith(
+        "muse__hysteria_phase4_hysteria_final_transcription_audit.json"
+    )

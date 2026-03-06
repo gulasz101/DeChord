@@ -124,6 +124,7 @@ def parse_cli_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--song-dir")
     parser.add_argument("--song")
     parser.add_argument("--quality", choices=QUALITY_CHOICES, default="high_accuracy_aggressive")
+    parser.add_argument("--phase")
     args = parser.parse_args(argv)
 
     has_mp3 = bool(args.mp3)
@@ -297,7 +298,7 @@ def build_transcription_audit(
     }
 
 
-def evaluate_inputs(resolved: ResolvedInputs, *, quality: str) -> dict[str, object]:
+def evaluate_inputs(resolved: ResolvedInputs, *, quality: str, phase: str | None = None) -> dict[str, object]:
     reference, _duration_seconds = validate_inputs(resolved.mp3_path, resolved.gp5_path)
     song_name = resolved.song_name
     prefix = prefix_for_song_name(song_name)
@@ -342,10 +343,11 @@ def evaluate_inputs(resolved: ResolvedInputs, *, quality: str) -> dict[str, obje
     )
 
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    metrics_path = REPORTS_DIR / f"{prefix}_metrics.json"
-    debug_path = REPORTS_DIR / f"{prefix}_debug.json"
-    transcription_audit_path = REPORTS_DIR / f"{prefix}_transcription_audit.json"
-    alphatex_path = REPORTS_DIR / f"{prefix}_output.alphatex"
+    filename_prefix = f"{prefix}_{_slug_part(phase)}" if phase else prefix
+    metrics_path = REPORTS_DIR / f"{filename_prefix}_metrics.json"
+    debug_path = REPORTS_DIR / f"{filename_prefix}_debug.json"
+    transcription_audit_path = REPORTS_DIR / f"{filename_prefix}_transcription_audit.json"
+    alphatex_path = REPORTS_DIR / f"{filename_prefix}_output.alphatex"
 
     metrics = {
         "song": song_name,
@@ -420,7 +422,7 @@ def evaluate_inputs(resolved: ResolvedInputs, *, quality: str) -> dict[str, obje
 def main(argv: list[str] | None = None) -> int:
     args = parse_cli_args(argv)
     resolved = resolve_input_paths(args)
-    output = evaluate_inputs(resolved, quality=args.quality)
+    output = evaluate_inputs(resolved, quality=args.quality, phase=args.phase)
     print(json.dumps(output["metrics"], indent=2, sort_keys=True))
     print(f"metrics: {output['metrics_path']}")
     print(f"debug: {output['debug_path']}")
