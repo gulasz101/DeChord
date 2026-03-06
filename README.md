@@ -283,11 +283,12 @@ Open:
 
 ### Stem Separation Configuration (Environment)
 
-The backend stem splitter is configurable through environment variables and supports loading a local `backend/.env` file for quick laptop tuning.
+The backend stem splitter is configurable through environment variables and loads `backend/.env` at runtime, so Demucs model overrides apply even when the process was imported before env setup. Playback/download stems still use the raw separated files; tab/MIDI generation now builds a dedicated `bass_analysis.wav` artifact for transcription-focused preprocessing and diagnostics.
 
 | Variable | Default | Description |
 | --- | --- | --- |
 | `DECHORD_DEMUCS_MODEL` | `htdemucs_ft` | Primary Demucs model name. |
+| `DECHORD_DEMUCS_FALLBACK_MODEL` | `htdemucs` | Fallback Demucs model when the primary model is unavailable. |
 | `DECHORD_STEM_ENGINE` | `demucs` | Stem engine: `demucs` or `fallback`. |
 | `DECHORD_STEM_FALLBACK_ON_ERROR` | `0` | If `1`, fallback splitter runs when Demucs fails. |
 | `DECHORD_STEM_DEVICE` | `auto` | Compute device: `auto`, `cpu`, `mps`, `cuda`. |
@@ -297,16 +298,29 @@ The backend stem splitter is configurable through environment variables and supp
 | `DECHORD_STEM_INPUT_GAIN_DB` | `0.0` | Gain applied before separation. |
 | `DECHORD_STEM_OUTPUT_GAIN_DB` | `0.0` | Gain applied before writing output stems. |
 | `DECHORD_STEM_JOBS` | unset | Optional Demucs CPU jobs/thread workers (`>= 0`). |
+| `DECHORD_STEM_ANALYSIS_ENABLE` | `1` | If `1`, build a separate analysis-only bass stem for tab/MIDI generation. |
+| `DECHORD_STEM_ANALYSIS_HIGHPASS_HZ` | `35` | Analysis stem high-pass filter cutoff (`> 0`). |
+| `DECHORD_STEM_ANALYSIS_LOWPASS_HZ` | `300` | Analysis stem low-pass filter cutoff (`> high-pass`). |
+| `DECHORD_STEM_ANALYSIS_SAMPLE_RATE` | `22050` | Analysis stem sample rate for refinement and fallback transcription. |
+| `DECHORD_STEM_ANALYSIS_CANDIDATE_MODELS` | primary model | Comma-separated candidate model list for future analysis-stem experiments. |
+| `DECHORD_STEM_ANALYSIS_ENSEMBLE` | `0` | If `1`, enable candidate-model selection scaffolding for analysis diagnostics. |
 
 Example `backend/.env` for local tinkering:
 
 ```bash
+DECHORD_DEMUCS_MODEL=htdemucs_ft
+DECHORD_DEMUCS_FALLBACK_MODEL=htdemucs
 DECHORD_STEM_DEVICE=auto
 DECHORD_STEM_SEGMENT=7.8
 DECHORD_STEM_OVERLAP=0.25
 DECHORD_STEM_SHIFTS=0
 DECHORD_STEM_INPUT_GAIN_DB=0.0
 DECHORD_STEM_OUTPUT_GAIN_DB=0.0
+DECHORD_STEM_ANALYSIS_ENABLE=1
+DECHORD_STEM_ANALYSIS_HIGHPASS_HZ=35
+DECHORD_STEM_ANALYSIS_LOWPASS_HZ=300
+DECHORD_STEM_ANALYSIS_CANDIDATE_MODELS=htdemucs_ft,htdemucs_6s
+DECHORD_STEM_ANALYSIS_ENSEMBLE=0
 ```
 
 Example Linux host CPU-focused config:

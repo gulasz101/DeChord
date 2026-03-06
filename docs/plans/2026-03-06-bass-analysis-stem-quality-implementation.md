@@ -88,8 +88,8 @@
 - Modify: `README.md`
 - Modify: `docs/plans/2026-03-06-bass-analysis-stem-quality-implementation.md`
 
-- [ ] Step 1: Document the new env/config knobs for bass analysis stem quality tuning.
-- [ ] Step 2: Ensure the plan file reflects completed implementation tasks accurately.
+- [x] Step 1: Document the new env/config knobs for bass analysis stem quality tuning.
+- [x] Step 2: Ensure the plan file reflects completed implementation tasks accurately.
 - [ ] Step 3: Commit.
 
 ### Task 8: Verify, reset, and finalize
