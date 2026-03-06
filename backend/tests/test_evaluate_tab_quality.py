@@ -9,6 +9,7 @@ import pytest
 from app.services.gp5_reference import ReferenceTab
 from app.services.gp5_reference import ReferenceNote
 from scripts.evaluate_tab_quality import ResolvedInputs
+from scripts.evaluate_tab_quality import build_transcription_source_audit
 from scripts.evaluate_tab_quality import evaluate_inputs
 from scripts.evaluate_tab_quality import parse_alphatex_to_reference_notes
 from scripts.evaluate_tab_quality import prefix_for_song_name
@@ -250,7 +251,21 @@ def test_evaluate_inputs_runs_full_pipeline_and_writes_deterministic_reports(
             return SimpleNamespace(
                 alphatex="0.4.4 |",
                 tempo_used=120.0,
-                debug_info={"derived_bpm": 120.0, "rhythm_source": "librosa"},
+                debug_info={
+                    "derived_bpm": 120.0,
+                    "rhythm_source": "librosa",
+                    "raw_note_source_rows": [
+                        {
+                            "source": "basic_pitch",
+                            "pitch_midi": 40,
+                            "start_sec": 0.0,
+                            "end_sec": 0.5,
+                            "survived_cleanup": True,
+                            "confidence_summary": {"confidence": 0.8},
+                        }
+                    ],
+                    "dense_note_fusion_candidates": [],
+                },
             )
 
     monkeypatch.setattr("scripts.evaluate_tab_quality.TabPipeline", FakePipeline)
@@ -287,12 +302,16 @@ def test_evaluate_inputs_runs_full_pipeline_and_writes_deterministic_reports(
     assert output["debug_path"].endswith("muse__hysteria_debug.json")
     assert output["alphatex_path"].endswith("muse__hysteria_output.alphatex")
     assert output["transcription_audit_path"].endswith("muse__hysteria_transcription_audit.json")
+    assert output["transcription_sources_path"].endswith("muse__hysteria_transcription_sources.json")
 
     audit = json.loads(Path(output["transcription_audit_path"]).read_text())
     assert audit["transcription_engine_used"] == "basic_pitch"
     assert audit["raw_note_count"] == 1
     assert "octave_error_count" in audit
     assert "non_octave_pitch_error_count" in audit
+    source_audit = json.loads(Path(output["transcription_sources_path"]).read_text())
+    assert source_audit["source_counts"] == {"basic_pitch": 1}
+    assert source_audit["accepted_dense_candidates"] == 0
 
 
 def test_evaluate_inputs_with_phase_writes_phase_suffixed_artifacts(
@@ -344,7 +363,12 @@ def test_evaluate_inputs_with_phase_writes_phase_suffixed_artifacts(
             return SimpleNamespace(
                 alphatex="0.4.4 |",
                 tempo_used=120.0,
-                debug_info={"derived_bpm": 120.0, "rhythm_source": "librosa"},
+                debug_info={
+                    "derived_bpm": 120.0,
+                    "rhythm_source": "librosa",
+                    "raw_note_source_rows": [],
+                    "dense_note_fusion_candidates": [],
+                },
             )
 
     monkeypatch.setattr("scripts.evaluate_tab_quality.TabPipeline", FakePipeline)
@@ -383,3 +407,67 @@ def test_evaluate_inputs_with_phase_writes_phase_suffixed_artifacts(
     assert output["transcription_audit_path"].endswith(
         "muse__hysteria_phase4_hysteria_final_transcription_audit.json"
     )
+    assert output["transcription_sources_path"].endswith(
+        "muse__hysteria_phase4_hysteria_final_transcription_sources.json"
+    )
+
+
+def test_build_transcription_source_audit_counts_dense_matches_and_rejections() -> None:
+    reference = ReferenceTab(
+        tempo=120.0,
+        time_signature=(4, 4),
+        bars=[],
+        notes=[
+            ReferenceNote(
+                bar_index=0,
+                beat_position=0.0,
+                duration_beats=1.0,
+                pitch_midi=40,
+                string=4,
+                fret=12,
+            ),
+            ReferenceNote(
+                bar_index=0,
+                beat_position=1.0,
+                duration_beats=1.0,
+                pitch_midi=43,
+                string=3,
+                fret=10,
+            ),
+        ],
+    )
+
+    audit = build_transcription_source_audit(
+        reference,
+        {
+            "raw_note_source_rows": [
+                {
+                    "source": "basic_pitch",
+                    "pitch_midi": 40,
+                    "start_sec": 0.0,
+                    "end_sec": 0.4,
+                    "survived_cleanup": True,
+                    "confidence_summary": {"confidence": 0.9},
+                },
+                {
+                    "source": "hybrid_merged",
+                    "pitch_midi": 43,
+                    "start_sec": 0.5,
+                    "end_sec": 0.7,
+                    "survived_cleanup": True,
+                    "confidence_summary": {"raw_pitch_midi": 55},
+                },
+            ],
+            "dense_note_fusion_candidates": [
+                {"accepted": False, "rejection_reason": "pitch_far_from_anchor"},
+                {"accepted": True, "rejection_reason": None},
+            ],
+        },
+    )
+
+    assert audit["source_counts"] == {"basic_pitch": 1, "hybrid_merged": 1}
+    assert audit["accepted_dense_candidates"] == 1
+    assert audit["rejected_dense_candidates"] == 1
+    assert audit["accepted_dense_with_reference_onset_match"] == 1
+    assert audit["accepted_dense_with_reference_onset_pitch_match"] == 1
+    assert audit["rejected_dense_reasons"] == {"pitch_far_from_anchor": 1}

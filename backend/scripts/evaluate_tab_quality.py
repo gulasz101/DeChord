@@ -298,6 +298,82 @@ def build_transcription_audit(
     }
 
 
+def _match_source_row_to_reference(
+    reference: ReferenceTab,
+    row: dict[str, object],
+    *,
+    onset_tolerance_sec: float = 0.12,
+) -> dict[str, object]:
+    ref_notes = _reference_note_times_seconds(reference)
+    start_sec = float(row.get("start_sec", 0.0))
+    pitch_midi = int(row.get("pitch_midi", -999))
+    best_idx: int | None = None
+    best_delta = float("inf")
+    for idx, (ref_sec, _ref_pitch) in enumerate(ref_notes):
+        delta = abs(start_sec - ref_sec)
+        if delta <= onset_tolerance_sec and delta < best_delta:
+            best_idx = idx
+            best_delta = delta
+    if best_idx is None:
+        return {
+            "matched_reference_onset": False,
+            "matched_reference_pitch": False,
+            "matched_reference_onset_pitch": False,
+            "reference_pitch_midi": None,
+            "reference_onset_sec": None,
+        }
+    ref_sec, ref_pitch = ref_notes[best_idx]
+    pitch_match = int(ref_pitch) == pitch_midi
+    return {
+        "matched_reference_onset": True,
+        "matched_reference_pitch": pitch_match,
+        "matched_reference_onset_pitch": pitch_match,
+        "reference_pitch_midi": int(ref_pitch),
+        "reference_onset_sec": float(ref_sec),
+    }
+
+
+def build_transcription_source_audit(
+    reference: ReferenceTab,
+    pipeline_debug: dict[str, object],
+) -> dict[str, object]:
+    raw_rows = pipeline_debug.get("raw_note_source_rows")
+    source_rows = list(raw_rows) if isinstance(raw_rows, list) else []
+    enriched_rows: list[dict[str, object]] = []
+    for row in source_rows:
+        if not isinstance(row, dict):
+            continue
+        enriched = dict(row)
+        enriched.update(_match_source_row_to_reference(reference, enriched))
+        enriched_rows.append(enriched)
+
+    source_counts = Counter(str(row.get("source", "unknown")) for row in enriched_rows)
+    accepted_dense = [row for row in enriched_rows if str(row.get("source")) in {"dense_note_generator", "hybrid_merged"}]
+    accepted_with_onset_match = sum(1 for row in accepted_dense if row.get("matched_reference_onset") is True)
+    accepted_with_pitch_match = sum(1 for row in accepted_dense if row.get("matched_reference_onset_pitch") is True)
+    accepted_pitch_mismatches = sum(
+        1 for row in accepted_dense if row.get("matched_reference_onset") is True and row.get("matched_reference_pitch") is False
+    )
+
+    fusion_rows = pipeline_debug.get("dense_note_fusion_candidates")
+    dense_fusion_candidates = list(fusion_rows) if isinstance(fusion_rows, list) else []
+    rejected_dense = [row for row in dense_fusion_candidates if isinstance(row, dict) and row.get("accepted") is False]
+    rejection_histogram = Counter(
+        str(row.get("rejection_reason")) for row in rejected_dense if isinstance(row.get("rejection_reason"), str)
+    )
+
+    return {
+        "raw_note_source_rows": enriched_rows,
+        "source_counts": dict(sorted((key, int(value)) for key, value in source_counts.items())),
+        "accepted_dense_candidates": len(accepted_dense),
+        "rejected_dense_candidates": len(rejected_dense),
+        "accepted_dense_with_reference_onset_match": int(accepted_with_onset_match),
+        "accepted_dense_with_reference_onset_pitch_match": int(accepted_with_pitch_match),
+        "accepted_dense_with_reference_pitch_mismatch": int(accepted_pitch_mismatches),
+        "rejected_dense_reasons": dict(sorted((key, int(value)) for key, value in rejection_histogram.items())),
+    }
+
+
 def evaluate_inputs(resolved: ResolvedInputs, *, quality: str, phase: str | None = None) -> dict[str, object]:
     reference, _duration_seconds = validate_inputs(resolved.mp3_path, resolved.gp5_path)
     song_name = resolved.song_name
@@ -347,6 +423,7 @@ def evaluate_inputs(resolved: ResolvedInputs, *, quality: str, phase: str | None
     metrics_path = REPORTS_DIR / f"{filename_prefix}_metrics.json"
     debug_path = REPORTS_DIR / f"{filename_prefix}_debug.json"
     transcription_audit_path = REPORTS_DIR / f"{filename_prefix}_transcription_audit.json"
+    transcription_sources_path = REPORTS_DIR / f"{filename_prefix}_transcription_sources.json"
     alphatex_path = REPORTS_DIR / f"{filename_prefix}_output.alphatex"
 
     metrics = {
@@ -387,6 +464,7 @@ def evaluate_inputs(resolved: ResolvedInputs, *, quality: str, phase: str | None
         "song": song_name,
         "evaluation_context": evaluation_context,
         "transcription_audit": transcription_audit,
+        "transcription_source_audit": build_transcription_source_audit(reference, dict(result.debug_info)),
         "track": {
             "mp3": str(resolved.mp3_path),
             "gp5": str(resolved.gp5_path),
@@ -408,12 +486,14 @@ def evaluate_inputs(resolved: ResolvedInputs, *, quality: str, phase: str | None
     metrics_path.write_text(json.dumps(metrics, indent=2, sort_keys=True))
     debug_path.write_text(json.dumps(debug_info, indent=2, sort_keys=True))
     transcription_audit_path.write_text(json.dumps(transcription_audit, indent=2, sort_keys=True))
+    transcription_sources_path.write_text(json.dumps(debug_info["transcription_source_audit"], indent=2, sort_keys=True))
     alphatex_path.write_text(result.alphatex)
 
     return {
         "metrics_path": str(metrics_path),
         "debug_path": str(debug_path),
         "transcription_audit_path": str(transcription_audit_path),
+        "transcription_sources_path": str(transcription_sources_path),
         "alphatex_path": str(alphatex_path),
         "metrics": metrics,
     }
@@ -427,6 +507,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"metrics: {output['metrics_path']}")
     print(f"debug: {output['debug_path']}")
     print(f"transcription_audit: {output['transcription_audit_path']}")
+    print(f"transcription_sources: {output['transcription_sources_path']}")
     print(f"alphatex: {output['alphatex_path']}")
     return 0
 

@@ -12,4 +12,4 @@
 
 - [x] Task 1: Add dense-note candidate generation primitives and TDD coverage for targeted windows and repeated-note anchoring.
 - [x] Task 2: Implement pre-cleanup hybrid fusion plus raw-note source attribution in `TabPipeline` with TDD coverage.
-- [ ] Task 3: Extend evaluation/report generation for Phase 6 source diagnostics, run reset plus verification and canonical benchmarks, write required reports/artifacts, mark tasks complete, and commit.
+- [x] Task 3: Extend evaluation/report generation for Phase 6 source diagnostics, run reset plus verification and canonical benchmarks, write required reports/artifacts, mark tasks complete, and commit.

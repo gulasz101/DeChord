@@ -66,6 +66,33 @@ def test_dense_note_generator_drops_unpitched_or_low_confidence_candidates() -> 
     assert candidates == []
 
 
+def test_dense_note_generator_caps_dense_onset_windows_to_missing_candidates() -> None:
+    observed_onsets: list[float] = []
+
+    def estimator(_audio, _sr, onset, end, anchor_pitch):
+        observed_onsets.append(round(onset, 2))
+        return (40, 0.8)
+
+    generator = DenseNoteGenerator(
+        pitch_estimator=estimator,
+        audio_loader=lambda _path: ([0.0] * 32, 22050),
+        minimum_onset_gap_sec=0.08,
+        max_window_onsets=3,
+    )
+
+    candidates = generator.generate(
+        bass_wav="ignored.wav",
+        window_start=0.0,
+        window_end=1.0,
+        onset_times=[0.1, 0.12, 0.2, 0.4, 0.6, 0.8],
+        base_notes=[RawNoteEvent(pitch_midi=40, start_sec=0.1, end_sec=0.16, confidence=0.9)],
+        context_notes=[RawNoteEvent(pitch_midi=40, start_sec=0.1, end_sec=0.16, confidence=0.9)],
+    )
+
+    assert observed_onsets == [0.4, 0.6, 0.8]
+    assert [round(candidate.start_sec, 2) for candidate in candidates] == [0.4, 0.6, 0.8]
+
+
 def test_dense_note_candidate_to_raw_note_preserves_core_fields() -> None:
     candidate = DenseNoteCandidate(
         pitch_midi=38,

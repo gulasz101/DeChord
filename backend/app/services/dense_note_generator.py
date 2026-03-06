@@ -38,11 +38,15 @@ class DenseNoteGenerator:
         pitch_estimator: PitchEstimateFn | None = None,
         minimum_confidence: float = 0.2,
         duplicate_tolerance_sec: float = 0.07,
+        minimum_onset_gap_sec: float = 0.08,
+        max_window_onsets: int = 8,
     ) -> None:
         self._audio_loader = audio_loader or _load_audio_mono
         self._pitch_estimator = pitch_estimator or _estimate_pitch_with_yin
         self._minimum_confidence = minimum_confidence
         self._duplicate_tolerance_sec = duplicate_tolerance_sec
+        self._minimum_onset_gap_sec = minimum_onset_gap_sec
+        self._max_window_onsets = max_window_onsets
 
     def generate(
         self,
@@ -58,6 +62,12 @@ class DenseNoteGenerator:
             return []
 
         window_onsets = sorted(t for t in onset_times if window_start <= float(t) < window_end)
+        window_onsets = _collapse_dense_onsets(window_onsets, minimum_gap_sec=self._minimum_onset_gap_sec)
+        window_onsets = _prioritize_missing_onsets(
+            window_onsets,
+            base_notes,
+            max_window_onsets=self._max_window_onsets,
+        )
         if not window_onsets:
             return []
 
@@ -143,6 +153,38 @@ def _has_nearby_note(notes: list[RawNoteEvent], onset: float, *, tolerance_sec: 
         if abs(float(note.start_sec) - float(onset)) <= tolerance_sec:
             return True
     return False
+
+
+def _collapse_dense_onsets(onset_times: list[float], *, minimum_gap_sec: float) -> list[float]:
+    if minimum_gap_sec <= 0.0:
+        return [float(onset) for onset in onset_times]
+    collapsed: list[float] = []
+    for onset in sorted(float(value) for value in onset_times):
+        if not collapsed or (onset - collapsed[-1]) >= minimum_gap_sec:
+            collapsed.append(onset)
+    return collapsed
+
+
+def _prioritize_missing_onsets(
+    onset_times: list[float],
+    base_notes: list[RawNoteEvent],
+    *,
+    max_window_onsets: int,
+) -> list[float]:
+    if max_window_onsets <= 0 or len(onset_times) <= max_window_onsets:
+        return [float(onset) for onset in onset_times]
+
+    def nearest_distance(onset: float) -> float:
+        if not base_notes:
+            return float("inf")
+        return min(abs(float(note.start_sec) - float(onset)) for note in base_notes)
+
+    ranked = sorted(
+        ((float(onset), nearest_distance(float(onset))) for onset in onset_times),
+        key=lambda item: (-item[1], item[0]),
+    )
+    selected = sorted(onset for onset, _distance in ranked[:max_window_onsets])
+    return selected
 
 
 def _nearest_octave_distance(pitch_midi: int, anchor_pitch: int | None) -> int | None:
