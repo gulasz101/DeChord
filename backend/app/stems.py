@@ -446,6 +446,8 @@ def _low_band_correlation(audio: "np.ndarray", bleed_audio: "np.ndarray | None",
         highpass_hz=35.0,
         lowpass_hz=140.0,
     )
+    if float(np.std(audio_view)) <= 1e-8 or float(np.std(bleed_view)) <= 1e-8:
+        return 0.0
     corr = float(np.corrcoef(audio_view, bleed_view)[0, 1])
     if not np.isfinite(corr):
         return 0.0
@@ -646,6 +648,19 @@ def _candidate_models_for_analysis(config: StemAnalysisConfig) -> list[str]:
     return [config.demucs_model]
 
 
+def _should_reuse_supplied_stems(
+    *,
+    config: StemAnalysisConfig,
+    candidate_model: str,
+    stems: dict[str, Path],
+) -> bool:
+    return (
+        not config.enable_model_ensemble
+        and candidate_model == config.demucs_model
+        and stems.get("bass") is not None
+    )
+
+
 def build_bass_analysis_stem(
     *,
     stems: dict[str, Path],
@@ -667,7 +682,11 @@ def build_bass_analysis_stem(
 
     for candidate_model in _candidate_models_for_analysis(config):
         try:
-            if candidate_model == config.demucs_model and stems.get("bass") is not None:
+            if _should_reuse_supplied_stems(
+                config=config,
+                candidate_model=candidate_model,
+                stems=stems,
+            ):
                 candidate_stems = stems
             else:
                 if source_audio_path is None:

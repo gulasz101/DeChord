@@ -1,5 +1,6 @@
 # backend/app/main.py
 import asyncio
+from dataclasses import replace
 import logging
 import os
 import re
@@ -22,7 +23,13 @@ from app.db import close_db, execute, get_default_user, init_db
 from app.midi import transcribe_bass_stem_to_midi
 from app.models import ProcessMode
 from app.services.tab_pipeline import FingeringCollapseError, TabPipeline
-from app.stems import BassAnalysisStemResult, StemResult, build_bass_analysis_stem, split_to_stems
+from app.stems import (
+    BassAnalysisStemResult,
+    StemResult,
+    _get_stem_analysis_config,
+    build_bass_analysis_stem,
+    split_to_stems,
+)
 from app.tabs import build_gp5_from_tab_positions, map_midi_to_eadg_positions
 
 app = FastAPI(title="DeChord API")
@@ -43,6 +50,19 @@ STEMS_DIR.mkdir(exist_ok=True)
 jobs: dict[str, dict] = {}
 executor = ThreadPoolExecutor(max_workers=2)
 tab_pipeline = TabPipeline()
+
+
+def _get_analysis_config_for_quality_mode(
+    quality_mode: Literal["standard", "high_accuracy", "high_accuracy_aggressive"],
+):
+    config = _get_stem_analysis_config()
+    should_enable_ensemble = config.enable_model_ensemble or quality_mode in {
+        "high_accuracy",
+        "high_accuracy_aggressive",
+    }
+    if should_enable_ensemble == config.enable_model_ensemble:
+        return config
+    return replace(config, enable_model_ensemble=should_enable_ensemble)
 
 
 class NoteCreate(BaseModel):
@@ -293,6 +313,7 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                     jobs[job_id]["tab_error"] = "Drums stem missing; cannot build rhythm grid."
                 else:
                     try:
+                        tab_generation_quality = jobs[job_id].get("tab_generation_quality", "standard")
                         stem_paths = {
                             stem.stem_key: Path(stem.relative_path)
                             for stem in stems
@@ -302,11 +323,11 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                         analysis_stem_result = build_bass_analysis_stem(
                             stems=stem_paths,
                             output_dir=analysis_output_dir,
+                            analysis_config=_get_analysis_config_for_quality_mode(tab_generation_quality),
                             source_audio_path=Path(audio_path),
                         )
                         jobs[job_id]["analysis_stem_path"] = str(analysis_stem_result.path)
                         jobs[job_id]["analysis_stem_diagnostics"] = analysis_stem_result.diagnostics
-                        tab_generation_quality = jobs[job_id].get("tab_generation_quality", "standard")
                         set_stage(
                             "transcribing_bass_midi",
                             message="Transcribing bass stem to MIDI...",
