@@ -64,10 +64,10 @@
 - Modify: `backend/tests/test_api.py`
 - Modify: `backend/tests/test_midi.py`
 
-- [ ] Step 1: Update the analysis/stems processing flow to create and retain an explicit analysis artifact lifecycle.
-- [ ] Step 2: Route the refined analysis bass stem into `TabPipeline` and MIDI persistence while keeping persisted playback stems unchanged.
-- [ ] Step 3: Improve fallback MIDI preprocessing to use the refined analysis path or equivalent bass-focused preprocessing before monophonic estimation.
-- [ ] Step 4: Run targeted API and MIDI tests and confirm GREEN.
+- [x] Step 1: Update the analysis/stems processing flow to create and retain an explicit analysis artifact lifecycle.
+- [x] Step 2: Route the refined analysis bass stem into `TabPipeline` and MIDI persistence while keeping persisted playback stems unchanged.
+- [x] Step 3: Improve fallback MIDI preprocessing to use the refined analysis path or equivalent bass-focused preprocessing before monophonic estimation.
+- [x] Step 4: Run targeted API and MIDI tests and confirm GREEN.
 - [ ] Step 5: Commit.
 
 ### Task 6: Add candidate-model experimentation scaffolding and deterministic scoring

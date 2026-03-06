@@ -22,7 +22,7 @@ from app.db import close_db, execute, get_default_user, init_db
 from app.midi import transcribe_bass_stem_to_midi
 from app.models import ProcessMode
 from app.services.tab_pipeline import FingeringCollapseError, TabPipeline
-from app.stems import StemResult, split_to_stems
+from app.stems import BassAnalysisStemResult, StemResult, build_bass_analysis_stem, split_to_stems
 from app.tabs import build_gp5_from_tab_positions, map_midi_to_eadg_positions
 
 app = FastAPI(title="DeChord API")
@@ -280,6 +280,7 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                 jobs[job_id]["stems_error"] = None
                 bass_stem = next((stem for stem in stems if stem.stem_key == "bass"), None)
                 drums_stem = next((stem for stem in stems if stem.stem_key == "drums"), None)
+                analysis_stem_result: BassAnalysisStemResult | None = None
                 if bass_stem is None:
                     jobs[job_id]["midi_status"] = "failed"
                     jobs[job_id]["midi_error"] = "Bass stem missing; cannot transcribe MIDI."
@@ -292,6 +293,18 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                     jobs[job_id]["tab_error"] = "Drums stem missing; cannot build rhythm grid."
                 else:
                     try:
+                        stem_paths = {
+                            stem.stem_key: Path(stem.relative_path)
+                            for stem in stems
+                        }
+                        analysis_output_dir = STEMS_DIR / str(song_id) / "analysis"
+                        analysis_output_dir.mkdir(parents=True, exist_ok=True)
+                        analysis_stem_result = build_bass_analysis_stem(
+                            stems=stem_paths,
+                            output_dir=analysis_output_dir,
+                        )
+                        jobs[job_id]["analysis_stem_path"] = str(analysis_stem_result.path)
+                        jobs[job_id]["analysis_stem_diagnostics"] = analysis_stem_result.diagnostics
                         tab_generation_quality = jobs[job_id].get("tab_generation_quality", "standard")
                         set_stage(
                             "transcribing_bass_midi",
@@ -300,7 +313,7 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                             stage_progress_pct=0,
                         )
                         tab_result = tab_pipeline.run(
-                            Path(bass_stem.relative_path),
+                            analysis_stem_result.path,
                             Path(drums_stem.relative_path),
                             bpm_hint=float(result.tempo) if result.tempo else None,
                             time_signature=(4, 4),
@@ -338,6 +351,11 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                         )
                         jobs[job_id]["tab_status"] = "complete"
                         jobs[job_id]["tab_error"] = None
+                        jobs[job_id]["tab_debug_info"] = {
+                            **tab_result.debug_info,
+                            "analysis_stem_path": str(analysis_stem_result.path),
+                            "analysis_stem_diagnostics": analysis_stem_result.diagnostics,
+                        }
                     except FingeringCollapseError as exc:
                         logger.error("Job %s: phase2 tab pipeline fingering collapse: %s", job_id, exc, exc_info=True)
                         jobs[job_id]["midi_status"] = "failed"

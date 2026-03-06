@@ -10,6 +10,8 @@ from typing import Callable
 import numpy as np
 from mido import Message, MetaMessage, MidiFile, MidiTrack, second2tick
 
+from app.stems import StemAnalysisConfig, _get_stem_analysis_config
+
 MidiTranscribeFn = Callable[[Path, Path], None]
 FallbackTranscribeFn = Callable[[Path, Path], dict[str, object] | None]
 
@@ -403,33 +405,54 @@ def _transcribe_with_frequency_fallback(input_path: Path, output_path: Path) -> 
     _transcribe_with_frequency_fallback_detailed(input_path, output_path)
 
 
+def _preprocess_bass_for_fallback_transcription(
+    input_path: Path,
+    output_path: Path,
+    analysis_config: StemAnalysisConfig | None = None,
+) -> None:
+    config = analysis_config or _get_stem_analysis_config()
+    filters = [
+        f"highpass=f={int(round(config.analysis_highpass_hz))}",
+        f"lowpass=f={int(round(config.analysis_lowpass_hz))}",
+    ]
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        str(input_path),
+        "-vn",
+        "-ac",
+        "1",
+        "-ar",
+        str(config.analysis_sample_rate),
+        "-af",
+        ",".join(filters),
+        "-f",
+        "wav",
+        str(output_path),
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"ffmpeg preprocessing failed: {result.stderr.strip()}")
+
+
 def _transcribe_with_frequency_fallback_detailed(input_path: Path, output_path: Path) -> dict[str, object]:
+    config = _get_stem_analysis_config()
     with tempfile.TemporaryDirectory(prefix="dechord-midi-wav-") as tmp_dir:
         wav_path = Path(tmp_dir) / "bass_mono.wav"
-        cmd = [
-            "ffmpeg",
-            "-y",
-            "-i",
-            str(input_path),
-            "-vn",
-            "-ac",
-            "1",
-            "-ar",
-            "22050",
-            "-f",
-            "wav",
-            str(wav_path),
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            raise RuntimeError(f"ffmpeg preprocessing failed: {result.stderr.strip()}")
+        _preprocess_bass_for_fallback_transcription(input_path, wav_path, analysis_config=config)
 
         events, diagnostics = _estimate_monophonic_notes_from_wav(wav_path)
         if not events:
             raise RuntimeError("No monophonic bass notes detected for fallback transcription.")
 
         _write_note_events_to_midi([(start, end, pitch) for start, end, pitch, _confidence in events], output_path)
-        return diagnostics
+        return {
+            **diagnostics,
+            "fallback_preprocess_highpass_hz": config.analysis_highpass_hz,
+            "fallback_preprocess_lowpass_hz": config.analysis_lowpass_hz,
+            "fallback_preprocess_sample_rate": config.analysis_sample_rate,
+        }
 
 
 def transcribe_bass_stem_to_midi_detailed(

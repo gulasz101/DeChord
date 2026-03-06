@@ -3,10 +3,12 @@ import wave
 
 import numpy as np
 import pytest
+import app.midi as midi_mod
 
 from app.midi import _apply_spectral_octave_verification
 from app.midi import _estimate_monophonic_notes_from_wav
 from app.midi import _estimate_monophonic_notes_legacy_from_audio
+from app.midi import _preprocess_bass_for_fallback_transcription
 from app.midi import _stabilize_octaves_sequence
 from app.midi import _smooth_midi_track_viterbi
 from app.midi import transcribe_bass_stem_to_midi_detailed
@@ -165,3 +167,33 @@ def test_estimate_monophonic_notes_short_clip_uses_legacy_backstop(tmp_path: Pat
 
     assert events
     assert diagnostics["fallback_legacy_backstop_used"] in (0, 1)
+
+
+def test_preprocess_bass_for_fallback_transcription_uses_bass_focused_filters(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    source_path = tmp_path / "bass.wav"
+    source_path.write_bytes(b"fake-audio")
+    output_path = tmp_path / "bass_mono.wav"
+    called: dict[str, object] = {}
+
+    def fake_run(cmd, capture_output, text):
+        called["cmd"] = cmd
+        output_path.write_bytes(b"RIFF")
+
+        class Result:
+            returncode = 0
+            stderr = ""
+
+        return Result()
+
+    monkeypatch.setattr(midi_mod.subprocess, "run", fake_run)
+
+    _preprocess_bass_for_fallback_transcription(source_path, output_path)
+
+    ffmpeg_cmd = " ".join(called["cmd"])
+    assert "highpass=f=35" in ffmpeg_cmd
+    assert "lowpass=f=300" in ffmpeg_cmd
+    assert "-ac 1" in ffmpeg_cmd
+    assert "-ar 22050" in ffmpeg_cmd
