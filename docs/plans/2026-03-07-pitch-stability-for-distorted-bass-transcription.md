@@ -9,8 +9,8 @@
 - [x] Integrate stabilizer into transcription flow
 - [x] Add note merge / minimum-duration cleanup where needed
 - [x] Run targeted tests
-- [ ] Run evaluation on benchmark songs if available
-- [ ] Write evaluation report
-- [ ] Run broader backend tests
-- [ ] Run `make reset`
-- [ ] Mark plan complete
+- [x] Run evaluation on benchmark songs if available
+- [x] Write evaluation report
+- [x] Run broader backend tests
+- [x] Run `make reset`
+- [x] Mark plan complete
