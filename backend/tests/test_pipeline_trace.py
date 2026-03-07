@@ -259,6 +259,30 @@ def test_tab_pipeline_emits_all_stage_metrics_and_consistent_counts(
     assert result.debug_info["quantized_note_count"] == pipeline_stats["final_notes"]["note_count"]
 
 
+def test_build_pipeline_trace_report_includes_resource_monitor_metadata() -> None:
+    report = build_pipeline_trace_report(
+        song_name="Muse - Hysteria",
+        pipeline_stats={"final_notes": {"note_count": 1}},
+        resource_monitor={
+            "enabled": True,
+            "max_memory_mb": 8192,
+            "max_child_processes": 4,
+            "thresholds_exceeded": False,
+            "aborted_for_safety": False,
+        },
+    )
+
+    assert report["song"] == "Muse - Hysteria"
+    assert report["pipeline_stats"]["final_notes"]["note_count"] == 1
+    assert report["resource_monitor"] == {
+        "enabled": True,
+        "max_memory_mb": 8192,
+        "max_child_processes": 4,
+        "thresholds_exceeded": False,
+        "aborted_for_safety": False,
+    }
+
+
 def test_tab_pipeline_onset_trace_reports_region_pitch_metrics(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

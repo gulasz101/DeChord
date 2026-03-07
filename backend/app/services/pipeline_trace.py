@@ -71,11 +71,15 @@ def build_pipeline_trace_report(
     *,
     song_name: str,
     pipeline_stats: dict[str, dict[str, Any]],
+    resource_monitor: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return {
+    report = {
         "song": song_name,
         "pipeline_stats": pipeline_stats,
     }
+    if resource_monitor is not None:
+        report["resource_monitor"] = resource_monitor
+    return report
 
 
 def _duration_ms(note: object) -> float:

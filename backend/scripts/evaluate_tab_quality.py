@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -16,6 +17,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.services.bass_transcriber import BasicPitchTranscriber, RawNoteEvent
 from app.services.gp5_reference import ReferenceNote, ReferenceTab, parse_gp5_bass_track
 from app.services.pipeline_trace import build_pipeline_trace_report
+from app.services.resource_monitor import ResourceLimitExceeded
+from app.services.resource_monitor import ResourceMonitorConfig
+from app.services.resource_monitor import run_with_resource_monitor
 from app.services.tab_comparator import compare_tabs
 from app.services.tab_pipeline import TabPipeline
 from app.stems import build_bass_analysis_stem, split_to_stems
@@ -43,6 +47,7 @@ SONG_OVERRIDES: dict[str, dict[str, float | str | None]] = {
     "muse - hysteria": {"bpm": 94.0, "gp5_encoding": None},
     "iron maiden - the trooper": {"bpm": 162.0, "gp5_encoding": "latin1"},
 }
+DEFAULT_RESOURCE_MONITOR_ENV_ENABLE = False
 
 
 @dataclass(frozen=True)
@@ -138,6 +143,10 @@ def parse_cli_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--candidate-models")
     parser.add_argument("--phase")
     parser.add_argument("--trace-pipeline", action="store_true")
+    parser.add_argument("--resource-monitor", action="store_true")
+    parser.add_argument("--max-memory-mb", type=int)
+    parser.add_argument("--max-child-procs", type=int)
+    parser.add_argument("--resource-monitor-poll-sec", type=float)
     args = parser.parse_args(argv)
 
     has_mp3 = bool(args.mp3)
@@ -155,6 +164,40 @@ def parse_cli_args(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error("Provide either --mp3/--gp5 or --song-dir/--song")
 
     return args
+
+
+def _parse_bool_env(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    return default
+
+
+def resolve_resource_monitor_config(args: argparse.Namespace) -> ResourceMonitorConfig:
+    enabled = bool(args.resource_monitor) or _parse_bool_env(
+        "DECHORD_BENCH_RESOURCE_MONITOR",
+        DEFAULT_RESOURCE_MONITOR_ENV_ENABLE,
+    )
+    max_memory_mb = args.max_memory_mb or int(os.getenv("DECHORD_BENCH_MAX_MEMORY_MB", "12288"))
+    max_child_procs = args.max_child_procs or int(os.getenv("DECHORD_BENCH_MAX_CHILD_PROCS", "4"))
+    poll_interval_sec = args.resource_monitor_poll_sec or float(os.getenv("DECHORD_BENCH_RESOURCE_MONITOR_POLL_SEC", "2.0"))
+    if max_memory_mb < 512:
+        max_memory_mb = 512
+    if max_child_procs < 1:
+        max_child_procs = 1
+    if poll_interval_sec <= 0.0:
+        poll_interval_sec = 2.0
+    return ResourceMonitorConfig(
+        enabled=enabled,
+        max_memory_mb=max_memory_mb,
+        max_child_processes=max_child_procs,
+        poll_interval_sec=poll_interval_sec,
+    )
 
 
 def resolve_input_paths(args: argparse.Namespace) -> ResolvedInputs:
@@ -469,6 +512,44 @@ def evaluate_inputs(
     candidate_models_override: str | None = None,
     phase: str | None = None,
     trace_pipeline: bool = False,
+    resource_monitor_config: ResourceMonitorConfig | None = None,
+) -> dict[str, object]:
+    monitor_config = resource_monitor_config or ResourceMonitorConfig()
+
+    def _evaluate() -> dict[str, object]:
+        return _evaluate_inputs_inner(
+            resolved,
+            quality=quality,
+            config_name=config_name,
+            candidate_models_override=candidate_models_override,
+            phase=phase,
+            trace_pipeline=trace_pipeline,
+        )
+
+    output, monitor_summary = run_with_resource_monitor(
+        _evaluate,
+        config=monitor_config,
+    )
+    assert isinstance(output, dict)
+    resource_monitor_summary = monitor_summary.as_dict()
+    output["metrics"]["resource_monitor"] = resource_monitor_summary
+    output["debug_info"]["resource_monitor"] = resource_monitor_summary
+    output["pipeline_trace"]["resource_monitor"] = resource_monitor_summary
+    output["metrics_path"].write_text(json.dumps(output["metrics"], indent=2, sort_keys=True))
+    output["debug_path"].write_text(json.dumps(output["debug_info"], indent=2, sort_keys=True))
+    if trace_pipeline:
+        output["pipeline_trace_path"].write_text(json.dumps(output["pipeline_trace"], indent=2, sort_keys=True))
+    return output
+
+
+def _evaluate_inputs_inner(
+    resolved: ResolvedInputs,
+    *,
+    quality: str,
+    config_name: str = "baseline",
+    candidate_models_override: str | None = None,
+    phase: str | None = None,
+    trace_pipeline: bool = False,
 ) -> dict[str, object]:
     reference, _duration_seconds = validate_inputs(resolved.mp3_path, resolved.gp5_path)
     song_name = resolved.song_name
@@ -639,38 +720,47 @@ def evaluate_inputs(
     if not isinstance(pipeline_trace, dict):
         pipeline_trace = build_pipeline_trace_report(song_name=song_name, pipeline_stats={})
 
-    metrics_path.write_text(json.dumps(metrics, indent=2, sort_keys=True))
-    debug_path.write_text(json.dumps(debug_info, indent=2, sort_keys=True))
     transcription_audit_path.write_text(json.dumps(transcription_audit, indent=2, sort_keys=True))
     transcription_sources_path.write_text(json.dumps(debug_info["transcription_source_audit"], indent=2, sort_keys=True))
     alphatex_path.write_text(result.alphatex)
-    if trace_pipeline:
-        pipeline_trace_path.write_text(json.dumps(pipeline_trace, indent=2, sort_keys=True))
 
     output = {
-        "metrics_path": str(metrics_path),
-        "debug_path": str(debug_path),
+        "metrics_path": metrics_path,
+        "debug_path": debug_path,
         "transcription_audit_path": str(transcription_audit_path),
         "transcription_sources_path": str(transcription_sources_path),
         "alphatex_path": str(alphatex_path),
         "metrics": metrics,
+        "debug_info": debug_info,
+        "pipeline_trace": pipeline_trace,
     }
     if trace_pipeline:
-        output["pipeline_trace_path"] = str(pipeline_trace_path)
+        output["pipeline_trace_path"] = pipeline_trace_path
     return output
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_cli_args(argv)
     resolved = resolve_input_paths(args)
-    output = evaluate_inputs(
-        resolved,
-        quality=args.quality,
-        config_name=args.config,
-        candidate_models_override=args.candidate_models,
-        phase=args.phase,
-        trace_pipeline=args.trace_pipeline,
-    )
+    resource_monitor_config = resolve_resource_monitor_config(args)
+    try:
+        output = evaluate_inputs(
+            resolved,
+            quality=args.quality,
+            config_name=args.config,
+            candidate_models_override=args.candidate_models,
+            phase=args.phase,
+            trace_pipeline=args.trace_pipeline,
+            resource_monitor_config=resource_monitor_config,
+        )
+    except ResourceLimitExceeded as exc:
+        error_payload = {
+            "error": "resource_limit_exceeded",
+            "message": str(exc),
+            "resource_monitor": exc.summary.as_dict(),
+        }
+        print(json.dumps(error_payload, indent=2, sort_keys=True), file=sys.stderr)
+        return 2
     print(json.dumps(output["metrics"], indent=2, sort_keys=True))
     print(f"metrics: {output['metrics_path']}")
     print(f"debug: {output['debug_path']}")
