@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 import tempfile
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -48,6 +49,13 @@ DEFAULT_RAW_NOTE_ALLOW_WEAK_BASS_CANDIDATES = False
 DEFAULT_RAW_NOTE_SPARSE_REGION_BOOST_ENABLE = False
 DEFAULT_DENSE_CANDIDATE_SPARSE_REGION_THRESHOLD_MS = 180
 DEFAULT_DENSE_CANDIDATE_SUPPORT_RELAXATION = 0.20
+DEFAULT_ONSET_NOTE_GENERATOR_ENABLE = False
+DEFAULT_ONSET_NOTE_GENERATOR_MODE = "fallback"
+DEFAULT_ONSET_MIN_SPACING_MS = 70
+DEFAULT_ONSET_STRENGTH_THRESHOLD = 0.35
+DEFAULT_ONSET_REGION_MAX_DURATION_MS = 220
+DEFAULT_ONSET_REGION_MIN_DURATION_MS = 40
+DEFAULT_ONSET_DENSITY_NOTES_PER_SEC_THRESHOLD = 4.5
 
 
 @dataclass(frozen=True)
@@ -76,6 +84,13 @@ class PitchStabilityConfig:
     raw_note_sparse_region_boost_enable: bool = DEFAULT_RAW_NOTE_SPARSE_REGION_BOOST_ENABLE
     dense_candidate_sparse_region_threshold_ms: int = DEFAULT_DENSE_CANDIDATE_SPARSE_REGION_THRESHOLD_MS
     dense_candidate_support_relaxation: float = DEFAULT_DENSE_CANDIDATE_SUPPORT_RELAXATION
+    onset_note_generator_enable: bool = DEFAULT_ONSET_NOTE_GENERATOR_ENABLE
+    onset_note_generator_mode: str = DEFAULT_ONSET_NOTE_GENERATOR_MODE
+    onset_min_spacing_ms: int = DEFAULT_ONSET_MIN_SPACING_MS
+    onset_strength_threshold: float = DEFAULT_ONSET_STRENGTH_THRESHOLD
+    onset_region_max_duration_ms: int = DEFAULT_ONSET_REGION_MAX_DURATION_MS
+    onset_region_min_duration_ms: int = DEFAULT_ONSET_REGION_MIN_DURATION_MS
+    onset_density_notes_per_sec_threshold: float = DEFAULT_ONSET_DENSITY_NOTES_PER_SEC_THRESHOLD
 
 
 def _get_pitch_stability_config() -> PitchStabilityConfig:
@@ -155,6 +170,31 @@ def _get_pitch_stability_config() -> PitchStabilityConfig:
     )
     if dense_candidate_sparse_region_threshold_ms is None or dense_candidate_sparse_region_threshold_ms < 1:
         dense_candidate_sparse_region_threshold_ms = DEFAULT_DENSE_CANDIDATE_SPARSE_REGION_THRESHOLD_MS
+    onset_min_spacing_ms = _parse_int_env(
+        "DECHORD_ONSET_MIN_SPACING_MS",
+        DEFAULT_ONSET_MIN_SPACING_MS,
+    )
+    if onset_min_spacing_ms is None or onset_min_spacing_ms < 1:
+        onset_min_spacing_ms = DEFAULT_ONSET_MIN_SPACING_MS
+    onset_region_max_duration_ms = _parse_int_env(
+        "DECHORD_ONSET_REGION_MAX_DURATION_MS",
+        DEFAULT_ONSET_REGION_MAX_DURATION_MS,
+    )
+    if onset_region_max_duration_ms is None or onset_region_max_duration_ms < 1:
+        onset_region_max_duration_ms = DEFAULT_ONSET_REGION_MAX_DURATION_MS
+    onset_region_min_duration_ms = _parse_int_env(
+        "DECHORD_ONSET_REGION_MIN_DURATION_MS",
+        DEFAULT_ONSET_REGION_MIN_DURATION_MS,
+    )
+    if onset_region_min_duration_ms is None or onset_region_min_duration_ms < 1:
+        onset_region_min_duration_ms = DEFAULT_ONSET_REGION_MIN_DURATION_MS
+    if onset_region_min_duration_ms > onset_region_max_duration_ms:
+        onset_region_min_duration_ms = onset_region_max_duration_ms
+    onset_note_generator_mode = str(
+        os.getenv("DECHORD_ONSET_NOTE_GENERATOR_MODE", DEFAULT_ONSET_NOTE_GENERATOR_MODE)
+    ).strip().lower()
+    if onset_note_generator_mode not in {"fallback", "merged", "primary"}:
+        onset_note_generator_mode = DEFAULT_ONSET_NOTE_GENERATOR_MODE
     return PitchStabilityConfig(
         pitch_stability_enable=_parse_bool_env(
             "DECHORD_PITCH_STABILITY_ENABLE",
@@ -222,6 +262,26 @@ def _get_pitch_stability_config() -> PitchStabilityConfig:
             DEFAULT_DENSE_CANDIDATE_SUPPORT_RELAXATION,
             minimum=0.0,
             maximum=1.0,
+        ),
+        onset_note_generator_enable=_parse_bool_env(
+            "DECHORD_ONSET_NOTE_GENERATOR_ENABLE",
+            DEFAULT_ONSET_NOTE_GENERATOR_ENABLE,
+        ),
+        onset_note_generator_mode=onset_note_generator_mode,
+        onset_min_spacing_ms=onset_min_spacing_ms,
+        onset_strength_threshold=_parse_float_env_bounded(
+            "DECHORD_ONSET_STRENGTH_THRESHOLD",
+            DEFAULT_ONSET_STRENGTH_THRESHOLD,
+            minimum=0.0,
+            maximum=1.0,
+        ),
+        onset_region_max_duration_ms=onset_region_max_duration_ms,
+        onset_region_min_duration_ms=onset_region_min_duration_ms,
+        onset_density_notes_per_sec_threshold=_parse_float_env_bounded(
+            "DECHORD_ONSET_DENSITY_NOTES_PER_SEC_THRESHOLD",
+            DEFAULT_ONSET_DENSITY_NOTES_PER_SEC_THRESHOLD,
+            minimum=0.1,
+            maximum=64.0,
         ),
     )
 

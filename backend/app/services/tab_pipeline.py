@@ -19,6 +19,11 @@ from app.services.fingering import (
     optimize_fingering_with_debug,
 )
 from app.services.note_cleanup import cleanup_note_events, cleanup_params_for_bpm
+from app.services.onset_note_generator import (
+    OnsetNoteCandidate,
+    OnsetNoteGenerator,
+    OnsetNoteGeneratorConfig,
+)
 from app.services.onset_recovery import recover_missing_onsets, recovery_params_for_bpm
 from app.services.pipeline_trace import build_pipeline_trace_report, build_stage_metrics
 from app.services.quantization import QuantizedNote, quantize_note_events
@@ -53,6 +58,15 @@ class DenseNoteGeneratorLike(Protocol):
     ) -> list[DenseNoteCandidate]: ...
 
 
+class OnsetNoteGeneratorLike(Protocol):
+    def generate(
+        self,
+        bass_wav: Path,
+        *,
+        onset_times: list[float] | None = None,
+    ) -> list[OnsetNoteCandidate]: ...
+
+
 class FingeringCollapseError(RuntimeError):
     def __init__(self, message: str, *, debug_info: dict[str, object]) -> None:
         super().__init__(message)
@@ -82,6 +96,7 @@ class TabPipeline:
         export_fn: ExportFn | None = None,
         onset_detect_fn: OnsetDetectFn | None = None,
         dense_note_generator: DenseNoteGeneratorLike | None = None,
+        onset_note_generator: OnsetNoteGeneratorLike | None = None,
     ) -> None:
         self._transcriber = transcriber or BasicPitchTranscriber()
         self._rhythm_extract_fn = rhythm_extract_fn or extract_beats_and_downbeats
@@ -92,6 +107,14 @@ class TabPipeline:
         self._export_fn = export_fn or export_alphatex
         self._onset_detect_fn = onset_detect_fn or self._detect_onsets_librosa
         self._dense_note_generator = dense_note_generator or DenseNoteGenerator()
+        self._onset_note_generator = onset_note_generator or OnsetNoteGenerator(
+            config=OnsetNoteGeneratorConfig(
+                onset_min_spacing_ms=_get_pitch_stability_config().onset_min_spacing_ms,
+                onset_strength_threshold=_get_pitch_stability_config().onset_strength_threshold,
+                onset_region_max_duration_ms=_get_pitch_stability_config().onset_region_max_duration_ms,
+                onset_region_min_duration_ms=_get_pitch_stability_config().onset_region_min_duration_ms,
+            )
+        )
 
     def run(
         self,
@@ -146,13 +169,29 @@ class TabPipeline:
         onset_split_count = 0
         all_dense_candidates: list[DenseNoteCandidate] = []
         accepted_dense_candidates: list[DenseNoteCandidate] = []
+        onset_generated_candidates: list[OnsetNoteCandidate] = []
+        onset_retained_candidates: list[OnsetNoteCandidate] = []
         dense_note_fusion_candidates: list[dict[str, object]] = []
         dense_bar_fusion_candidates: list[dict[str, object]] = []
         sparse_region_rows: list[dict[str, object]] = []
-        if (should_onset_recovery and pre_cleanup_notes) or quality_mode_suspect_silence or (
+        onset_note_generation_enabled = note_config.onset_note_generator_enable
+        if onset_note_generation_enabled or (should_onset_recovery and pre_cleanup_notes) or quality_mode_suspect_silence or (
             sparse_region_boost_enabled and pre_cleanup_notes
         ):
             analysis_onset_times = self._onset_detect_fn(bass_wav)
+        if onset_note_generation_enabled and analysis_onset_times:
+            onset_generated_candidates = self._generate_onset_candidates(
+                bass_wav,
+                onset_times=analysis_onset_times,
+            )
+            pre_cleanup_notes, onset_retained_candidates, onset_generation_mode = self._apply_onset_candidates(
+                base_notes=pre_cleanup_notes,
+                onset_candidates=onset_generated_candidates,
+                audio_duration_sec=audio_duration_sec,
+                config=note_config,
+            )
+        else:
+            onset_generation_mode = note_config.onset_note_generator_mode
         if should_onset_recovery and pre_cleanup_notes:
             onset_times = analysis_onset_times
             if onset_times:
@@ -199,6 +238,7 @@ class TabPipeline:
         }
         raw_note_source_rows = self._build_raw_note_source_rows(
             pre_cleanup_notes,
+            onset_candidates=onset_retained_candidates,
             dense_candidates=accepted_dense_candidates,
             cleaned_notes=cleaned_notes,
         )
@@ -317,6 +357,7 @@ class TabPipeline:
                 quality_diagnostics["cleanup_stats_second_pass"] = cleanup_stats_pass2
                 raw_note_source_rows = self._build_raw_note_source_rows(
                     merged_raw_notes,
+                    onset_candidates=onset_retained_candidates,
                     dense_candidates=accepted_dense_candidates,
                     cleaned_notes=cleaned_notes,
                 )
@@ -428,6 +469,42 @@ class TabPipeline:
                         ),
                     )
                 ),
+                "onset_candidates": dict(
+                    transcription_stage_stats.get(
+                        "onset_candidates",
+                        build_stage_metrics(
+                            [candidate.to_raw_note() for candidate in onset_retained_candidates],
+                            short_note_threshold_ms=note_config.onset_region_min_duration_ms,
+                            added_override=len(onset_retained_candidates),
+                            removed_override=max(0, len(onset_generated_candidates) - len(onset_retained_candidates)),
+                            altered_override=0,
+                            candidate_flow={
+                                "generator_enabled": bool(onset_note_generation_enabled),
+                                "generator_mode": str(onset_generation_mode),
+                                "proposed_note_count": int(len(onset_generated_candidates)),
+                                "accepted_note_count": int(len(onset_retained_candidates)),
+                                "rejected_note_count": int(max(0, len(onset_generated_candidates) - len(onset_retained_candidates))),
+                                "materially_changed_final_note_count": bool(len(onset_retained_candidates) > 0),
+                            },
+                        ),
+                    )
+                    if (not onset_note_generation_enabled and not onset_retained_candidates)
+                    else build_stage_metrics(
+                        [candidate.to_raw_note() for candidate in onset_retained_candidates],
+                        short_note_threshold_ms=note_config.onset_region_min_duration_ms,
+                        added_override=len(onset_retained_candidates),
+                        removed_override=max(0, len(onset_generated_candidates) - len(onset_retained_candidates)),
+                        altered_override=0,
+                        candidate_flow={
+                            "generator_enabled": bool(onset_note_generation_enabled),
+                            "generator_mode": str(onset_generation_mode),
+                            "proposed_note_count": int(len(onset_generated_candidates)),
+                            "accepted_note_count": int(len(onset_retained_candidates)),
+                            "rejected_note_count": int(max(0, len(onset_generated_candidates) - len(onset_retained_candidates))),
+                            "materially_changed_final_note_count": bool(len(onset_retained_candidates) > 0),
+                        },
+                    )
+                ),
                 "dense_candidates": build_stage_metrics(
                     list(all_dense_candidates),
                     short_note_threshold_ms=note_config.note_dense_candidate_min_duration_ms,
@@ -509,6 +586,11 @@ class TabPipeline:
             "onset_count": len(onset_times),
             "analysis_onset_count": len(analysis_onset_times),
             "onset_split_count": onset_split_count,
+            "onset_note_generation_enabled": onset_note_generation_enabled,
+            "onset_note_generation_mode": onset_generation_mode,
+            "onset_candidates_generated": len(onset_generated_candidates),
+            "onset_candidates_retained": len(onset_retained_candidates),
+            "onset_candidates_rejected": max(0, len(onset_generated_candidates) - len(onset_retained_candidates)),
             "raw_note_source_rows": raw_note_source_rows,
             "raw_note_source_summary": self._raw_note_source_summary(raw_note_source_rows),
             "pipeline_trace": pipeline_trace_report,
@@ -913,9 +995,14 @@ class TabPipeline:
     def _build_raw_note_source_rows(
         pre_cleanup_notes: list,
         *,
+        onset_candidates: list[OnsetNoteCandidate] | None = None,
         dense_candidates: list[DenseNoteCandidate],
         cleaned_notes: list,
     ) -> list[dict[str, object]]:
+        onset_by_key = {
+            (round(candidate.start_sec, 6), round(candidate.end_sec, 6), int(candidate.pitch_midi)): candidate
+            for candidate in (onset_candidates or [])
+        }
         dense_by_key = {
             (round(candidate.start_sec, 6), round(candidate.end_sec, 6), int(candidate.pitch_midi)): candidate
             for candidate in dense_candidates
@@ -923,10 +1010,14 @@ class TabPipeline:
         rows: list[dict[str, object]] = []
         for note in sorted(pre_cleanup_notes, key=lambda item: (item.start_sec, item.end_sec, item.pitch_midi)):
             key = (round(note.start_sec, 6), round(note.end_sec, 6), int(note.pitch_midi))
+            onset_candidate = onset_by_key.get(key)
             dense_candidate = dense_by_key.get(key)
             source = "basic_pitch"
             confidence_summary: dict[str, object] = {"confidence": float(note.confidence)}
-            if dense_candidate is not None:
+            if onset_candidate is not None:
+                source = "onset_note_generator"
+                confidence_summary.update(onset_candidate.support)
+            elif dense_candidate is not None:
                 raw_pitch = dense_candidate.support.get("raw_pitch_midi")
                 source = "hybrid_merged" if isinstance(raw_pitch, int) and int(raw_pitch) != int(dense_candidate.pitch_midi) else "dense_note_generator"
                 confidence_summary.update(dense_candidate.support)
@@ -953,6 +1044,47 @@ class TabPipeline:
     def _raw_note_source_summary(rows: list[dict[str, object]]) -> dict[str, int]:
         counts = Counter(str(row.get("source", "unknown")) for row in rows)
         return dict(sorted((key, int(value)) for key, value in counts.items()))
+
+    def _generate_onset_candidates(
+        self,
+        bass_wav: Path,
+        *,
+        onset_times: list[float],
+    ) -> list[OnsetNoteCandidate]:
+        try:
+            return self._onset_note_generator.generate(bass_wav, onset_times=onset_times)
+        except TypeError:
+            return self._onset_note_generator.generate(bass_wav)
+
+    @staticmethod
+    def _apply_onset_candidates(
+        *,
+        base_notes: list,
+        onset_candidates: list[OnsetNoteCandidate],
+        audio_duration_sec: float,
+        config,
+    ) -> tuple[list, list[OnsetNoteCandidate], str]:
+        if not onset_candidates:
+            return list(base_notes), [], config.onset_note_generator_mode
+
+        duration_sec = max(float(audio_duration_sec), 1.0)
+        base_density = float(len(base_notes)) / duration_sec
+        mode = str(config.onset_note_generator_mode)
+        use_candidates = mode in {"merged", "primary"} or base_density < float(config.onset_density_notes_per_sec_threshold)
+        if not use_candidates:
+            return list(base_notes), [], mode
+
+        retained = sorted(
+            onset_candidates,
+            key=lambda candidate: (candidate.start_sec, candidate.end_sec, candidate.pitch_midi),
+        )
+        if mode == "primary":
+            return [candidate.to_raw_note() for candidate in retained], retained, mode
+        merged = TabPipeline._merge_raw_notes(
+            list(base_notes),
+            [candidate.to_raw_note() for candidate in retained],
+        )
+        return merged, retained, mode
 
     @staticmethod
     def _confidence_gate_dense_bar_candidates(

@@ -55,6 +55,7 @@ def build_stage_metrics(
         "short_note_threshold_ms": int(short_note_threshold_ms),
         "short_note_count": sum(1 for duration_ms in durations_ms if duration_ms < float(short_note_threshold_ms)),
         "octave_jump_count": _octave_jump_count(notes),
+        "pitch_range": _pitch_range(notes),
         "confidence_stats": confidence_stats,
         "notes_added_by_stage": int(added_count),
         "notes_removed_by_stage": int(removed_count),
@@ -137,3 +138,10 @@ def _octave_jump_count(notes: list[object]) -> int:
                 octave_jumps += 1
         previous_pitch = pitch
     return octave_jumps
+
+
+def _pitch_range(notes: list[object]) -> dict[str, int | None]:
+    if not notes:
+        return {"min": None, "max": None}
+    pitches = [int(getattr(note, "pitch_midi")) for note in notes]
+    return {"min": int(min(pitches)), "max": int(max(pitches))}
