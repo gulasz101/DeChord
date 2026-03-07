@@ -4,12 +4,12 @@
 
 - [x] Inspect evaluation tooling
 - [x] Define benchmark configs
-- [ ] Run benchmarks on Hysteria
-- [ ] Run benchmarks on Trooper
-- [ ] Collect metrics
-- [ ] Produce report
-- [ ] Analyze failure modes
-- [ ] Propose next engineering step
+- [x] Run benchmarks on Hysteria
+- [x] Run benchmarks on Trooper
+- [x] Collect metrics
+- [x] Produce report
+- [x] Analyze failure modes
+- [x] Propose next engineering step
 
 ## Constraints
 

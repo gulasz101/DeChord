@@ -1,0 +1,356 @@
+{
+  "commands": [
+    "cd backend && uv run python scripts/evaluate_tab_quality.py --song-dir \"../test songs\" --song \"Muse - Hysteria\" --quality standard --config baseline --phase benchmark_std_baseline",
+    "cd backend && uv run python scripts/evaluate_tab_quality.py --song-dir \"../test songs\" --song \"Muse - Hysteria\" --quality standard --config refinement --phase benchmark_std_refinement",
+    "cd backend && uv run python scripts/evaluate_tab_quality.py --song-dir \"../test songs\" --song \"Muse - Hysteria\" --quality standard --config full --phase benchmark_std_full",
+    "cd backend && uv run python scripts/evaluate_tab_quality.py --song-dir \"../test songs\" --song \"Iron Maiden - The Trooper\" --quality standard --config baseline --phase benchmark_std_baseline",
+    "cd backend && uv run python scripts/evaluate_tab_quality.py --song-dir \"../test songs\" --song \"Iron Maiden - The Trooper\" --quality standard --config refinement --phase benchmark_std_refinement",
+    "cd backend && uv run python scripts/evaluate_tab_quality.py --song-dir \"../test songs\" --song \"Iron Maiden - The Trooper\" --quality standard --config full --phase benchmark_std_full"
+  ],
+  "conclusions": {
+    "did_new_system_improve_results": true,
+    "ensemble_selection_chose_different_models": {
+      "Iron Maiden - The Trooper": "htdemucs",
+      "Muse - Hysteria": "htdemucs_ft"
+    },
+    "guitar_aware_subtraction_helped": "Not measurable in this benchmark because no run had guitar_assisted_cancellation_available=1; only other-stem subtraction was applied.",
+    "main_call": "Refinement improved recall/F1 and note-count coverage on both songs, but ensemble added runtime with negligible or zero quality gain.",
+    "most_helped_song_by_f1_gain": "Muse - Hysteria"
+  },
+  "date": "2026-03-07",
+  "optional_candidate_model_sweep": {
+    "ran": false,
+    "reason": "Skipped because full ensemble already added 102.9s on Hysteria and 122.8s on Trooper versus baseline, so extra candidate sweeps were not runtime-reasonable."
+  },
+  "plan_path": "/Users/wojciechgula/Projects/DeChord/docs/plans/2026-03-07-bass-analysis-benchmark-and-ab-evaluation.md",
+  "quality_mode": "standard",
+  "scope": "Bass-analysis A/B benchmark against official GP5 tabs",
+  "songs": [
+    {
+      "runs": [
+        {
+          "average_per_bar_note_density_difference": 13.977011494252874,
+          "bleed_sources_used": [],
+          "bleed_subtraction_applied": 0,
+          "candidate_scores": {
+            "raw_bass_stem": 0.0
+          },
+          "command": "cd backend && uv run python scripts/evaluate_tab_quality.py --song-dir \"../test songs\" --song \"Muse - Hysteria\" --quality standard --config baseline --phase benchmark_std_baseline",
+          "config": "baseline",
+          "debug_path": "/Users/wojciechgula/Projects/DeChord/docs/reports/muse__hysteria_benchmark_std_baseline_debug.json",
+          "delta_vs_baseline": {
+            "average_per_bar_note_density_difference": 0.0,
+            "build_analysis_stem_seconds": 0.0,
+            "f1_score": 0.0,
+            "maximum_per_bar_difference": 0,
+            "octave_errors": 0,
+            "onset_mismatches": 0,
+            "pitch_accuracy": 0.0,
+            "pitch_mismatches": 0,
+            "total_note_count_difference": 0,
+            "total_runtime_seconds": 0.0
+          },
+          "ensemble_requested": 0,
+          "f1_score": 0.16415868673050615,
+          "guitar_assisted_cancellation_available": 0,
+          "maximum_per_bar_difference": 16,
+          "metrics_path": "/Users/wojciechgula/Projects/DeChord/docs/reports/muse__hysteria_benchmark_std_baseline_metrics.json",
+          "octave_errors": 12,
+          "onset_mismatches": 1219,
+          "phase": "benchmark_std_baseline",
+          "pitch_accuracy": 0.3416666666666667,
+          "pitch_mismatches": 79,
+          "precision": 0.975609756097561,
+          "quality": "standard",
+          "raw_note_count": 220,
+          "recall": 0.08961911874533234,
+          "runtime_seconds": {
+            "build_analysis_stem": 0.0,
+            "split_to_stems": 82.6847,
+            "tab_pipeline": 22.9961,
+            "total": 114.0955,
+            "transcribe_analysis_stem": 8.4147
+          },
+          "selected_model": "raw_bass_stem",
+          "song": "Muse - Hysteria",
+          "total_matched": 120,
+          "total_note_count_difference": -1216,
+          "transcription_audit_path": "/Users/wojciechgula/Projects/DeChord/docs/reports/muse__hysteria_benchmark_std_baseline_transcription_audit.json",
+          "transcription_non_octave_pitch_error_count": 192,
+          "transcription_octave_error_count": 7
+        },
+        {
+          "average_per_bar_note_density_difference": 13.689655172413794,
+          "bleed_sources_used": [
+            "other"
+          ],
+          "bleed_subtraction_applied": 1,
+          "candidate_scores": {
+            "htdemucs_ft": 17.80515232001625
+          },
+          "command": "cd backend && uv run python scripts/evaluate_tab_quality.py --song-dir \"../test songs\" --song \"Muse - Hysteria\" --quality standard --config refinement --phase benchmark_std_refinement",
+          "config": "refinement",
+          "debug_path": "/Users/wojciechgula/Projects/DeChord/docs/reports/muse__hysteria_benchmark_std_refinement_debug.json",
+          "delta_vs_baseline": {
+            "average_per_bar_note_density_difference": -0.287356,
+            "build_analysis_stem_seconds": 2.2744,
+            "f1_score": 0.02683,
+            "maximum_per_bar_difference": 0,
+            "octave_errors": 1,
+            "onset_mismatches": -22,
+            "pitch_accuracy": -0.003638,
+            "pitch_mismatches": 15,
+            "total_note_count_difference": 25,
+            "total_runtime_seconds": 0.1556
+          },
+          "ensemble_requested": 0,
+          "f1_score": 0.19098856758574312,
+          "guitar_assisted_cancellation_available": 0,
+          "maximum_per_bar_difference": 16,
+          "metrics_path": "/Users/wojciechgula/Projects/DeChord/docs/reports/muse__hysteria_benchmark_std_refinement_metrics.json",
+          "octave_errors": 13,
+          "onset_mismatches": 1197,
+          "phase": "benchmark_std_refinement",
+          "pitch_accuracy": 0.3380281690140845,
+          "pitch_mismatches": 94,
+          "precision": 0.9594594594594594,
+          "quality": "standard",
+          "raw_note_count": 270,
+          "recall": 0.10604929051530994,
+          "runtime_seconds": {
+            "build_analysis_stem": 2.2744,
+            "split_to_stems": 81.6236,
+            "tab_pipeline": 23.1618,
+            "total": 114.2511,
+            "transcribe_analysis_stem": 7.1913
+          },
+          "selected_model": "htdemucs_ft",
+          "song": "Muse - Hysteria",
+          "total_matched": 142,
+          "total_note_count_difference": -1191,
+          "transcription_audit_path": "/Users/wojciechgula/Projects/DeChord/docs/reports/muse__hysteria_benchmark_std_refinement_transcription_audit.json",
+          "transcription_non_octave_pitch_error_count": 235,
+          "transcription_octave_error_count": 8
+        },
+        {
+          "average_per_bar_note_density_difference": 13.689655172413794,
+          "bleed_sources_used": [
+            "other"
+          ],
+          "bleed_subtraction_applied": 1,
+          "candidate_scores": {
+            "htdemucs": 17.181745056431858,
+            "htdemucs_ft": 17.80515232001625
+          },
+          "command": "cd backend && uv run python scripts/evaluate_tab_quality.py --song-dir \"../test songs\" --song \"Muse - Hysteria\" --quality standard --config full --phase benchmark_std_full",
+          "config": "full",
+          "debug_path": "/Users/wojciechgula/Projects/DeChord/docs/reports/muse__hysteria_benchmark_std_full_debug.json",
+          "delta_vs_baseline": {
+            "average_per_bar_note_density_difference": -0.287356,
+            "build_analysis_stem_seconds": 105.3441,
+            "f1_score": 0.02683,
+            "maximum_per_bar_difference": 0,
+            "octave_errors": 1,
+            "onset_mismatches": -22,
+            "pitch_accuracy": -0.003638,
+            "pitch_mismatches": 15,
+            "total_note_count_difference": 25,
+            "total_runtime_seconds": 102.859
+          },
+          "ensemble_requested": 1,
+          "f1_score": 0.19098856758574312,
+          "guitar_assisted_cancellation_available": 0,
+          "maximum_per_bar_difference": 16,
+          "metrics_path": "/Users/wojciechgula/Projects/DeChord/docs/reports/muse__hysteria_benchmark_std_full_metrics.json",
+          "octave_errors": 13,
+          "onset_mismatches": 1197,
+          "phase": "benchmark_std_full",
+          "pitch_accuracy": 0.3380281690140845,
+          "pitch_mismatches": 94,
+          "precision": 0.9594594594594594,
+          "quality": "standard",
+          "raw_note_count": 270,
+          "recall": 0.10604929051530994,
+          "runtime_seconds": {
+            "build_analysis_stem": 105.3441,
+            "split_to_stems": 81.2882,
+            "tab_pipeline": 22.9284,
+            "total": 216.9545,
+            "transcribe_analysis_stem": 7.3938
+          },
+          "selected_model": "htdemucs_ft",
+          "song": "Muse - Hysteria",
+          "total_matched": 142,
+          "total_note_count_difference": -1191,
+          "transcription_audit_path": "/Users/wojciechgula/Projects/DeChord/docs/reports/muse__hysteria_benchmark_std_full_transcription_audit.json",
+          "transcription_non_octave_pitch_error_count": 235,
+          "transcription_octave_error_count": 8
+        }
+      ],
+      "song": "Muse - Hysteria"
+    },
+    {
+      "runs": [
+        {
+          "average_per_bar_note_density_difference": 6.684523809523809,
+          "bleed_sources_used": [],
+          "bleed_subtraction_applied": 0,
+          "candidate_scores": {
+            "raw_bass_stem": 0.0
+          },
+          "command": "cd backend && uv run python scripts/evaluate_tab_quality.py --song-dir \"../test songs\" --song \"Iron Maiden - The Trooper\" --quality standard --config baseline --phase benchmark_std_baseline",
+          "config": "baseline",
+          "debug_path": "/Users/wojciechgula/Projects/DeChord/docs/reports/iron_maiden__the_trooper_benchmark_std_baseline_debug.json",
+          "delta_vs_baseline": {
+            "average_per_bar_note_density_difference": 0.0,
+            "build_analysis_stem_seconds": 0.0,
+            "f1_score": 0.0,
+            "maximum_per_bar_difference": 0,
+            "octave_errors": 0,
+            "onset_mismatches": 0,
+            "pitch_accuracy": 0.0,
+            "pitch_mismatches": 0,
+            "total_note_count_difference": 0,
+            "total_runtime_seconds": 0.0
+          },
+          "ensemble_requested": 0,
+          "f1_score": 0.3608101742816769,
+          "guitar_assisted_cancellation_available": 0,
+          "maximum_per_bar_difference": 11,
+          "metrics_path": "/Users/wojciechgula/Projects/DeChord/docs/reports/iron_maiden__the_trooper_benchmark_std_baseline_metrics.json",
+          "octave_errors": 2,
+          "onset_mismatches": 1236,
+          "phase": "benchmark_std_baseline",
+          "pitch_accuracy": 0.7545691906005222,
+          "pitch_mismatches": 94,
+          "precision": 0.7599206349206349,
+          "quality": "standard",
+          "raw_note_count": 581,
+          "recall": 0.23656578134651018,
+          "runtime_seconds": {
+            "build_analysis_stem": 0.0,
+            "split_to_stems": 96.5852,
+            "tab_pipeline": 27.1942,
+            "total": 132.916,
+            "transcribe_analysis_stem": 9.1367
+          },
+          "selected_model": "raw_bass_stem",
+          "song": "Iron Maiden - The Trooper",
+          "total_matched": 383,
+          "total_note_count_difference": -1115,
+          "transcription_audit_path": "/Users/wojciechgula/Projects/DeChord/docs/reports/iron_maiden__the_trooper_benchmark_std_baseline_transcription_audit.json",
+          "transcription_non_octave_pitch_error_count": 380,
+          "transcription_octave_error_count": 4
+        },
+        {
+          "average_per_bar_note_density_difference": 6.535714285714286,
+          "bleed_sources_used": [
+            "other"
+          ],
+          "bleed_subtraction_applied": 1,
+          "candidate_scores": {
+            "htdemucs_ft": 14.696641671586086
+          },
+          "command": "cd backend && uv run python scripts/evaluate_tab_quality.py --song-dir \"../test songs\" --song \"Iron Maiden - The Trooper\" --quality standard --config refinement --phase benchmark_std_refinement",
+          "config": "refinement",
+          "debug_path": "/Users/wojciechgula/Projects/DeChord/docs/reports/iron_maiden__the_trooper_benchmark_std_refinement_debug.json",
+          "delta_vs_baseline": {
+            "average_per_bar_note_density_difference": -0.14881,
+            "build_analysis_stem_seconds": 2.1507,
+            "f1_score": 0.019078,
+            "maximum_per_bar_difference": 0,
+            "octave_errors": 2,
+            "onset_mismatches": -25,
+            "pitch_accuracy": -0.014373,
+            "pitch_mismatches": 12,
+            "total_note_count_difference": 25,
+            "total_runtime_seconds": 1.0501
+          },
+          "ensemble_requested": 0,
+          "f1_score": 0.3798882681564246,
+          "guitar_assisted_cancellation_available": 0,
+          "maximum_per_bar_difference": 11,
+          "metrics_path": "/Users/wojciechgula/Projects/DeChord/docs/reports/iron_maiden__the_trooper_benchmark_std_refinement_metrics.json",
+          "octave_errors": 4,
+          "onset_mismatches": 1211,
+          "phase": "benchmark_std_refinement",
+          "pitch_accuracy": 0.7401960784313726,
+          "pitch_mismatches": 106,
+          "precision": 0.7712665406427222,
+          "quality": "standard",
+          "raw_note_count": 551,
+          "recall": 0.2520074119827054,
+          "runtime_seconds": {
+            "build_analysis_stem": 2.1507,
+            "split_to_stems": 96.9006,
+            "tab_pipeline": 26.6655,
+            "total": 133.9661,
+            "transcribe_analysis_stem": 8.2494
+          },
+          "selected_model": "htdemucs_ft",
+          "song": "Iron Maiden - The Trooper",
+          "total_matched": 408,
+          "total_note_count_difference": -1090,
+          "transcription_audit_path": "/Users/wojciechgula/Projects/DeChord/docs/reports/iron_maiden__the_trooper_benchmark_std_refinement_transcription_audit.json",
+          "transcription_non_octave_pitch_error_count": 377,
+          "transcription_octave_error_count": 6
+        },
+        {
+          "average_per_bar_note_density_difference": 6.559523809523809,
+          "bleed_sources_used": [
+            "other"
+          ],
+          "bleed_subtraction_applied": 1,
+          "candidate_scores": {
+            "htdemucs": 14.899198987419048,
+            "htdemucs_ft": 14.696641671586086
+          },
+          "command": "cd backend && uv run python scripts/evaluate_tab_quality.py --song-dir \"../test songs\" --song \"Iron Maiden - The Trooper\" --quality standard --config full --phase benchmark_std_full",
+          "config": "full",
+          "debug_path": "/Users/wojciechgula/Projects/DeChord/docs/reports/iron_maiden__the_trooper_benchmark_std_full_debug.json",
+          "delta_vs_baseline": {
+            "average_per_bar_note_density_difference": -0.125,
+            "build_analysis_stem_seconds": 124.1015,
+            "f1_score": 0.019787,
+            "maximum_per_bar_difference": 0,
+            "octave_errors": 0,
+            "onset_mismatches": -25,
+            "pitch_accuracy": -0.033981,
+            "pitch_mismatches": 20,
+            "total_note_count_difference": 21,
+            "total_runtime_seconds": 122.823
+          },
+          "ensemble_requested": 1,
+          "f1_score": 0.3805970149253731,
+          "guitar_assisted_cancellation_available": 0,
+          "maximum_per_bar_difference": 11,
+          "metrics_path": "/Users/wojciechgula/Projects/DeChord/docs/reports/iron_maiden__the_trooper_benchmark_std_full_metrics.json",
+          "octave_errors": 2,
+          "onset_mismatches": 1211,
+          "phase": "benchmark_std_full",
+          "pitch_accuracy": 0.7205882352941176,
+          "pitch_mismatches": 114,
+          "precision": 0.7771428571428571,
+          "quality": "standard",
+          "raw_note_count": 503,
+          "recall": 0.2520074119827054,
+          "runtime_seconds": {
+            "build_analysis_stem": 124.1015,
+            "split_to_stems": 96.7496,
+            "tab_pipeline": 26.5949,
+            "total": 255.739,
+            "transcribe_analysis_stem": 8.293
+          },
+          "selected_model": "htdemucs",
+          "song": "Iron Maiden - The Trooper",
+          "total_matched": 408,
+          "total_note_count_difference": -1094,
+          "transcription_audit_path": "/Users/wojciechgula/Projects/DeChord/docs/reports/iron_maiden__the_trooper_benchmark_std_full_transcription_audit.json",
+          "transcription_non_octave_pitch_error_count": 356,
+          "transcription_octave_error_count": 5
+        }
+      ],
+      "song": "Iron Maiden - The Trooper"
+    }
+  ]
+}

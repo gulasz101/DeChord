@@ -1,0 +1,29 @@
+{
+  "basicpitch_octave_corrections_applied": 0,
+  "fallback_octave_corrections_applied": 0,
+  "mean_pitch_confidence": 1.0,
+  "non_octave_pitch_error_count": 380,
+  "note_duration_histogram": {
+    "0.1-0.25s": 283,
+    "0.25-0.5s": 82,
+    "0.5-1.0s": 3,
+    "<0.1s": 213
+  },
+  "octave_error_count": 4,
+  "pitch_histogram": {
+    "33": 6,
+    "35": 9,
+    "36": 48,
+    "38": 145,
+    "40": 291,
+    "41": 10,
+    "43": 19,
+    "45": 14,
+    "48": 17,
+    "50": 12,
+    "52": 9,
+    "59": 1
+  },
+  "raw_note_count": 581,
+  "transcription_engine_used": "basic_pitch"
+}
