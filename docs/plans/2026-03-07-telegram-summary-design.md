@@ -1,8 +1,8 @@
 # Telegram Summary Notifications Design
 
-- [ ] Confirm the completion-summary trigger and Telegram destination with the user.
-- [ ] Choose the secret storage and delivery architecture.
-- [ ] Document the approved design for repo changes under `ops/` and `AGENTS.md`.
+- [x] Confirm the completion-summary trigger and Telegram destination with the user.
+- [x] Choose the secret storage and delivery architecture.
+- [x] Document the approved design for repo changes under `ops/` and `AGENTS.md`.
 
 ## Goal
 

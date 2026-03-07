@@ -94,6 +94,10 @@ require_command sops
 require_command curl
 require_command python3
 
+if [[ -z "${SOPS_AGE_KEY_FILE:-}" && -f "${HOME}/.config/sops/age/keys.txt" ]]; then
+  export SOPS_AGE_KEY_FILE="${HOME}/.config/sops/age/keys.txt"
+fi
+
 SECRETS_FILE="${TELEGRAM_SECRETS_FILE:-${OPS_DIR}/secrets/telegram.sops.yaml}"
 
 if [[ ! -f "${SECRETS_FILE}" ]]; then
