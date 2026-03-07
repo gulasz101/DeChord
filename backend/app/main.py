@@ -22,6 +22,7 @@ from app.analysis import AnalysisResult, analyze_audio
 from app.db import close_db, execute, get_default_user, init_db
 from app.midi import transcribe_bass_stem_to_midi
 from app.models import ProcessMode
+from app.pipeline_presets import active_pipeline_preset_name, resolve_pipeline_preset
 from app.services.tab_pipeline import FingeringCollapseError, TabPipeline
 from app.stems import (
     BassAnalysisStemResult,
@@ -56,10 +57,20 @@ def _get_analysis_config_for_quality_mode(
     quality_mode: Literal["standard", "high_accuracy", "high_accuracy_aggressive"],
 ):
     config = _get_stem_analysis_config()
-    should_enable_ensemble = config.enable_model_ensemble or quality_mode in {
-        "high_accuracy",
-        "high_accuracy_aggressive",
-    }
+    preset_name = active_pipeline_preset_name()
+    preset = resolve_pipeline_preset(preset_name) if preset_name is not None else None
+    quality_mode_auto_ensemble = (
+        preset.stem_defaults.auto_enable_quality_mode_ensemble
+        if preset is not None
+        else True
+    )
+    should_enable_ensemble = config.enable_model_ensemble or (
+        quality_mode_auto_ensemble
+        and quality_mode in {
+            "high_accuracy",
+            "high_accuracy_aggressive",
+        }
+    )
     if should_enable_ensemble == config.enable_model_ensemble:
         return config
     return replace(config, enable_model_ensemble=should_enable_ensemble)

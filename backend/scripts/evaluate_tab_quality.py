@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.services.bass_transcriber import BasicPitchTranscriber, RawNoteEvent
 from app.services.gp5_reference import ReferenceNote, ReferenceTab, parse_gp5_bass_track
+from app.pipeline_presets import active_pipeline_preset_name, resolve_pipeline_preset
 from app.services.pipeline_trace import build_pipeline_trace_report
 from app.services.resource_monitor import ResourceLimitExceeded
 from app.services.resource_monitor import ResourceMonitorConfig
@@ -179,13 +180,31 @@ def _parse_bool_env(name: str, default: bool) -> bool:
 
 
 def resolve_resource_monitor_config(args: argparse.Namespace) -> ResourceMonitorConfig:
+    preset_name = active_pipeline_preset_name()
+    preset = resolve_pipeline_preset(preset_name) if preset_name is not None else None
+    bench_defaults = preset.benchmark_defaults if preset is not None else None
     enabled = bool(args.resource_monitor) or _parse_bool_env(
         "DECHORD_BENCH_RESOURCE_MONITOR",
-        DEFAULT_RESOURCE_MONITOR_ENV_ENABLE,
+        bench_defaults.resource_monitor_enabled if bench_defaults is not None else DEFAULT_RESOURCE_MONITOR_ENV_ENABLE,
     )
-    max_memory_mb = args.max_memory_mb or int(os.getenv("DECHORD_BENCH_MAX_MEMORY_MB", "12288"))
-    max_child_procs = args.max_child_procs or int(os.getenv("DECHORD_BENCH_MAX_CHILD_PROCS", "4"))
-    poll_interval_sec = args.resource_monitor_poll_sec or float(os.getenv("DECHORD_BENCH_RESOURCE_MONITOR_POLL_SEC", "2.0"))
+    max_memory_mb = args.max_memory_mb or int(
+        os.getenv(
+            "DECHORD_BENCH_MAX_MEMORY_MB",
+            str(bench_defaults.max_memory_mb if bench_defaults is not None else 12288),
+        )
+    )
+    max_child_procs = args.max_child_procs or int(
+        os.getenv(
+            "DECHORD_BENCH_MAX_CHILD_PROCS",
+            str(bench_defaults.max_child_processes if bench_defaults is not None else 4),
+        )
+    )
+    poll_interval_sec = args.resource_monitor_poll_sec or float(
+        os.getenv(
+            "DECHORD_BENCH_RESOURCE_MONITOR_POLL_SEC",
+            str(bench_defaults.poll_interval_sec if bench_defaults is not None else 2.0),
+        )
+    )
     if max_memory_mb < 512:
         max_memory_mb = 512
     if max_child_procs < 1:

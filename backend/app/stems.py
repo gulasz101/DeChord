@@ -15,6 +15,8 @@ from typing import Callable
 import torch
 from dotenv import load_dotenv
 
+from app.pipeline_presets import active_pipeline_preset_name, resolve_pipeline_preset
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_DEMUCS_MODEL = "htdemucs_ft"
@@ -227,6 +229,9 @@ def _parse_candidate_models_env(primary_model: str) -> list[str]:
 
 def _get_stem_analysis_config() -> StemAnalysisConfig:
     _load_stem_env()
+    preset_name = active_pipeline_preset_name()
+    preset = resolve_pipeline_preset(preset_name) if preset_name is not None else None
+    stem_defaults = preset.stem_defaults if preset is not None else None
     demucs_model = _get_demucs_model_name()
     demucs_fallback_model = _get_demucs_fallback_model_name()
     analysis_highpass_hz = _parse_float_env(
@@ -287,11 +292,17 @@ def _get_stem_analysis_config() -> StemAnalysisConfig:
     return StemAnalysisConfig(
         demucs_model=demucs_model,
         demucs_fallback_model=demucs_fallback_model,
-        enable_bass_refinement=_parse_bool_env("DECHORD_STEM_ANALYSIS_ENABLE", True),
+        enable_bass_refinement=_parse_bool_env(
+            "DECHORD_STEM_ANALYSIS_ENABLE",
+            stem_defaults.enable_bass_refinement if stem_defaults is not None else True,
+        ),
         analysis_highpass_hz=analysis_highpass_hz,
         analysis_lowpass_hz=analysis_lowpass_hz,
         analysis_sample_rate=analysis_sample_rate,
-        enable_model_ensemble=_parse_bool_env("DECHORD_STEM_ANALYSIS_ENSEMBLE", False),
+        enable_model_ensemble=_parse_bool_env(
+            "DECHORD_STEM_ANALYSIS_ENSEMBLE",
+            stem_defaults.enable_model_ensemble if stem_defaults is not None else False,
+        ),
         candidate_models=_parse_candidate_models_env(demucs_model),
         analysis_other_subtract_weight=analysis_other_subtract_weight,
         analysis_guitar_subtract_weight=analysis_guitar_subtract_weight,

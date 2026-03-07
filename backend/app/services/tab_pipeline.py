@@ -164,7 +164,11 @@ class TabPipeline:
         transcription = self._transcriber.transcribe(bass_wav)
         note_config = _get_pitch_stability_config()
         quality_mode_suspect_silence = tab_generation_quality_mode in {"high_accuracy", "high_accuracy_aggressive"}
-        sparse_region_boost_enabled = note_config.raw_note_recall_enable and note_config.raw_note_sparse_region_boost_enable
+        sparse_region_boost_enabled = (
+            note_config.dense_note_generator_enable
+            and note_config.raw_note_recall_enable
+            and note_config.raw_note_sparse_region_boost_enable
+        )
         should_onset_recovery = (
             onset_recovery
             if onset_recovery is not None
@@ -321,7 +325,7 @@ class TabPipeline:
                     if max(0.0, window_start - 0.6) <= float(note.start_sec) < min(audio_duration_sec, window_end + 0.6)
                 ]
                 dense_candidates: list[DenseNoteCandidate] = []
-                if row.get("triggered_by_dense_sparse") and analysis_onset_times:
+                if row.get("triggered_by_dense_sparse") and analysis_onset_times and note_config.dense_note_generator_enable:
                     dense_candidates = self._dense_note_generator.generate(
                         bass_wav=bass_wav,
                         window_start=window_start,

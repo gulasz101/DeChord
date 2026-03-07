@@ -11,6 +11,7 @@ from typing import Callable
 import numpy as np
 from mido import Message, MetaMessage, MidiFile, MidiTrack, second2tick
 
+from app.pipeline_presets import active_pipeline_preset_name, resolve_pipeline_preset
 from app.stems import StemAnalysisConfig, _get_stem_analysis_config
 from app.stems import _load_stem_env, _parse_bool_env, _parse_float_env_bounded, _parse_int_env
 
@@ -49,6 +50,7 @@ DEFAULT_RAW_NOTE_ALLOW_WEAK_BASS_CANDIDATES = False
 DEFAULT_RAW_NOTE_SPARSE_REGION_BOOST_ENABLE = False
 DEFAULT_DENSE_CANDIDATE_SPARSE_REGION_THRESHOLD_MS = 180
 DEFAULT_DENSE_CANDIDATE_SUPPORT_RELAXATION = 0.20
+DEFAULT_DENSE_NOTE_GENERATOR_ENABLE = True
 DEFAULT_ONSET_NOTE_GENERATOR_ENABLE = False
 DEFAULT_ONSET_NOTE_GENERATOR_MODE = "fallback"
 DEFAULT_ONSET_MIN_SPACING_MS = 70
@@ -93,6 +95,7 @@ class PitchStabilityConfig:
     raw_note_sparse_region_boost_enable: bool = DEFAULT_RAW_NOTE_SPARSE_REGION_BOOST_ENABLE
     dense_candidate_sparse_region_threshold_ms: int = DEFAULT_DENSE_CANDIDATE_SPARSE_REGION_THRESHOLD_MS
     dense_candidate_support_relaxation: float = DEFAULT_DENSE_CANDIDATE_SUPPORT_RELAXATION
+    dense_note_generator_enable: bool = DEFAULT_DENSE_NOTE_GENERATOR_ENABLE
     onset_note_generator_enable: bool = DEFAULT_ONSET_NOTE_GENERATOR_ENABLE
     onset_note_generator_mode: str = DEFAULT_ONSET_NOTE_GENERATOR_MODE
     onset_min_spacing_ms: int = DEFAULT_ONSET_MIN_SPACING_MS
@@ -113,6 +116,9 @@ class PitchStabilityConfig:
 
 def _get_pitch_stability_config() -> PitchStabilityConfig:
     _load_stem_env()
+    preset_name = active_pipeline_preset_name()
+    preset = resolve_pipeline_preset(preset_name) if preset_name is not None else None
+    pitch_defaults = preset.pitch_defaults if preset is not None else None
     min_confidence = _parse_float_env_bounded(
         "DECHORD_PITCH_MIN_CONFIDENCE",
         DEFAULT_PITCH_MIN_CONFIDENCE,
@@ -172,10 +178,18 @@ def _get_pitch_stability_config() -> PitchStabilityConfig:
         note_merge_gap_ms = DEFAULT_NOTE_MERGE_GAP_MS
     note_dense_candidate_min_duration_ms = _parse_int_env(
         "DECHORD_DENSE_CANDIDATE_MIN_DURATION_MS",
-        DEFAULT_NOTE_DENSE_CANDIDATE_MIN_DURATION_MS,
+        (
+            pitch_defaults.note_dense_candidate_min_duration_ms
+            if pitch_defaults is not None
+            else DEFAULT_NOTE_DENSE_CANDIDATE_MIN_DURATION_MS
+        ),
     )
     if note_dense_candidate_min_duration_ms is None or note_dense_candidate_min_duration_ms < 1:
-        note_dense_candidate_min_duration_ms = DEFAULT_NOTE_DENSE_CANDIDATE_MIN_DURATION_MS
+        note_dense_candidate_min_duration_ms = (
+            pitch_defaults.note_dense_candidate_min_duration_ms
+            if pitch_defaults is not None
+            else DEFAULT_NOTE_DENSE_CANDIDATE_MIN_DURATION_MS
+        )
     raw_note_min_duration_ms = _parse_int_env(
         "DECHORD_RAW_NOTE_MIN_DURATION_MS",
         DEFAULT_RAW_NOTE_MIN_DURATION_MS,
@@ -231,7 +245,7 @@ def _get_pitch_stability_config() -> PitchStabilityConfig:
     return PitchStabilityConfig(
         pitch_stability_enable=_parse_bool_env(
             "DECHORD_PITCH_STABILITY_ENABLE",
-            DEFAULT_PITCH_STABILITY_ENABLE,
+            pitch_defaults.pitch_stability_enable if pitch_defaults is not None else DEFAULT_PITCH_STABILITY_ENABLE,
         ),
         pitch_min_confidence=min_confidence,
         pitch_transition_hysteresis_frames=hysteresis_frames,
@@ -246,7 +260,7 @@ def _get_pitch_stability_config() -> PitchStabilityConfig:
         ),
         note_admission_enable=_parse_bool_env(
             "DECHORD_NOTE_ADMISSION_ENABLE",
-            DEFAULT_NOTE_ADMISSION_ENABLE,
+            pitch_defaults.note_admission_enable if pitch_defaults is not None else DEFAULT_NOTE_ADMISSION_ENABLE,
         ),
         note_min_duration_ms=note_min_duration_ms,
         note_low_confidence_threshold=_parse_float_env_bounded(
@@ -260,19 +274,27 @@ def _get_pitch_stability_config() -> PitchStabilityConfig:
         note_dense_candidate_min_duration_ms=note_dense_candidate_min_duration_ms,
         note_dense_unstable_context_penalty=_parse_float_env_bounded(
             "DECHORD_DENSE_UNSTABLE_CONTEXT_PENALTY",
-            DEFAULT_NOTE_DENSE_UNSTABLE_CONTEXT_PENALTY,
+            (
+                pitch_defaults.note_dense_unstable_context_penalty
+                if pitch_defaults is not None
+                else DEFAULT_NOTE_DENSE_UNSTABLE_CONTEXT_PENALTY
+            ),
             minimum=0.0,
             maximum=1.0,
         ),
         note_dense_octave_neighbor_penalty=_parse_float_env_bounded(
             "DECHORD_DENSE_OCTAVE_NEIGHBOR_PENALTY",
-            DEFAULT_NOTE_DENSE_OCTAVE_NEIGHBOR_PENALTY,
+            (
+                pitch_defaults.note_dense_octave_neighbor_penalty
+                if pitch_defaults is not None
+                else DEFAULT_NOTE_DENSE_OCTAVE_NEIGHBOR_PENALTY
+            ),
             minimum=0.0,
             maximum=1.0,
         ),
         raw_note_recall_enable=_parse_bool_env(
             "DECHORD_RAW_NOTE_RECALL_ENABLE",
-            DEFAULT_RAW_NOTE_RECALL_ENABLE,
+            pitch_defaults.raw_note_recall_enable if pitch_defaults is not None else DEFAULT_RAW_NOTE_RECALL_ENABLE,
         ),
         raw_note_min_confidence=_parse_float_env_bounded(
             "DECHORD_RAW_NOTE_MIN_CONFIDENCE",
@@ -287,7 +309,11 @@ def _get_pitch_stability_config() -> PitchStabilityConfig:
         ),
         raw_note_sparse_region_boost_enable=_parse_bool_env(
             "DECHORD_RAW_NOTE_SPARSE_REGION_BOOST_ENABLE",
-            DEFAULT_RAW_NOTE_SPARSE_REGION_BOOST_ENABLE,
+            (
+                pitch_defaults.raw_note_sparse_region_boost_enable
+                if pitch_defaults is not None
+                else DEFAULT_RAW_NOTE_SPARSE_REGION_BOOST_ENABLE
+            ),
         ),
         dense_candidate_sparse_region_threshold_ms=dense_candidate_sparse_region_threshold_ms,
         dense_candidate_support_relaxation=_parse_float_env_bounded(
@@ -296,9 +322,21 @@ def _get_pitch_stability_config() -> PitchStabilityConfig:
             minimum=0.0,
             maximum=1.0,
         ),
+        dense_note_generator_enable=_parse_bool_env(
+            "DECHORD_DENSE_NOTE_GENERATOR_ENABLE",
+            (
+                pitch_defaults.dense_note_generator_enable
+                if pitch_defaults is not None
+                else DEFAULT_DENSE_NOTE_GENERATOR_ENABLE
+            ),
+        ),
         onset_note_generator_enable=_parse_bool_env(
             "DECHORD_ONSET_NOTE_GENERATOR_ENABLE",
-            DEFAULT_ONSET_NOTE_GENERATOR_ENABLE,
+            (
+                pitch_defaults.onset_note_generator_enable
+                if pitch_defaults is not None
+                else DEFAULT_ONSET_NOTE_GENERATOR_ENABLE
+            ),
         ),
         onset_note_generator_mode=onset_note_generator_mode,
         onset_min_spacing_ms=onset_min_spacing_ms,
