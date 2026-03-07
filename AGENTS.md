@@ -22,6 +22,15 @@
 
 - After finishing development work and before final verification/handoff, run the local reset workflow (`make reset`) so testing starts from a fresh runtime state.
 
-Testing file for uploads and testing tabs generation-> /Users/wojciechgula/Downloads/Clara Luciani - La grenade (Clip officiel) [85m-Qgo9_nE].mp3 
+## Completion Notification Rules
+
+- After finishing any job that has a final handoff summary, send a Telegram summary notification by default.
+- Skip the Telegram notification only when the user explicitly says `skip telegram`.
+- The Telegram notification MUST be sent after the required verification flow for that job is complete.
+- Use `ops/scripts/send-telegram-summary.sh` to deliver the message.
+- Telegram credentials MUST be loaded from the SOPS-encrypted file `ops/secrets/telegram.sops.yaml` and decrypted only at send time.
+- Never print, commit, or persist plaintext Telegram secrets.
+- If Telegram delivery fails, explicitly report that in the final handoff.
+
 
 end of AGENTS.md
