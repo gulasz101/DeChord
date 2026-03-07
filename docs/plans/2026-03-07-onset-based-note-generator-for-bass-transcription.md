@@ -10,8 +10,8 @@
 - [x] Integrate onset note candidates into the real pipeline
 - [x] Extend pipeline tracing for onset-stage metrics
 - [x] Run targeted tests
-- [ ] Run focused benchmark with tracing
-- [ ] Write benchmark report
-- [ ] Run broader backend tests
-- [ ] Run `make reset`
-- [ ] Mark plan complete
+- [x] Run focused benchmark with tracing
+- [x] Write benchmark report
+- [x] Run broader backend tests
+- [x] Run `make reset`
+- [x] Mark plan complete
