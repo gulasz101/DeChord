@@ -4,11 +4,11 @@
 - [x] Inspect latest benchmark report for observed precision failure modes
 - [x] Add RED tests for conservative note admission and octave-intrusion rejection
 - [x] Add RED tests for dense-note overgeneration control
-- [ ] Add typed config for note admission and dense-note conservatism
-- [ ] Implement stronger Basic Pitch note admission/cleanup
-- [ ] Implement stronger dense-note candidate suppression
-- [ ] Integrate changes into the real transcription path
-- [ ] Run targeted tests
+- [x] Add typed config for note admission and dense-note conservatism
+- [x] Implement stronger Basic Pitch note admission/cleanup
+- [x] Implement stronger dense-note candidate suppression
+- [x] Integrate changes into the real transcription path
+- [x] Run targeted tests
 - [ ] Run benchmark songs with updated logic
 - [ ] Write benchmark report
 - [ ] Run broader backend tests

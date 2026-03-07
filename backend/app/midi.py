@@ -33,6 +33,14 @@ DEFAULT_PITCH_MIN_NOTE_DURATION_MS = 70
 DEFAULT_PITCH_MERGE_GAP_MS = 40
 DEFAULT_PITCH_SMOOTHING_WINDOW_FRAMES = 5
 DEFAULT_PITCH_HARMONIC_RECHECK_ENABLE = True
+DEFAULT_NOTE_ADMISSION_ENABLE = True
+DEFAULT_NOTE_MIN_DURATION_MS = 60
+DEFAULT_NOTE_LOW_CONFIDENCE_THRESHOLD = 0.45
+DEFAULT_NOTE_OCTAVE_INTRUSION_MAX_DURATION_MS = 90
+DEFAULT_NOTE_MERGE_GAP_MS = 45
+DEFAULT_NOTE_DENSE_CANDIDATE_MIN_DURATION_MS = 55
+DEFAULT_NOTE_DENSE_UNSTABLE_CONTEXT_PENALTY = 0.20
+DEFAULT_NOTE_DENSE_OCTAVE_NEIGHBOR_PENALTY = 0.25
 
 
 @dataclass(frozen=True)
@@ -46,6 +54,14 @@ class PitchStabilityConfig:
     pitch_merge_gap_ms: int = DEFAULT_PITCH_MERGE_GAP_MS
     pitch_smoothing_window_frames: int = DEFAULT_PITCH_SMOOTHING_WINDOW_FRAMES
     pitch_harmonic_recheck_enable: bool = DEFAULT_PITCH_HARMONIC_RECHECK_ENABLE
+    note_admission_enable: bool = DEFAULT_NOTE_ADMISSION_ENABLE
+    note_min_duration_ms: int = DEFAULT_NOTE_MIN_DURATION_MS
+    note_low_confidence_threshold: float = DEFAULT_NOTE_LOW_CONFIDENCE_THRESHOLD
+    note_octave_intrusion_max_duration_ms: int = DEFAULT_NOTE_OCTAVE_INTRUSION_MAX_DURATION_MS
+    note_merge_gap_ms: int = DEFAULT_NOTE_MERGE_GAP_MS
+    note_dense_candidate_min_duration_ms: int = DEFAULT_NOTE_DENSE_CANDIDATE_MIN_DURATION_MS
+    note_dense_unstable_context_penalty: float = DEFAULT_NOTE_DENSE_UNSTABLE_CONTEXT_PENALTY
+    note_dense_octave_neighbor_penalty: float = DEFAULT_NOTE_DENSE_OCTAVE_NEIGHBOR_PENALTY
 
 
 def _get_pitch_stability_config() -> PitchStabilityConfig:
@@ -89,6 +105,30 @@ def _get_pitch_stability_config() -> PitchStabilityConfig:
     )
     if smoothing_window is None or smoothing_window < 1:
         smoothing_window = DEFAULT_PITCH_SMOOTHING_WINDOW_FRAMES
+    note_min_duration_ms = _parse_int_env(
+        "DECHORD_NOTE_MIN_DURATION_MS",
+        DEFAULT_NOTE_MIN_DURATION_MS,
+    )
+    if note_min_duration_ms is None or note_min_duration_ms < 1:
+        note_min_duration_ms = DEFAULT_NOTE_MIN_DURATION_MS
+    note_octave_intrusion_max_duration_ms = _parse_int_env(
+        "DECHORD_NOTE_OCTAVE_INTRUSION_MAX_DURATION_MS",
+        DEFAULT_NOTE_OCTAVE_INTRUSION_MAX_DURATION_MS,
+    )
+    if note_octave_intrusion_max_duration_ms is None or note_octave_intrusion_max_duration_ms < 1:
+        note_octave_intrusion_max_duration_ms = DEFAULT_NOTE_OCTAVE_INTRUSION_MAX_DURATION_MS
+    note_merge_gap_ms = _parse_int_env(
+        "DECHORD_NOTE_MERGE_GAP_MS",
+        DEFAULT_NOTE_MERGE_GAP_MS,
+    )
+    if note_merge_gap_ms is None or note_merge_gap_ms < 0:
+        note_merge_gap_ms = DEFAULT_NOTE_MERGE_GAP_MS
+    note_dense_candidate_min_duration_ms = _parse_int_env(
+        "DECHORD_DENSE_CANDIDATE_MIN_DURATION_MS",
+        DEFAULT_NOTE_DENSE_CANDIDATE_MIN_DURATION_MS,
+    )
+    if note_dense_candidate_min_duration_ms is None or note_dense_candidate_min_duration_ms < 1:
+        note_dense_candidate_min_duration_ms = DEFAULT_NOTE_DENSE_CANDIDATE_MIN_DURATION_MS
     return PitchStabilityConfig(
         pitch_stability_enable=_parse_bool_env(
             "DECHORD_PITCH_STABILITY_ENABLE",
@@ -104,6 +144,32 @@ def _get_pitch_stability_config() -> PitchStabilityConfig:
         pitch_harmonic_recheck_enable=_parse_bool_env(
             "DECHORD_PITCH_HARMONIC_RECHECK_ENABLE",
             DEFAULT_PITCH_HARMONIC_RECHECK_ENABLE,
+        ),
+        note_admission_enable=_parse_bool_env(
+            "DECHORD_NOTE_ADMISSION_ENABLE",
+            DEFAULT_NOTE_ADMISSION_ENABLE,
+        ),
+        note_min_duration_ms=note_min_duration_ms,
+        note_low_confidence_threshold=_parse_float_env_bounded(
+            "DECHORD_NOTE_LOW_CONFIDENCE_THRESHOLD",
+            DEFAULT_NOTE_LOW_CONFIDENCE_THRESHOLD,
+            minimum=0.0,
+            maximum=1.0,
+        ),
+        note_octave_intrusion_max_duration_ms=note_octave_intrusion_max_duration_ms,
+        note_merge_gap_ms=note_merge_gap_ms,
+        note_dense_candidate_min_duration_ms=note_dense_candidate_min_duration_ms,
+        note_dense_unstable_context_penalty=_parse_float_env_bounded(
+            "DECHORD_DENSE_UNSTABLE_CONTEXT_PENALTY",
+            DEFAULT_NOTE_DENSE_UNSTABLE_CONTEXT_PENALTY,
+            minimum=0.0,
+            maximum=1.0,
+        ),
+        note_dense_octave_neighbor_penalty=_parse_float_env_bounded(
+            "DECHORD_DENSE_OCTAVE_NEIGHBOR_PENALTY",
+            DEFAULT_NOTE_DENSE_OCTAVE_NEIGHBOR_PENALTY,
+            minimum=0.0,
+            maximum=1.0,
         ),
     )
 

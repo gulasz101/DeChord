@@ -99,15 +99,18 @@ class BasicPitchTranscriber:
         corrections = 0
         intrusion_suppressions = 0
         merged_fragments = 0
+        rejected_notes = 0
         if engine == "basic_pitch" and raw_notes:
             pitch_config = _get_pitch_stability_config()
             raw_notes, stability_stats = _stabilize_basicpitch_notes(raw_notes, pitch_config)
             corrections = int(stability_stats["octave_corrections_applied"])
             intrusion_suppressions = int(stability_stats["suppressed_short_intrusions"])
             merged_fragments = int(stability_stats["merged_fragments"])
+            rejected_notes = int(stability_stats["rejected_notes"])
         debug_info["basicpitch_octave_corrections_applied"] = int(corrections)
         debug_info["basicpitch_short_intrusions_suppressed"] = int(intrusion_suppressions)
         debug_info["basicpitch_fragments_merged"] = int(merged_fragments)
+        debug_info["basicpitch_rejected_notes"] = int(rejected_notes)
         return BassTranscriptionResult(engine=engine, midi_bytes=midi_bytes, raw_notes=raw_notes, debug_info=debug_info)
 
 
@@ -182,38 +185,162 @@ def _merge_same_pitch_gaps(
     return merged, merge_count
 
 
+def _note_duration_sec(note: RawNoteEvent) -> float:
+    return max(0.0, float(note.end_sec) - float(note.start_sec))
+
+
+def _is_octave_related(pitch_a: int, pitch_b: int) -> bool:
+    return abs(int(pitch_a) - int(pitch_b)) == 12
+
+
+def _has_continuity_support(
+    prev_note: RawNoteEvent | None,
+    note: RawNoteEvent,
+    next_note: RawNoteEvent | None,
+    *,
+    merge_gap_sec: float,
+) -> bool:
+    for neighbor in (prev_note, next_note):
+        if neighbor is None:
+            continue
+        gap = min(
+            abs(float(note.start_sec) - float(neighbor.end_sec)),
+            abs(float(neighbor.start_sec) - float(note.end_sec)),
+        )
+        if gap <= merge_gap_sec and abs(int(neighbor.pitch_midi) - int(note.pitch_midi)) <= 2:
+            return True
+    return False
+
+
+def _looks_like_repeated_pluck(
+    left_note: RawNoteEvent,
+    right_note: RawNoteEvent,
+    *,
+    gap_sec: float,
+    merge_gap_sec: float,
+) -> bool:
+    if left_note.pitch_midi != right_note.pitch_midi:
+        return False
+    left_duration = _note_duration_sec(left_note)
+    right_duration = _note_duration_sec(right_note)
+    return (
+        gap_sec >= min(0.03, merge_gap_sec)
+        and left_duration <= 0.18
+        and right_duration <= 0.18
+        and min(left_note.confidence, right_note.confidence) >= 0.9
+    )
+
+
+def _should_suppress_intrusion(
+    prev_note: RawNoteEvent,
+    note: RawNoteEvent,
+    next_note: RawNoteEvent,
+    *,
+    min_duration_sec: float,
+    octave_intrusion_max_sec: float,
+    merge_gap_sec: float,
+    low_conf_threshold: float,
+) -> bool:
+    note_duration = _note_duration_sec(note)
+    if note_duration > max(min_duration_sec, octave_intrusion_max_sec):
+        return False
+    if (float(note.start_sec) - float(prev_note.end_sec)) > merge_gap_sec:
+        return False
+    if (float(next_note.start_sec) - float(note.end_sec)) > merge_gap_sec:
+        return False
+    same_pitch_neighbors = prev_note.pitch_midi == next_note.pitch_midi
+    near_same_neighbors = abs(prev_note.pitch_midi - next_note.pitch_midi) <= 1
+    if not (same_pitch_neighbors or near_same_neighbors):
+        return False
+    if note.pitch_midi == prev_note.pitch_midi:
+        return False
+    octave_intrusion = _is_octave_related(note.pitch_midi, prev_note.pitch_midi) or _is_octave_related(
+        note.pitch_midi,
+        next_note.pitch_midi,
+    )
+    weaker_than_neighbors = note.confidence <= (min(prev_note.confidence, next_note.confidence) - 0.08)
+    weak_intrusion = note.confidence <= max(low_conf_threshold, min(prev_note.confidence, next_note.confidence) - 0.2)
+    return octave_intrusion or weak_intrusion or (same_pitch_neighbors and weaker_than_neighbors)
+
+
+def _should_reject_note(
+    prev_note: RawNoteEvent | None,
+    note: RawNoteEvent,
+    next_note: RawNoteEvent | None,
+    *,
+    min_duration_sec: float,
+    merge_gap_sec: float,
+    low_conf_threshold: float,
+) -> bool:
+    duration_sec = _note_duration_sec(note)
+    if duration_sec > min_duration_sec:
+        return False
+    if note.confidence > low_conf_threshold:
+        return False
+    return not _has_continuity_support(prev_note, note, next_note, merge_gap_sec=merge_gap_sec)
+
+
+def _merge_fragmented_same_pitch_notes(
+    notes: list[RawNoteEvent],
+    *,
+    merge_gap_sec: float,
+) -> tuple[list[RawNoteEvent], int]:
+    if not notes:
+        return [], 0
+    merged = [notes[0]]
+    merge_count = 0
+    for note in notes[1:]:
+        last = merged[-1]
+        gap_sec = max(0.0, float(note.start_sec) - float(last.end_sec))
+        if (
+            note.pitch_midi == last.pitch_midi
+            and gap_sec <= merge_gap_sec
+            and not _looks_like_repeated_pluck(last, note, gap_sec=gap_sec, merge_gap_sec=merge_gap_sec)
+        ):
+            merged[-1] = RawNoteEvent(
+                pitch_midi=last.pitch_midi,
+                start_sec=last.start_sec,
+                end_sec=max(last.end_sec, note.end_sec),
+                confidence=max(last.confidence, note.confidence),
+            )
+            merge_count += 1
+            continue
+        merged.append(note)
+    return merged, merge_count
+
+
 def _stabilize_basicpitch_notes(
     notes: list[RawNoteEvent],
     config: PitchStabilityConfig,
 ) -> tuple[list[RawNoteEvent], dict[str, int]]:
     ordered = sorted(notes, key=lambda event: (event.start_sec, event.end_sec, event.pitch_midi))
-    if not config.pitch_stability_enable or len(ordered) < 2:
+    if not config.pitch_stability_enable:
         corrected, corrections = _conservative_basicpitch_octave_stabilization(ordered)
         return corrected, {
             "octave_corrections_applied": int(corrections),
             "suppressed_short_intrusions": 0,
             "merged_fragments": 0,
+            "rejected_notes": 0,
         }
 
-    min_duration_sec = max(config.pitch_min_note_duration_ms / 1000.0, 0.04)
-    merge_gap_sec = max(config.pitch_merge_gap_ms / 1000.0, 0.0)
-    corrected, octave_corrections = _conservative_basicpitch_octave_stabilization(ordered)
-
-    working = list(corrected)
+    min_duration_sec = max(config.note_min_duration_ms / 1000.0, 0.04)
+    merge_gap_sec = max(config.note_merge_gap_ms / 1000.0, 0.0)
+    octave_intrusion_max_sec = max(config.note_octave_intrusion_max_duration_ms / 1000.0, min_duration_sec)
+    working = list(ordered)
     suppressed_short_intrusions = 0
     idx = 1
     while idx < len(working) - 1:
         prev_note = working[idx - 1]
         cur_note = working[idx]
         next_note = working[idx + 1]
-        cur_duration = cur_note.end_sec - cur_note.start_sec
-        if (
-            cur_duration <= min_duration_sec
-            and prev_note.pitch_midi == next_note.pitch_midi
-            and prev_note.pitch_midi != cur_note.pitch_midi
-            and abs(cur_note.pitch_midi - prev_note.pitch_midi) <= 12
-            and (cur_note.start_sec - prev_note.end_sec) <= merge_gap_sec
-            and (next_note.start_sec - cur_note.end_sec) <= merge_gap_sec
+        if _should_suppress_intrusion(
+            prev_note,
+            cur_note,
+            next_note,
+            min_duration_sec=min_duration_sec,
+            octave_intrusion_max_sec=octave_intrusion_max_sec,
+            merge_gap_sec=merge_gap_sec,
+            low_conf_threshold=config.note_low_confidence_threshold,
         ):
             working[idx - 1] = RawNoteEvent(
                 pitch_midi=prev_note.pitch_midi,
@@ -227,9 +354,46 @@ def _stabilize_basicpitch_notes(
             continue
         idx += 1
 
-    merged, merged_fragments = _merge_same_pitch_gaps(working, merge_gap_sec=merge_gap_sec)
+    corrected, octave_corrections = _conservative_basicpitch_octave_stabilization(working)
+    if len(corrected) < 2:
+        rejected_notes = 0
+        if config.note_admission_enable and corrected:
+            note = corrected[0]
+            if _note_duration_sec(note) <= min_duration_sec and note.confidence <= config.note_low_confidence_threshold:
+                corrected = []
+                rejected_notes = 1
+        return corrected, {
+            "octave_corrections_applied": int(octave_corrections),
+            "suppressed_short_intrusions": int(suppressed_short_intrusions),
+            "merged_fragments": 0,
+            "rejected_notes": int(rejected_notes),
+        }
+
+    if config.note_admission_enable:
+        filtered: list[RawNoteEvent] = []
+        rejected_notes = 0
+        for idx, note in enumerate(corrected):
+            prev_note = corrected[idx - 1] if idx > 0 else None
+            next_note = corrected[idx + 1] if idx + 1 < len(corrected) else None
+            if _should_reject_note(
+                prev_note,
+                note,
+                next_note,
+                min_duration_sec=min_duration_sec,
+                merge_gap_sec=merge_gap_sec,
+                low_conf_threshold=config.note_low_confidence_threshold,
+            ):
+                rejected_notes += 1
+                continue
+            filtered.append(note)
+    else:
+        filtered = corrected
+        rejected_notes = 0
+
+    merged, merged_fragments = _merge_fragmented_same_pitch_notes(filtered, merge_gap_sec=merge_gap_sec)
     return merged, {
         "octave_corrections_applied": int(octave_corrections),
         "suppressed_short_intrusions": int(suppressed_short_intrusions),
         "merged_fragments": int(merged_fragments),
+        "rejected_notes": int(rejected_notes),
     }

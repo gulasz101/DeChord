@@ -8,6 +8,7 @@ from tempfile import NamedTemporaryFile
 from typing import Callable, Literal, Protocol
 import wave
 
+from app.midi import _get_pitch_stability_config
 from app.services.alphatex_exporter import SyncPoint, export_alphatex
 from app.services.bass_transcriber import BasicPitchTranscriber, BassTranscriber
 from app.services.dense_note_generator import DenseNoteCandidate, DenseNoteGenerator
@@ -758,6 +759,7 @@ class TabPipeline:
         window_start: float,
         window_end: float,
     ) -> tuple[list, list[dict[str, object]]]:
+        note_config = _get_pitch_stability_config()
         local_reference = [note for note in reference_notes if window_start <= note.start_sec < window_end]
         if not local_reference:
             rejected = [
@@ -790,6 +792,16 @@ class TabPipeline:
             nearest_octave_distance = TabPipeline._nearest_octave_distance(raw_pitch, dominant_pitch)
             anchor_distance = abs(raw_pitch - dominant_pitch)
             local_support_ratio = float(local_counts.get(raw_pitch, 0)) / float(max(1, len(local_reference)))
+            candidate_duration_sec = max(0.0, float(note.end_sec) - float(note.start_sec))
+            unstable_context = TabPipeline._dense_context_is_unstable(local_reference)
+            octave_neighbor_conflict = TabPipeline._has_octave_neighbor_conflict(
+                collision_pool,
+                candidate_start=float(note.start_sec),
+                candidate_end=float(note.end_sec),
+                candidate_pitch=raw_pitch,
+                candidate_confidence=float(note.confidence),
+                proximity_sec=max(0.08, note_config.note_merge_gap_ms / 1000.0),
+            )
             octave_inconsistent = abs(anchor_distance - 12) <= 1 and local_support_ratio < 0.2
             adjusted_pitch = dominant_pitch if repeated_note_mode or anchor_distance > 1 else raw_pitch
             if not (28 <= adjusted_pitch <= 64):
@@ -805,6 +817,9 @@ class TabPipeline:
             octave_score = 0.0 if octave_inconsistent else 1.0
             repeated_mode_score = 1.0 if repeated_note_mode and adjusted_pitch == dominant_pitch else 0.0
             duplicate_score = 0.0 if duplicate_existing else 1.0
+            duration_score = min(1.0, candidate_duration_sec / max(note_config.note_dense_candidate_min_duration_ms / 1000.0, 0.001))
+            context_penalty = note_config.note_dense_unstable_context_penalty if unstable_context else 0.0
+            octave_neighbor_penalty = note_config.note_dense_octave_neighbor_penalty if octave_neighbor_conflict else 0.0
 
             total_score = (
                 (0.35 * onset_support_score)
@@ -813,6 +828,9 @@ class TabPipeline:
                 + (0.1 * octave_score)
                 + (0.1 * local_support_ratio)
                 + (0.05 * repeated_mode_score)
+                + (0.05 * duration_score)
+                - context_penalty
+                - octave_neighbor_penalty
             )
 
             accepted = True
@@ -826,6 +844,15 @@ class TabPipeline:
             elif not register_ok:
                 accepted = False
                 rejection_reason = "out_of_register"
+            elif octave_neighbor_conflict:
+                accepted = False
+                rejection_reason = "octave_neighbor_conflict"
+            elif candidate_duration_sec < (note_config.note_dense_candidate_min_duration_ms / 1000.0) and total_score < 0.75:
+                accepted = False
+                rejection_reason = "candidate_too_short"
+            elif unstable_context and total_score < 0.55:
+                accepted = False
+                rejection_reason = "unstable_local_context"
             elif octave_inconsistent and nearest_octave_distance > 4 and onset_support_score < 0.5 and local_support_ratio < 0.1:
                 accepted = False
                 rejection_reason = "octave_inconsistent"
@@ -863,6 +890,9 @@ class TabPipeline:
                         "local_support_ratio": float(local_support_ratio),
                         "repeated_mode_score": float(repeated_mode_score),
                         "duplicate_score": float(duplicate_score),
+                        "duration_score": float(duration_score),
+                        "unstable_context": bool(unstable_context),
+                        "octave_neighbor_conflict": bool(octave_neighbor_conflict),
                         "total_score": float(total_score),
                         "anchor_distance_semitones": int(anchor_distance),
                         "nearest_octave_distance_semitones": int(nearest_octave_distance),
@@ -883,6 +913,7 @@ class TabPipeline:
         window_start: float,
         window_end: float,
     ) -> tuple[list[DenseNoteCandidate], list[dict[str, object]]]:
+        note_config = _get_pitch_stability_config()
         local_reference = [note for note in reference_notes if window_start <= note.start_sec < window_end]
         if not local_reference:
             rejected = [
@@ -916,6 +947,16 @@ class TabPipeline:
             raw_pitch = int(candidate.support.get("raw_pitch_midi", candidate.pitch_midi))
             anchor_distance = abs(adjusted_pitch - dominant_pitch)
             local_support_ratio = float(local_counts.get(adjusted_pitch, 0)) / float(max(1, len(local_reference)))
+            candidate_duration_sec = max(0.0, float(candidate.end_sec) - float(candidate.start_sec))
+            unstable_context = TabPipeline._dense_context_is_unstable(local_reference)
+            octave_neighbor_conflict = TabPipeline._has_octave_neighbor_conflict(
+                collision_pool,
+                candidate_start=float(candidate.start_sec),
+                candidate_end=float(candidate.end_sec),
+                candidate_pitch=adjusted_pitch,
+                candidate_confidence=float(candidate.confidence),
+                proximity_sec=max(0.08, note_config.note_merge_gap_ms / 1000.0),
+            )
             duplicate_existing = any(
                 abs(float(existing.start_sec) - float(candidate.start_sec)) <= 0.08 and int(existing.pitch_midi) == adjusted_pitch
                 for existing in collision_pool
@@ -923,6 +964,7 @@ class TabPipeline:
             anchor_proximity_score = 1.0 - min(1.0, float(TabPipeline._nearest_octave_distance(adjusted_pitch, dominant_pitch)) / 12.0)
             repeated_mode_score = 1.0 if repeated_note_mode and adjusted_pitch == dominant_pitch else 0.0
             register_score = 1.0 if 28 <= adjusted_pitch <= 64 else 0.0
+            duration_score = min(1.0, candidate_duration_sec / max(note_config.note_dense_candidate_min_duration_ms / 1000.0, 0.001))
             total_score = (
                 (0.4 * float(candidate.confidence))
                 + (0.2 * onset_support_score)
@@ -930,6 +972,9 @@ class TabPipeline:
                 + (0.1 * local_support_ratio)
                 + (0.1 * register_score)
                 + (0.05 * repeated_mode_score)
+                + (0.05 * duration_score)
+                - (note_config.note_dense_unstable_context_penalty if unstable_context else 0.0)
+                - (note_config.note_dense_octave_neighbor_penalty if octave_neighbor_conflict else 0.0)
             )
 
             accepted = True
@@ -940,6 +985,15 @@ class TabPipeline:
             elif adjusted_pitch < 28 or adjusted_pitch > 64:
                 accepted = False
                 rejection_reason = "out_of_register"
+            elif octave_neighbor_conflict:
+                accepted = False
+                rejection_reason = "octave_neighbor_conflict"
+            elif candidate_duration_sec < (note_config.note_dense_candidate_min_duration_ms / 1000.0) and total_score < 0.85:
+                accepted = False
+                rejection_reason = "candidate_too_short"
+            elif unstable_context and total_score < 0.55:
+                accepted = False
+                rejection_reason = "unstable_local_context"
             elif anchor_distance > 18 and local_support_ratio < 0.2:
                 accepted = False
                 rejection_reason = "pitch_far_from_anchor"
@@ -966,6 +1020,9 @@ class TabPipeline:
                         "anchor_proximity_score": float(anchor_proximity_score),
                         "local_support_ratio": float(local_support_ratio),
                         "repeated_mode_score": float(repeated_mode_score),
+                        "duration_score": float(duration_score),
+                        "unstable_context": bool(unstable_context),
+                        "octave_neighbor_conflict": bool(octave_neighbor_conflict),
                         "total_score": float(total_score),
                         "anchor_distance_semitones": int(anchor_distance),
                         "repeated_note_mode": bool(repeated_note_mode),
@@ -979,6 +1036,43 @@ class TabPipeline:
     def _nearest_octave_distance(pitch_midi: int, anchor_pitch: int) -> int:
         distances = [abs((pitch_midi + (12 * offset)) - anchor_pitch) for offset in (-2, -1, 0, 1, 2)]
         return int(min(distances))
+
+    @staticmethod
+    def _dense_context_is_unstable(local_reference: list) -> bool:
+        if len(local_reference) < 3:
+            return False
+        pitches = [int(note.pitch_midi) for note in local_reference]
+        unique_pitches = len(set(pitches))
+        pitch_span = max(pitches) - min(pitches)
+        return unique_pitches >= 3 or (unique_pitches >= 2 and pitch_span >= 5)
+
+    @staticmethod
+    def _has_octave_neighbor_conflict(
+        notes: list,
+        *,
+        candidate_start: float,
+        candidate_end: float,
+        candidate_pitch: int,
+        candidate_confidence: float,
+        proximity_sec: float,
+    ) -> bool:
+        for note in notes:
+            note_pitch = int(note.pitch_midi)
+            if abs(note_pitch - int(candidate_pitch)) != 12:
+                continue
+            note_start = float(note.start_sec)
+            note_end = float(note.end_sec)
+            time_close = (
+                abs(note_start - candidate_start) <= proximity_sec
+                or abs(note_end - candidate_start) <= proximity_sec
+                or not (note_end < candidate_start or note_start > candidate_end)
+            )
+            if not time_close:
+                continue
+            if float(getattr(note, "confidence", 1.0)) + 0.05 < candidate_confidence:
+                continue
+            return True
+        return False
 
     @staticmethod
     def _is_dense_repeated_note_mode(local_counts: Counter[int], *, onset_peak_count: int) -> bool:

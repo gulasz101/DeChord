@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Callable
 import math
 
+from app.midi import PitchStabilityConfig, _get_pitch_stability_config
 from app.services.bass_transcriber import RawNoteEvent
 
 AudioLoadFn = Callable[[Path | str], tuple[list[float], int]]
@@ -40,6 +41,7 @@ class DenseNoteGenerator:
         duplicate_tolerance_sec: float = 0.07,
         minimum_onset_gap_sec: float = 0.08,
         max_window_onsets: int = 8,
+        config: PitchStabilityConfig | None = None,
     ) -> None:
         self._audio_loader = audio_loader or _load_audio_mono
         self._pitch_estimator = pitch_estimator or _estimate_pitch_with_yin
@@ -47,6 +49,7 @@ class DenseNoteGenerator:
         self._duplicate_tolerance_sec = duplicate_tolerance_sec
         self._minimum_onset_gap_sec = minimum_onset_gap_sec
         self._max_window_onsets = max_window_onsets
+        self._config = config or _get_pitch_stability_config()
 
     def generate(
         self,
@@ -82,6 +85,7 @@ class DenseNoteGenerator:
                 continue
             next_onset = window_onsets[idx + 1] if idx + 1 < len(window_onsets) else window_end
             provisional_end = min(window_end, max(onset + 0.06, min(next_onset, onset + 0.18)))
+            candidate_duration_sec = max(0.0, float(provisional_end) - float(onset))
             estimate = self._pitch_estimator(audio, sr, onset, provisional_end, anchor_pitch)
             if estimate is None:
                 continue
@@ -89,6 +93,13 @@ class DenseNoteGenerator:
             raw_pitch = int(raw_pitch)
             raw_confidence = float(raw_confidence)
             if raw_confidence < self._minimum_confidence:
+                continue
+            if not self._passes_duration_gate(
+                duration_sec=candidate_duration_sec,
+                raw_confidence=raw_confidence,
+                repeated_note_mode=repeated_note_mode,
+                anchor_strength=anchor_strength,
+            ):
                 continue
 
             adjusted_pitch = raw_pitch
@@ -127,12 +138,28 @@ class DenseNoteGenerator:
                     "repeated_note_mode": repeated_note_mode,
                     "anchor_distance_semitones": anchor_distance,
                     "nearest_octave_distance_semitones": nearest_octave_distance,
+                    "candidate_duration_sec": float(candidate_duration_sec),
                 },
             )
             candidates.append(candidate)
             collision_pool.append(candidate.to_raw_note())
 
         return candidates
+
+    def _passes_duration_gate(
+        self,
+        *,
+        duration_sec: float,
+        raw_confidence: float,
+        repeated_note_mode: bool,
+        anchor_strength: float,
+    ) -> bool:
+        min_duration_sec = max(self._config.note_dense_candidate_min_duration_ms / 1000.0, 0.0)
+        if duration_sec >= min_duration_sec:
+            if duration_sec >= 0.09:
+                return True
+            return raw_confidence >= 0.75 or (repeated_note_mode and anchor_strength >= 0.7)
+        return raw_confidence >= 0.85 and repeated_note_mode and anchor_strength >= 0.7
 
 
 def _repeated_note_anchor(context_notes: list[RawNoteEvent], *, onset_count: int) -> tuple[bool, int | None, float]:
