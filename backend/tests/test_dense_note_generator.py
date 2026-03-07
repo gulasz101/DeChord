@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.services.bass_transcriber import RawNoteEvent
 from app.services.dense_note_generator import DenseNoteCandidate
 from app.services.dense_note_generator import DenseNoteGenerator
+from app.midi import PitchStabilityConfig
 
 
 def test_dense_note_generator_targets_missing_onsets_and_anchors_repeated_pitch() -> None:
@@ -127,3 +128,32 @@ def test_dense_note_generator_rejects_very_short_candidate_without_strong_suppor
     )
 
     assert candidates == []
+
+
+def test_dense_note_generator_relaxes_sparse_region_gate_for_supported_bass_candidates() -> None:
+    generator = DenseNoteGenerator(
+        pitch_estimator=lambda _audio, _sr, _onset, _end, _anchor_pitch: (40, 0.61),
+        audio_loader=lambda _path: ([0.0] * 32, 22050),
+        config=PitchStabilityConfig(
+            raw_note_sparse_region_boost_enable=True,
+            dense_candidate_sparse_region_threshold_ms=180,
+            dense_candidate_support_relaxation=0.20,
+            note_dense_candidate_min_duration_ms=80,
+        ),
+    )
+
+    candidates = generator.generate(
+        bass_wav="ignored.wav",
+        window_start=0.0,
+        window_end=0.09,
+        onset_times=[0.02],
+        base_notes=[],
+        context_notes=[
+            RawNoteEvent(pitch_midi=40, start_sec=0.30, end_sec=0.42, confidence=0.92),
+            RawNoteEvent(pitch_midi=40, start_sec=0.50, end_sec=0.62, confidence=0.93),
+            RawNoteEvent(pitch_midi=40, start_sec=0.70, end_sec=0.82, confidence=0.94),
+        ],
+    )
+
+    assert [round(candidate.start_sec, 2) for candidate in candidates] == [0.02]
+    assert candidates[0].pitch_midi == 40

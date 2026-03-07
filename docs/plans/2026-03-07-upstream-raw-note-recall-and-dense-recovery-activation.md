@@ -2,8 +2,8 @@
 
 - [x] Inspect latest trace reports and identify upstream raw-note bottlenecks
 - [x] Inspect Basic Pitch integration and dense-note recovery wiring
-- [ ] Add RED tests for raw-note recall improvement
-- [ ] Add RED tests for dense-note recovery contribution
+- [x] Add RED tests for raw-note recall improvement
+- [x] Add RED tests for dense-note recovery contribution
 - [ ] Add typed config for upstream raw-recall tuning
 - [ ] Implement bass-focused raw note recall improvements
 - [ ] Implement dense-note recovery activation/fix

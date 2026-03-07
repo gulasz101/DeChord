@@ -34,6 +34,12 @@ def test_basic_pitch_transcriber_emits_stage_metrics() -> None:
 
     assert set(pipeline_stats) == {"basic_pitch_raw", "pitch_stabilized", "admission_filtered"}
     assert pipeline_stats["basic_pitch_raw"]["note_count"] == 4
+    assert pipeline_stats["basic_pitch_raw"]["candidate_flow"] == {
+        "pre_filter_note_count": 4,
+        "post_filter_note_count": 4,
+        "filtered_out_note_count": 0,
+        "filter_rejection_histogram": {},
+    }
     assert pipeline_stats["pitch_stabilized"]["note_count"] == 2
     assert pipeline_stats["admission_filtered"]["note_count"] == 1
     assert pipeline_stats["admission_filtered"]["notes_removed_by_stage"] == 1
@@ -72,6 +78,12 @@ def test_tab_pipeline_emits_all_stage_metrics_and_consistent_counts(
                                 "notes_removed_by_stage": 0,
                                 "notes_merged_by_stage": 0,
                                 "notes_altered_by_stage": 0,
+                                "candidate_flow": {
+                                    "pre_filter_note_count": 2,
+                                    "post_filter_note_count": 2,
+                                    "filtered_out_note_count": 0,
+                                    "filter_rejection_histogram": {},
+                                },
                             },
                             "pitch_stabilized": {
                                 "note_count": 2,
@@ -159,7 +171,12 @@ def test_tab_pipeline_emits_all_stage_metrics_and_consistent_counts(
     monkeypatch.setattr(
         TabPipeline,
         "_confidence_gate_dense_note_candidates",
-        staticmethod(lambda candidates, **_kwargs: ([candidates[0]], [{"accepted": True}, {"accepted": False}])),
+        staticmethod(
+            lambda candidates, **_kwargs: (
+                [candidates[0]],
+                [{"accepted": True, "rejection_reason": None}, {"accepted": False, "rejection_reason": "weak_local_support"}],
+            )
+        ),
     )
 
     result = pipeline.run(
@@ -181,7 +198,16 @@ def test_tab_pipeline_emits_all_stage_metrics_and_consistent_counts(
         "final_notes",
     }
     assert pipeline_stats["dense_candidates"]["note_count"] == 2
+    assert pipeline_stats["dense_candidates"]["candidate_flow"] == {
+        "proposed_note_count": 2,
+    }
     assert pipeline_stats["dense_accepted"]["note_count"] == 1
+    assert pipeline_stats["dense_accepted"]["candidate_flow"] == {
+        "proposed_note_count": 2,
+        "accepted_note_count": 1,
+        "rejected_note_count": 1,
+        "rejection_histogram": {"weak_local_support": 1},
+    }
     assert pipeline_stats["dense_accepted"]["note_count"] <= pipeline_stats["dense_candidates"]["note_count"]
     assert pipeline_stats["final_notes"]["note_count"] == len(quantize_inputs)
     assert result.debug_info["quantized_note_count"] == pipeline_stats["final_notes"]["note_count"]
@@ -203,6 +229,12 @@ def test_build_pipeline_trace_report_has_stable_json_structure() -> None:
                 "notes_removed_by_stage": 0,
                 "notes_merged_by_stage": 0,
                 "notes_altered_by_stage": 0,
+                "candidate_flow": {
+                    "pre_filter_note_count": 3,
+                    "post_filter_note_count": 2,
+                    "filtered_out_note_count": 1,
+                    "filter_rejection_histogram": {"below_confidence_floor": 1},
+                },
             },
             "pitch_stabilized": {
                 "note_count": 1,
@@ -226,6 +258,12 @@ def test_build_pipeline_trace_report_has_stable_json_structure() -> None:
         "pipeline_stats": {
             "basic_pitch_raw": {
                 "average_duration_ms": 120.0,
+                "candidate_flow": {
+                    "filter_rejection_histogram": {"below_confidence_floor": 1},
+                    "filtered_out_note_count": 1,
+                    "post_filter_note_count": 2,
+                    "pre_filter_note_count": 3,
+                },
                 "confidence_stats": {"max": 0.9, "mean": 0.8, "min": 0.7},
                 "median_duration_ms": 120.0,
                 "note_count": 2,

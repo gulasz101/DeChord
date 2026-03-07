@@ -201,3 +201,76 @@ def test_basic_pitch_transcriber_keeps_real_repeated_same_pitch_notes_distinct(
     result = transcriber.transcribe(Path("bass.wav"))
 
     assert result.raw_notes == raw_notes
+
+
+def test_basic_pitch_transcriber_uses_model_note_events_to_improve_raw_recall(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DECHORD_RAW_NOTE_RECALL_ENABLE", "1")
+    monkeypatch.setenv("DECHORD_RAW_NOTE_MIN_CONFIDENCE", "0.15")
+    monkeypatch.setenv("DECHORD_RAW_NOTE_MIN_DURATION_MS", "35")
+    monkeypatch.setenv("DECHORD_RAW_NOTE_ALLOW_WEAK_BASS_CANDIDATES", "1")
+    monkeypatch.setenv("DECHORD_PITCH_STABILITY_ENABLE", "0")
+
+    transcriber = BasicPitchTranscriber(
+        midi_transcribe_fn=lambda _path: MidiTranscriptionResult(
+            midi_bytes=b"MThd\x00\x00\x00\x06",
+            engine_used="basic_pitch",
+            diagnostics={
+                "basic_pitch_note_events": [
+                    (0.00, 0.06, 40, 0.92),
+                    (0.12, 0.18, 40, 0.18),
+                    (0.24, 0.30, 43, 0.19),
+                ]
+            },
+        ),
+        parse_notes_fn=lambda _midi: [
+            RawNoteEvent(pitch_midi=40, start_sec=0.00, end_sec=0.06, confidence=1.0),
+        ],
+    )
+
+    result = transcriber.transcribe(Path("bass.wav"))
+
+    assert [(round(note.start_sec, 2), note.pitch_midi) for note in result.raw_notes] == [
+        (0.0, 40),
+        (0.12, 40),
+        (0.24, 43),
+    ]
+    assert result.debug_info["basicpitch_raw_notes_before_local_filter"] == 3
+    assert result.debug_info["basicpitch_raw_notes_after_local_filter"] == 3
+    assert result.debug_info["pipeline_trace"]["pipeline_stats"]["basic_pitch_raw"]["note_count"] == 3
+
+
+def test_basic_pitch_transcriber_bounds_spurious_model_note_events_during_raw_recall(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DECHORD_RAW_NOTE_RECALL_ENABLE", "1")
+    monkeypatch.setenv("DECHORD_RAW_NOTE_MIN_CONFIDENCE", "0.15")
+    monkeypatch.setenv("DECHORD_RAW_NOTE_MIN_DURATION_MS", "35")
+    monkeypatch.setenv("DECHORD_RAW_NOTE_ALLOW_WEAK_BASS_CANDIDATES", "1")
+    monkeypatch.setenv("DECHORD_PITCH_STABILITY_ENABLE", "0")
+
+    transcriber = BasicPitchTranscriber(
+        midi_transcribe_fn=lambda _path: MidiTranscriptionResult(
+            midi_bytes=b"MThd\x00\x00\x00\x06",
+            engine_used="basic_pitch",
+            diagnostics={
+                "basic_pitch_note_events": [
+                    (0.00, 0.06, 40, 0.18),
+                    (0.12, 0.15, 43, 0.95),
+                    (0.20, 0.28, 76, 0.90),
+                    (0.32, 0.40, 31, 0.04),
+                ]
+            },
+        ),
+        parse_notes_fn=lambda _midi: [],
+    )
+
+    result = transcriber.transcribe(Path("bass.wav"))
+
+    assert result.raw_notes == [
+        RawNoteEvent(pitch_midi=40, start_sec=0.0, end_sec=0.06, confidence=0.18),
+    ]
+    assert result.debug_info["basicpitch_raw_notes_before_local_filter"] == 4
+    assert result.debug_info["basicpitch_raw_notes_after_local_filter"] == 1
+    assert result.debug_info["basicpitch_raw_notes_removed_by_local_filter"] == 3

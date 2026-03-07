@@ -1290,3 +1290,141 @@ def test_pipeline_records_raw_note_source_attribution_and_cleanup_survival(tmp_p
     assert rows[1]["source"] == "hybrid_merged"
     assert rows[1]["survived_cleanup"] is False
     assert rows[1]["confidence_summary"]["raw_pitch_midi"] == 52
+
+
+def test_standard_mode_activates_dense_recovery_for_sparse_regions_when_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DECHORD_RAW_NOTE_RECALL_ENABLE", "1")
+    monkeypatch.setenv("DECHORD_RAW_NOTE_SPARSE_REGION_BOOST_ENABLE", "1")
+    monkeypatch.setenv("DECHORD_DENSE_CANDIDATE_SPARSE_REGION_THRESHOLD_MS", "180")
+
+    class FakeTranscriber:
+        def transcribe(self, _bass_wav: Path) -> BassTranscriptionResult:
+            return BassTranscriptionResult(
+                engine="basic_pitch",
+                midi_bytes=b"MThd",
+                raw_notes=[
+                    RawNoteEvent(pitch_midi=40, start_sec=0.00, end_sec=0.08, confidence=0.92),
+                    RawNoteEvent(pitch_midi=40, start_sec=0.42, end_sec=0.50, confidence=0.93),
+                ],
+                debug_info={
+                    "pipeline_trace": {
+                        "pipeline_stats": {
+                            "basic_pitch_raw": {
+                                "note_count": 2,
+                                "average_duration_ms": 80.0,
+                                "median_duration_ms": 80.0,
+                                "short_note_threshold_ms": 60,
+                                "short_note_count": 0,
+                                "octave_jump_count": 0,
+                                "confidence_stats": {"mean": 0.925, "min": 0.92, "max": 0.93},
+                                "notes_added_by_stage": 0,
+                                "notes_removed_by_stage": 0,
+                                "notes_merged_by_stage": 0,
+                                "notes_altered_by_stage": 0,
+                                "candidate_flow": {
+                                    "pre_filter_note_count": 2,
+                                    "post_filter_note_count": 2,
+                                    "filtered_out_note_count": 0,
+                                    "filter_rejection_histogram": {},
+                                },
+                            },
+                            "pitch_stabilized": {
+                                "note_count": 2,
+                                "average_duration_ms": 80.0,
+                                "median_duration_ms": 80.0,
+                                "short_note_threshold_ms": 60,
+                                "short_note_count": 0,
+                                "octave_jump_count": 0,
+                                "confidence_stats": {"mean": 0.925, "min": 0.92, "max": 0.93},
+                                "notes_added_by_stage": 0,
+                                "notes_removed_by_stage": 0,
+                                "notes_merged_by_stage": 0,
+                                "notes_altered_by_stage": 0,
+                            },
+                            "admission_filtered": {
+                                "note_count": 2,
+                                "average_duration_ms": 80.0,
+                                "median_duration_ms": 80.0,
+                                "short_note_threshold_ms": 60,
+                                "short_note_count": 0,
+                                "octave_jump_count": 0,
+                                "confidence_stats": {"mean": 0.925, "min": 0.92, "max": 0.93},
+                                "notes_added_by_stage": 0,
+                                "notes_removed_by_stage": 0,
+                                "notes_merged_by_stage": 0,
+                                "notes_altered_by_stage": 0,
+                            },
+                        }
+                    }
+                },
+            )
+
+    bars = [Bar(index=0, start_sec=0.0, end_sec=1.0, beats_sec=[0.0, 0.25, 0.5, 0.75])]
+    quantize_inputs: list[RawNoteEvent] = []
+
+    def fake_quantize(events, _grid, **_kwargs):
+        quantize_inputs[:] = list(events)
+        return [
+            QuantizedNote(
+                bar_index=0,
+                beat_position=float(index) * 0.5,
+                duration_beats=0.5,
+                pitch_midi=note.pitch_midi,
+                start_sec=note.start_sec,
+                end_sec=note.end_sec,
+            )
+            for index, note in enumerate(events)
+        ]
+
+    pipeline = TabPipeline(
+        transcriber=FakeTranscriber(),
+        rhythm_extract_fn=lambda _drums, **_kwargs: ([0.0, 0.25, 0.5, 0.75], [0.0], "madmom"),
+        bar_builder_fn=lambda _beats, _downbeats, **_kwargs: bars,
+        onset_detect_fn=lambda _bass: [0.02, 0.20, 0.44],
+        cleanup_fn=lambda events, **_kwargs: list(events),
+        quantize_fn=fake_quantize,
+        fingering_fn=lambda notes, **_kwargs: [
+            FingeredNote(
+                bar_index=note.bar_index,
+                beat_position=note.beat_position,
+                duration_beats=note.duration_beats,
+                pitch_midi=note.pitch_midi,
+                start_sec=note.start_sec,
+                end_sec=note.end_sec,
+                string=4,
+                fret=max(0, note.pitch_midi - 28),
+            )
+            for note in notes
+        ],
+        export_fn=lambda _notes, _bars, **_kwargs: ("\\tempo 120", [SyncPoint(bar_index=0, millisecond_offset=0)]),
+        dense_note_generator=type(
+            "FakeDenseGenerator",
+            (),
+            {
+                "generate": lambda self, **_kwargs: [
+                    DenseNoteCandidate(
+                        pitch_midi=40,
+                        start_sec=0.20,
+                        end_sec=0.28,
+                        confidence=0.74,
+                        support={"raw_pitch_midi": 40, "anchor_pitch": 40},
+                    )
+                ],
+            },
+        )(),
+    )
+
+    result = pipeline.run(
+        Path("bass.wav"),
+        Path("drums.wav"),
+        bpm_hint=120.0,
+        tab_generation_quality_mode="standard",
+        onset_recovery=False,
+    )
+
+    assert len(quantize_inputs) == 3
+    assert [round(note.start_sec, 2) for note in quantize_inputs] == [0.0, 0.2, 0.42]
+    assert result.debug_info["pipeline_trace"]["pipeline_stats"]["dense_candidates"]["note_count"] == 1
+    assert result.debug_info["pipeline_trace"]["pipeline_stats"]["dense_accepted"]["note_count"] == 1

@@ -8,6 +8,7 @@ import app.midi as midi_mod
 from app.midi import _apply_spectral_octave_verification
 from app.midi import _estimate_monophonic_notes_from_wav
 from app.midi import _estimate_monophonic_notes_legacy_from_audio
+from app.midi import _get_pitch_stability_config
 from app.midi import _preprocess_bass_for_fallback_transcription
 from app.midi import _stabilize_octaves_sequence
 from app.midi import _smooth_midi_track_viterbi
@@ -237,3 +238,45 @@ def test_preprocess_bass_for_fallback_transcription_uses_bass_focused_filters(
     assert "lowpass=f=300" in ffmpeg_cmd
     assert "-ac 1" in ffmpeg_cmd
     assert "-ar 22050" in ffmpeg_cmd
+
+
+def test_pitch_stability_config_parses_raw_recall_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DECHORD_RAW_NOTE_RECALL_ENABLE", "1")
+    monkeypatch.setenv("DECHORD_RAW_NOTE_MIN_CONFIDENCE", "0.15")
+    monkeypatch.setenv("DECHORD_RAW_NOTE_MIN_DURATION_MS", "35")
+    monkeypatch.setenv("DECHORD_RAW_NOTE_ALLOW_WEAK_BASS_CANDIDATES", "1")
+    monkeypatch.setenv("DECHORD_RAW_NOTE_SPARSE_REGION_BOOST_ENABLE", "1")
+    monkeypatch.setenv("DECHORD_DENSE_CANDIDATE_SPARSE_REGION_THRESHOLD_MS", "180")
+    monkeypatch.setenv("DECHORD_DENSE_CANDIDATE_SUPPORT_RELAXATION", "0.2")
+
+    config = _get_pitch_stability_config()
+
+    assert config.raw_note_recall_enable is True
+    assert config.raw_note_min_confidence == pytest.approx(0.15)
+    assert config.raw_note_min_duration_ms == 35
+    assert config.raw_note_allow_weak_bass_candidates is True
+    assert config.raw_note_sparse_region_boost_enable is True
+    assert config.dense_candidate_sparse_region_threshold_ms == 180
+    assert config.dense_candidate_support_relaxation == pytest.approx(0.2)
+
+
+def test_pitch_stability_config_falls_back_for_invalid_raw_recall_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DECHORD_RAW_NOTE_RECALL_ENABLE", "maybe")
+    monkeypatch.setenv("DECHORD_RAW_NOTE_MIN_CONFIDENCE", "-1")
+    monkeypatch.setenv("DECHORD_RAW_NOTE_MIN_DURATION_MS", "0")
+    monkeypatch.setenv("DECHORD_RAW_NOTE_ALLOW_WEAK_BASS_CANDIDATES", "maybe")
+    monkeypatch.setenv("DECHORD_RAW_NOTE_SPARSE_REGION_BOOST_ENABLE", "wat")
+    monkeypatch.setenv("DECHORD_DENSE_CANDIDATE_SPARSE_REGION_THRESHOLD_MS", "-10")
+    monkeypatch.setenv("DECHORD_DENSE_CANDIDATE_SUPPORT_RELAXATION", "7.5")
+
+    config = _get_pitch_stability_config()
+
+    assert config.raw_note_recall_enable is False
+    assert 0.0 <= config.raw_note_min_confidence <= 1.0
+    assert config.raw_note_min_duration_ms > 0
+    assert config.raw_note_allow_weak_bass_candidates is False
+    assert config.raw_note_sparse_region_boost_enable is False
+    assert config.dense_candidate_sparse_region_threshold_ms > 0
+    assert 0.0 <= config.dense_candidate_support_relaxation <= 1.0
