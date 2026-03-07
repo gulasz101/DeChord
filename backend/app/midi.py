@@ -56,6 +56,15 @@ DEFAULT_ONSET_STRENGTH_THRESHOLD = 0.35
 DEFAULT_ONSET_REGION_MAX_DURATION_MS = 220
 DEFAULT_ONSET_REGION_MIN_DURATION_MS = 40
 DEFAULT_ONSET_DENSITY_NOTES_PER_SEC_THRESHOLD = 4.5
+DEFAULT_ONSET_REGION_PITCH_ENABLE = True
+DEFAULT_ONSET_REGION_PITCH_METHOD = "bass_harmonic_weighted"
+DEFAULT_ONSET_REGION_OCTAVE_SUPPRESSION_ENABLE = True
+DEFAULT_ONSET_REGION_OCTAVE_PENALTY = 0.40
+DEFAULT_ONSET_REGION_MIN_CONFIDENCE = 0.18
+DEFAULT_ONSET_REGION_LOWBAND_SUPPORT_WEIGHT = 0.60
+DEFAULT_ONSET_REGION_HARMONIC_PENALTY_WEIGHT = 0.35
+DEFAULT_ONSET_REGION_PITCH_FLOOR_MIDI = 24
+DEFAULT_ONSET_REGION_PITCH_CEILING_MIDI = 64
 
 
 @dataclass(frozen=True)
@@ -91,6 +100,15 @@ class PitchStabilityConfig:
     onset_region_max_duration_ms: int = DEFAULT_ONSET_REGION_MAX_DURATION_MS
     onset_region_min_duration_ms: int = DEFAULT_ONSET_REGION_MIN_DURATION_MS
     onset_density_notes_per_sec_threshold: float = DEFAULT_ONSET_DENSITY_NOTES_PER_SEC_THRESHOLD
+    onset_region_pitch_enable: bool = DEFAULT_ONSET_REGION_PITCH_ENABLE
+    onset_region_pitch_method: str = DEFAULT_ONSET_REGION_PITCH_METHOD
+    onset_region_octave_suppression_enable: bool = DEFAULT_ONSET_REGION_OCTAVE_SUPPRESSION_ENABLE
+    onset_region_octave_penalty: float = DEFAULT_ONSET_REGION_OCTAVE_PENALTY
+    onset_region_min_confidence: float = DEFAULT_ONSET_REGION_MIN_CONFIDENCE
+    onset_region_lowband_support_weight: float = DEFAULT_ONSET_REGION_LOWBAND_SUPPORT_WEIGHT
+    onset_region_harmonic_penalty_weight: float = DEFAULT_ONSET_REGION_HARMONIC_PENALTY_WEIGHT
+    onset_region_pitch_floor_midi: int = DEFAULT_ONSET_REGION_PITCH_FLOOR_MIDI
+    onset_region_pitch_ceiling_midi: int = DEFAULT_ONSET_REGION_PITCH_CEILING_MIDI
 
 
 def _get_pitch_stability_config() -> PitchStabilityConfig:
@@ -190,6 +208,21 @@ def _get_pitch_stability_config() -> PitchStabilityConfig:
         onset_region_min_duration_ms = DEFAULT_ONSET_REGION_MIN_DURATION_MS
     if onset_region_min_duration_ms > onset_region_max_duration_ms:
         onset_region_min_duration_ms = onset_region_max_duration_ms
+    onset_region_pitch_floor_midi = _parse_int_env(
+        "DECHORD_ONSET_REGION_PITCH_FLOOR_MIDI",
+        DEFAULT_ONSET_REGION_PITCH_FLOOR_MIDI,
+    )
+    if onset_region_pitch_floor_midi is None or onset_region_pitch_floor_midi < 12:
+        onset_region_pitch_floor_midi = DEFAULT_ONSET_REGION_PITCH_FLOOR_MIDI
+    onset_region_pitch_ceiling_midi = _parse_int_env(
+        "DECHORD_ONSET_REGION_PITCH_CEILING_MIDI",
+        DEFAULT_ONSET_REGION_PITCH_CEILING_MIDI,
+    )
+    if onset_region_pitch_ceiling_midi is None or onset_region_pitch_ceiling_midi < onset_region_pitch_floor_midi:
+        onset_region_pitch_ceiling_midi = max(
+            onset_region_pitch_floor_midi,
+            DEFAULT_ONSET_REGION_PITCH_CEILING_MIDI,
+        )
     onset_note_generator_mode = str(
         os.getenv("DECHORD_ONSET_NOTE_GENERATOR_MODE", DEFAULT_ONSET_NOTE_GENERATOR_MODE)
     ).strip().lower()
@@ -283,6 +316,44 @@ def _get_pitch_stability_config() -> PitchStabilityConfig:
             minimum=0.1,
             maximum=64.0,
         ),
+        onset_region_pitch_enable=_parse_bool_env(
+            "DECHORD_ONSET_REGION_PITCH_ENABLE",
+            DEFAULT_ONSET_REGION_PITCH_ENABLE,
+        ),
+        onset_region_pitch_method=str(
+            os.getenv("DECHORD_ONSET_REGION_PITCH_METHOD", DEFAULT_ONSET_REGION_PITCH_METHOD)
+        ).strip().lower()
+        or DEFAULT_ONSET_REGION_PITCH_METHOD,
+        onset_region_octave_suppression_enable=_parse_bool_env(
+            "DECHORD_ONSET_REGION_OCTAVE_SUPPRESSION_ENABLE",
+            DEFAULT_ONSET_REGION_OCTAVE_SUPPRESSION_ENABLE,
+        ),
+        onset_region_octave_penalty=_parse_float_env_bounded(
+            "DECHORD_ONSET_REGION_OCTAVE_PENALTY",
+            DEFAULT_ONSET_REGION_OCTAVE_PENALTY,
+            minimum=0.0,
+            maximum=2.0,
+        ),
+        onset_region_min_confidence=_parse_float_env_bounded(
+            "DECHORD_ONSET_REGION_MIN_CONFIDENCE",
+            DEFAULT_ONSET_REGION_MIN_CONFIDENCE,
+            minimum=0.0,
+            maximum=1.0,
+        ),
+        onset_region_lowband_support_weight=_parse_float_env_bounded(
+            "DECHORD_ONSET_REGION_LOWBAND_SUPPORT_WEIGHT",
+            DEFAULT_ONSET_REGION_LOWBAND_SUPPORT_WEIGHT,
+            minimum=0.0,
+            maximum=2.0,
+        ),
+        onset_region_harmonic_penalty_weight=_parse_float_env_bounded(
+            "DECHORD_ONSET_REGION_HARMONIC_PENALTY_WEIGHT",
+            DEFAULT_ONSET_REGION_HARMONIC_PENALTY_WEIGHT,
+            minimum=0.0,
+            maximum=2.0,
+        ),
+        onset_region_pitch_floor_midi=onset_region_pitch_floor_midi,
+        onset_region_pitch_ceiling_midi=onset_region_pitch_ceiling_midi,
     )
 
 

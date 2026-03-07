@@ -107,12 +107,22 @@ class TabPipeline:
         self._export_fn = export_fn or export_alphatex
         self._onset_detect_fn = onset_detect_fn or self._detect_onsets_librosa
         self._dense_note_generator = dense_note_generator or DenseNoteGenerator()
+        onset_config = _get_pitch_stability_config()
         self._onset_note_generator = onset_note_generator or OnsetNoteGenerator(
             config=OnsetNoteGeneratorConfig(
-                onset_min_spacing_ms=_get_pitch_stability_config().onset_min_spacing_ms,
-                onset_strength_threshold=_get_pitch_stability_config().onset_strength_threshold,
-                onset_region_max_duration_ms=_get_pitch_stability_config().onset_region_max_duration_ms,
-                onset_region_min_duration_ms=_get_pitch_stability_config().onset_region_min_duration_ms,
+                onset_min_spacing_ms=onset_config.onset_min_spacing_ms,
+                onset_strength_threshold=onset_config.onset_strength_threshold,
+                onset_region_max_duration_ms=onset_config.onset_region_max_duration_ms,
+                onset_region_min_duration_ms=onset_config.onset_region_min_duration_ms,
+                minimum_pitch_confidence=onset_config.onset_region_min_confidence,
+                onset_region_pitch_enable=onset_config.onset_region_pitch_enable,
+                onset_region_pitch_method=onset_config.onset_region_pitch_method,
+                onset_region_octave_suppression_enable=onset_config.onset_region_octave_suppression_enable,
+                onset_region_octave_penalty=onset_config.onset_region_octave_penalty,
+                onset_region_lowband_support_weight=onset_config.onset_region_lowband_support_weight,
+                onset_region_harmonic_penalty_weight=onset_config.onset_region_harmonic_penalty_weight,
+                onset_region_pitch_floor_midi=onset_config.onset_region_pitch_floor_midi,
+                onset_region_pitch_ceiling_midi=onset_config.onset_region_pitch_ceiling_midi,
             )
         )
 
@@ -171,6 +181,15 @@ class TabPipeline:
         accepted_dense_candidates: list[DenseNoteCandidate] = []
         onset_generated_candidates: list[OnsetNoteCandidate] = []
         onset_retained_candidates: list[OnsetNoteCandidate] = []
+        onset_generation_summary: dict[str, object] = {
+            "analyzed_region_count": 0,
+            "accepted_pitch_count": 0,
+            "rejected_weak_region_count": 0,
+            "average_region_pitch_confidence": None,
+            "octave_suppressed_count": 0,
+            "pitch_corrected_region_count": 0,
+            "accepted_pitch_range": {"min": None, "max": None},
+        }
         dense_note_fusion_candidates: list[dict[str, object]] = []
         dense_bar_fusion_candidates: list[dict[str, object]] = []
         sparse_region_rows: list[dict[str, object]] = []
@@ -183,6 +202,10 @@ class TabPipeline:
             onset_generated_candidates = self._generate_onset_candidates(
                 bass_wav,
                 onset_times=analysis_onset_times,
+            )
+            onset_generation_summary = self._onset_generation_summary(
+                onset_generated_candidates,
+                generator=getattr(self, "_onset_note_generator", None),
             )
             pre_cleanup_notes, onset_retained_candidates, onset_generation_mode = self._apply_onset_candidates(
                 base_notes=pre_cleanup_notes,
@@ -485,6 +508,13 @@ class TabPipeline:
                                 "accepted_note_count": int(len(onset_retained_candidates)),
                                 "rejected_note_count": int(max(0, len(onset_generated_candidates) - len(onset_retained_candidates))),
                                 "materially_changed_final_note_count": bool(len(onset_retained_candidates) > 0),
+                                "analyzed_region_count": int(onset_generation_summary.get("analyzed_region_count", 0)),
+                                "accepted_pitch_count": int(onset_generation_summary.get("accepted_pitch_count", len(onset_generated_candidates))),
+                                "rejected_weak_region_count": int(onset_generation_summary.get("rejected_weak_region_count", 0)),
+                                "average_region_pitch_confidence": onset_generation_summary.get("average_region_pitch_confidence"),
+                                "octave_suppressed_count": int(onset_generation_summary.get("octave_suppressed_count", 0)),
+                                "pitch_corrected_region_count": int(onset_generation_summary.get("pitch_corrected_region_count", 0)),
+                                "accepted_pitch_range": dict(onset_generation_summary.get("accepted_pitch_range", {"min": None, "max": None})),
                             },
                         ),
                     )
@@ -502,6 +532,13 @@ class TabPipeline:
                             "accepted_note_count": int(len(onset_retained_candidates)),
                             "rejected_note_count": int(max(0, len(onset_generated_candidates) - len(onset_retained_candidates))),
                             "materially_changed_final_note_count": bool(len(onset_retained_candidates) > 0),
+                            "analyzed_region_count": int(onset_generation_summary.get("analyzed_region_count", 0)),
+                            "accepted_pitch_count": int(onset_generation_summary.get("accepted_pitch_count", len(onset_generated_candidates))),
+                            "rejected_weak_region_count": int(onset_generation_summary.get("rejected_weak_region_count", 0)),
+                            "average_region_pitch_confidence": onset_generation_summary.get("average_region_pitch_confidence"),
+                            "octave_suppressed_count": int(onset_generation_summary.get("octave_suppressed_count", 0)),
+                            "pitch_corrected_region_count": int(onset_generation_summary.get("pitch_corrected_region_count", 0)),
+                            "accepted_pitch_range": dict(onset_generation_summary.get("accepted_pitch_range", {"min": None, "max": None})),
                         },
                     )
                 ),
@@ -1055,6 +1092,52 @@ class TabPipeline:
             return self._onset_note_generator.generate(bass_wav, onset_times=onset_times)
         except TypeError:
             return self._onset_note_generator.generate(bass_wav)
+
+    @staticmethod
+    def _onset_generation_summary(
+        onset_candidates: list[OnsetNoteCandidate],
+        *,
+        generator: object | None,
+    ) -> dict[str, object]:
+        generator_summary = getattr(generator, "last_generation_summary", None)
+        if isinstance(generator_summary, dict):
+            return {
+                "analyzed_region_count": int(generator_summary.get("analyzed_region_count", 0)),
+                "accepted_pitch_count": int(generator_summary.get("accepted_pitch_count", len(onset_candidates))),
+                "rejected_weak_region_count": int(generator_summary.get("rejected_weak_region_count", 0)),
+                "average_region_pitch_confidence": generator_summary.get("average_region_pitch_confidence"),
+                "octave_suppressed_count": int(generator_summary.get("octave_suppressed_count", 0)),
+                "pitch_corrected_region_count": int(generator_summary.get("pitch_corrected_region_count", 0)),
+                "accepted_pitch_range": dict(generator_summary.get("accepted_pitch_range", {"min": None, "max": None})),
+            }
+
+        confidences = [
+            float(candidate.support.get("region_pitch_confidence", candidate.confidence))
+            for candidate in onset_candidates
+            if isinstance(candidate.support.get("region_pitch_confidence", candidate.confidence), int | float)
+        ]
+        pitches = [int(candidate.pitch_midi) for candidate in onset_candidates]
+        return {
+            "analyzed_region_count": int(max(len(onset_candidates), max(
+                [int(candidate.support.get("analyzed_region_count", 0)) for candidate in onset_candidates] or [0]
+            ))),
+            "accepted_pitch_count": int(max(
+                len(onset_candidates),
+                max([int(candidate.support.get("accepted_pitch_count", 0)) for candidate in onset_candidates] or [0]),
+            )),
+            "rejected_weak_region_count": int(max(
+                [int(candidate.support.get("rejected_weak_region_count", 0)) for candidate in onset_candidates] or [0]
+            )),
+            "average_region_pitch_confidence": (
+                float(sum(confidences) / len(confidences)) if confidences else None
+            ),
+            "octave_suppressed_count": int(sum(1 for candidate in onset_candidates if candidate.support.get("octave_suppressed") is True)),
+            "pitch_corrected_region_count": int(sum(1 for candidate in onset_candidates if candidate.support.get("pitch_corrected") is True)),
+            "accepted_pitch_range": {
+                "min": int(min(pitches)) if pitches else None,
+                "max": int(max(pitches)) if pitches else None,
+            },
+        }
 
     @staticmethod
     def _apply_onset_candidates(

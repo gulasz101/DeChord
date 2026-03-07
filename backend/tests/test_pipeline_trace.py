@@ -9,6 +9,7 @@ from app.services.alphatex_exporter import SyncPoint
 from app.services.bass_transcriber import BasicPitchTranscriber, BassTranscriptionResult, RawNoteEvent
 from app.services.dense_note_generator import DenseNoteCandidate
 from app.services.fingering import FingeredNote
+from app.services.onset_note_generator import OnsetNoteCandidate
 from app.services.pipeline_trace import build_pipeline_trace_report
 from app.services.quantization import QuantizedNote
 from app.services.rhythm_grid import Bar
@@ -258,7 +259,12 @@ def test_tab_pipeline_emits_all_stage_metrics_and_consistent_counts(
     assert result.debug_info["quantized_note_count"] == pipeline_stats["final_notes"]["note_count"]
 
 
-def test_tab_pipeline_onset_trace_reports_region_pitch_metrics() -> None:
+def test_tab_pipeline_onset_trace_reports_region_pitch_metrics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DECHORD_ONSET_NOTE_GENERATOR_ENABLE", "1")
+    monkeypatch.setenv("DECHORD_ONSET_NOTE_GENERATOR_MODE", "merged")
+
     class FakeTranscriber:
         def transcribe(self, _bass_wav: Path) -> BassTranscriptionResult:
             return BassTranscriptionResult(
@@ -311,12 +317,11 @@ def test_tab_pipeline_onset_trace_reports_region_pitch_metrics() -> None:
             (),
             {
                 "generate": lambda self, _bass_wav, onset_times=None: [
-                    DenseNoteCandidate(
+                    OnsetNoteCandidate(
                         pitch_midi=33,
                         start_sec=0.10,
                         end_sec=0.24,
                         confidence=0.72,
-                        source_tag="onset_note_generator",
                         support={
                             "region_start_sec": 0.10,
                             "region_end_sec": 0.24,
@@ -329,12 +334,11 @@ def test_tab_pipeline_onset_trace_reports_region_pitch_metrics() -> None:
                             "rejected_weak_region_count": 1,
                         },
                     ),
-                    DenseNoteCandidate(
+                    OnsetNoteCandidate(
                         pitch_midi=35,
                         start_sec=0.34,
                         end_sec=0.46,
                         confidence=0.66,
-                        source_tag="onset_note_generator",
                         support={
                             "region_start_sec": 0.34,
                             "region_end_sec": 0.46,
