@@ -308,6 +308,35 @@ The backend stem splitter is configurable through environment variables and load
 | `DECHORD_STEM_ANALYSIS_GUITAR_SUBTRACT_WEIGHT` | `0.55` | Dedicated `guitar` stem bleed subtraction weight (`0.0` to `1.0`) when available. |
 | `DECHORD_STEM_ANALYSIS_NOISE_GATE_DB` | `-40` | Absolute post-refinement noise gate threshold in dBFS. |
 | `DECHORD_STEM_ANALYSIS_SELECTION_MODE` | `transcription` | Candidate selection mode for deterministic analysis-stem scoring. |
+| `DECHORD_PIPELINE_PRESET` | unset | Optional operating preset: `stable_baseline`, `balanced_benchmark`, or `distorted_bass_recall`. |
+
+### Pipeline Presets
+
+Use `DECHORD_PIPELINE_PRESET` when you want one explicit operating profile instead of tuning low-level note-generation flags by hand.
+
+- `stable_baseline`
+  - Intended pairing: `standard` quality.
+  - Benchmark harness pairing: `--config refinement`.
+  - Keeps analysis-stem refinement on, leaves ensemble off, and disables recall-expansion paths that were shown to be unstable or clearly worse.
+- `balanced_benchmark`
+  - Intended pairing: `high_accuracy_aggressive`.
+  - Benchmark harness pairing: `--config baseline`.
+  - Keeps the aggressive second-pass recovery path, but disables the dense-note-generator branch that drifted toward the historically rejected Phase 6 behavior.
+- `distorted_bass_recall`
+  - Intended pairing: `high_accuracy_aggressive`.
+  - Benchmark harness pairing: `--config baseline`.
+  - Leaves the dense-note-generator path enabled for Hysteria-like material, accepting a larger pitch-accuracy tradeoff in exchange for higher recall.
+
+When `DECHORD_PIPELINE_PRESET` is set, benchmark runs also default to the guarded resource-monitor profile used in the recommendation report:
+
+- `DECHORD_BENCH_RESOURCE_MONITOR=1`
+- `DECHORD_BENCH_MAX_MEMORY_MB=12000`
+- `DECHORD_BENCH_MAX_CHILD_PROCS=4`
+
+The recommended presets intentionally exclude:
+
+- full analysis-stem ensemble by default, because the gain was marginal relative to the runtime cost
+- upstream raw sparse-boost and Phase 6 hybrid-style dense recovery, because those paths produced non-practical or timeout-prone benchmark runs
 
 Example `backend/.env` for local tinkering:
 
