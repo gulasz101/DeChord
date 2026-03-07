@@ -8,7 +8,7 @@
 - [x] Run focused verification reruns with resource guardrails
 - [x] Write recommendation report
 - [x] Run relevant tests
-- [ ] Run `make reset`
+- [x] Run `make reset`
 - [ ] Mark plan complete
 
 ## Strategy Notes
