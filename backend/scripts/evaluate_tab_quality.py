@@ -6,8 +6,9 @@ import json
 import re
 import subprocess
 import sys
+import time
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -16,7 +17,7 @@ from app.services.bass_transcriber import BasicPitchTranscriber, RawNoteEvent
 from app.services.gp5_reference import ReferenceNote, ReferenceTab, parse_gp5_bass_track
 from app.services.tab_comparator import compare_tabs
 from app.services.tab_pipeline import TabPipeline
-from app.stems import split_to_stems
+from app.stems import build_bass_analysis_stem, split_to_stems
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 STEMS_CACHE = REPO_ROOT / "backend" / "stems" / "test_songs"
@@ -36,6 +37,7 @@ DURATION_MAP = {
 }
 OPEN_MIDI_BY_STRING = {1: 43, 2: 38, 3: 33, 4: 28}
 QUALITY_CHOICES = ["standard", "high_accuracy", "high_accuracy_aggressive"]
+BENCHMARK_CONFIG_CHOICES = ["baseline", "refinement", "full"]
 SONG_OVERRIDES: dict[str, dict[str, float | str | None]] = {
     "muse - hysteria": {"bpm": 94.0, "gp5_encoding": None},
     "iron maiden - the trooper": {"bpm": 162.0, "gp5_encoding": "latin1"},
@@ -47,6 +49,13 @@ class ResolvedInputs:
     song_name: str
     mp3_path: Path
     gp5_path: Path
+
+
+@dataclass(frozen=True)
+class BenchmarkConfig:
+    name: str
+    use_analysis_stem: bool
+    analysis_config: object | None
 
 
 def _slug_part(value: str) -> str:
@@ -124,6 +133,8 @@ def parse_cli_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--song-dir")
     parser.add_argument("--song")
     parser.add_argument("--quality", choices=QUALITY_CHOICES, default="high_accuracy_aggressive")
+    parser.add_argument("--config", choices=BENCHMARK_CONFIG_CHOICES, default="baseline")
+    parser.add_argument("--candidate-models")
     parser.add_argument("--phase")
     args = parser.parse_args(argv)
 
@@ -202,6 +213,52 @@ def validate_inputs(mp3_path: Path, gp5_path: Path) -> tuple[ReferenceTab, float
         raise ValueError(f"GP5 parsing returned zero notes: {gp5_path}")
 
     return reference, duration_seconds
+
+
+def resolve_benchmark_config(
+    config_name: str,
+    *,
+    candidate_models_override: str | None = None,
+) -> BenchmarkConfig:
+    from app.stems import _get_stem_analysis_config
+
+    if config_name == "baseline":
+        return BenchmarkConfig(name=config_name, use_analysis_stem=False, analysis_config=None)
+
+    base_config = _get_stem_analysis_config()
+    if config_name == "refinement":
+        return BenchmarkConfig(
+            name=config_name,
+            use_analysis_stem=True,
+            analysis_config=replace(
+                base_config,
+                enable_bass_refinement=True,
+                enable_model_ensemble=False,
+                candidate_models=[base_config.demucs_model],
+            ),
+        )
+
+    candidate_models: list[str]
+    if candidate_models_override:
+        candidate_models = [value.strip() for value in candidate_models_override.split(",") if value.strip()]
+    else:
+        candidate_models = [base_config.demucs_model, base_config.demucs_fallback_model]
+
+    deduped_candidate_models: list[str] = []
+    for candidate in [base_config.demucs_model, *candidate_models]:
+        if candidate not in deduped_candidate_models:
+            deduped_candidate_models.append(candidate)
+
+    return BenchmarkConfig(
+        name=config_name,
+        use_analysis_stem=True,
+        analysis_config=replace(
+            base_config,
+            enable_bass_refinement=True,
+            enable_model_ensemble=True,
+            candidate_models=deduped_candidate_models,
+        ),
+    )
 
 
 def _octave_confusion_metrics(source: dict[str, int]) -> dict[str, int]:
@@ -374,7 +431,42 @@ def build_transcription_source_audit(
     }
 
 
-def evaluate_inputs(resolved: ResolvedInputs, *, quality: str, phase: str | None = None) -> dict[str, object]:
+def _per_bar_difference_metrics(comparison) -> dict[str, object]:
+    per_bar = getattr(comparison, "per_bar", None)
+    if not per_bar:
+        return {
+            "average_per_bar_note_density_difference": 0.0,
+            "maximum_per_bar_difference": 0,
+            "per_bar_note_count_differences": [],
+        }
+
+    differences = [
+        {
+            "bar_index": int(bar_index),
+            "reference_note_count": int(metrics.ref_count),
+            "generated_note_count": int(metrics.gen_count),
+            "difference": int(metrics.gen_count - metrics.ref_count),
+            "absolute_difference": int(abs(metrics.gen_count - metrics.ref_count)),
+        }
+        for bar_index, metrics in sorted(per_bar.items())
+    ]
+    average_abs_difference = sum(row["absolute_difference"] for row in differences) / len(differences)
+    max_abs_difference = max(row["absolute_difference"] for row in differences)
+    return {
+        "average_per_bar_note_density_difference": average_abs_difference,
+        "maximum_per_bar_difference": max_abs_difference,
+        "per_bar_note_count_differences": differences,
+    }
+
+
+def evaluate_inputs(
+    resolved: ResolvedInputs,
+    *,
+    quality: str,
+    config_name: str = "baseline",
+    candidate_models_override: str | None = None,
+    phase: str | None = None,
+) -> dict[str, object]:
     reference, _duration_seconds = validate_inputs(resolved.mp3_path, resolved.gp5_path)
     song_name = resolved.song_name
     prefix = prefix_for_song_name(song_name)
@@ -389,19 +481,54 @@ def evaluate_inputs(resolved: ResolvedInputs, *, quality: str, phase: str | None
     print(f"Resolved GP5 path: {resolved.gp5_path}")
     print(f"Quality mode: {quality}")
     print(f"onset_recovery: {'enabled' if onset_recovery_enabled else 'disabled'}")
+    print(f"Benchmark config: {config_name}")
 
+    split_started = time.perf_counter()
     stems = split_to_stems(str(resolved.mp3_path), stem_dir)
+    split_runtime = time.perf_counter() - split_started
     bass = next(Path(stem.relative_path) for stem in stems if stem.stem_key == "bass")
     drums = next(Path(stem.relative_path) for stem in stems if stem.stem_key == "drums")
-    transcription = BasicPitchTranscriber().transcribe(bass)
+    benchmark_config = resolve_benchmark_config(config_name, candidate_models_override=candidate_models_override)
+    analysis_diagnostics: dict[str, object]
+    analysis_stem_path = bass
+    analysis_runtime = 0.0
+    if benchmark_config.use_analysis_stem:
+        analysis_started = time.perf_counter()
+        analysis_output_dir = stem_dir / "analysis" / benchmark_config.name
+        analysis_stem_result = build_bass_analysis_stem(
+            stems={stem.stem_key: Path(stem.relative_path) for stem in stems},
+            output_dir=analysis_output_dir,
+            analysis_config=benchmark_config.analysis_config,
+            source_audio_path=resolved.mp3_path,
+        )
+        analysis_runtime = time.perf_counter() - analysis_started
+        analysis_stem_path = analysis_stem_result.path
+        analysis_diagnostics = dict(analysis_stem_result.diagnostics)
+    else:
+        analysis_diagnostics = {
+            "selected_model": "raw_bass_stem",
+            "candidate_scores": {"raw_bass_stem": 0.0},
+            "ensemble_requested": 0,
+            "attempted_candidate_models": ["raw_bass_stem"],
+            "successful_candidate_models": ["raw_bass_stem"],
+            "bleed_subtraction_applied": 0,
+            "guitar_assisted_cancellation_available": 0,
+            "refinement_fallback_used": 0,
+        }
+
+    transcribe_started = time.perf_counter()
+    transcription = BasicPitchTranscriber().transcribe(analysis_stem_path)
+    transcription_runtime = time.perf_counter() - transcribe_started
     transcription_audit = build_transcription_audit(reference, transcription)
 
+    pipeline_started = time.perf_counter()
     result = TabPipeline().run(
-        bass,
+        analysis_stem_path,
         drums,
         bpm_hint=float(bpm_hint) if isinstance(bpm_hint, float) else None,
         tab_generation_quality_mode=quality,
     )
+    pipeline_runtime = time.perf_counter() - pipeline_started
 
     derived_tempo = float(result.debug_info.get("derived_bpm", result.tempo_used))
     grid_source = str(result.debug_info.get("rhythm_source", "unknown"))
@@ -417,6 +544,7 @@ def evaluate_inputs(resolved: ResolvedInputs, *, quality: str, phase: str | None
         subdivision=16,
         onset_tolerance_ms=30.0,
     )
+    per_bar_metrics = _per_bar_difference_metrics(comparison)
 
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     filename_prefix = f"{prefix}_{_slug_part(phase)}" if phase else prefix
@@ -429,6 +557,7 @@ def evaluate_inputs(resolved: ResolvedInputs, *, quality: str, phase: str | None
     metrics = {
         "song": song_name,
         "quality": quality,
+        "benchmark_config": benchmark_config.name,
         "tempo_used": result.tempo_used,
         "precision": comparison.precision,
         "recall": comparison.recall,
@@ -449,15 +578,32 @@ def evaluate_inputs(resolved: ResolvedInputs, *, quality: str, phase: str | None
         "total_ref_notes": comparison.total_ref_notes,
         "total_gen_notes": comparison.total_gen_notes,
         "total_matched": comparison.total_matched,
+        "total_note_count_difference": int(comparison.total_gen_notes - comparison.total_ref_notes),
+        "pitch_mismatches": int(comparison.total_matched - int(getattr(comparison, "total_pitch_matches", 0))),
+        "onset_mismatches": int(max(comparison.total_ref_notes - comparison.total_matched, 0)),
+        "octave_errors": int(
+            comparison.octave_confusion.get("octave_plus_12", 0) + comparison.octave_confusion.get("octave_minus_12", 0)
+        ),
+        "analysis_diagnostics": analysis_diagnostics,
+        "runtime_seconds": {
+            "split_to_stems": round(split_runtime, 4),
+            "build_analysis_stem": round(analysis_runtime, 4),
+            "transcribe_analysis_stem": round(transcription_runtime, 4),
+            "tab_pipeline": round(pipeline_runtime, 4),
+            "total": round(split_runtime + analysis_runtime + transcription_runtime + pipeline_runtime, 4),
+        },
+        **per_bar_metrics,
     }
 
     evaluation_context = {
         "resolved_mp3_path": str(resolved.mp3_path),
         "resolved_gp5_path": str(resolved.gp5_path),
         "quality_mode": quality,
+        "benchmark_config": benchmark_config.name,
         "onset_recovery_enabled": onset_recovery_enabled,
         "derived_tempo": derived_tempo,
         "grid_source": grid_source,
+        "analysis_stem_path": str(analysis_stem_path),
     }
 
     debug_info = {
@@ -469,8 +615,11 @@ def evaluate_inputs(resolved: ResolvedInputs, *, quality: str, phase: str | None
             "mp3": str(resolved.mp3_path),
             "gp5": str(resolved.gp5_path),
             "bass_stem": str(bass),
+            "analysis_stem": str(analysis_stem_path),
             "drums_stem": str(drums),
         },
+        "analysis_diagnostics": analysis_diagnostics,
+        "runtime_seconds": metrics["runtime_seconds"],
         "pipeline_debug": result.debug_info,
         "reference": {
             "tempo": reference.tempo,
@@ -502,7 +651,13 @@ def evaluate_inputs(resolved: ResolvedInputs, *, quality: str, phase: str | None
 def main(argv: list[str] | None = None) -> int:
     args = parse_cli_args(argv)
     resolved = resolve_input_paths(args)
-    output = evaluate_inputs(resolved, quality=args.quality, phase=args.phase)
+    output = evaluate_inputs(
+        resolved,
+        quality=args.quality,
+        config_name=args.config,
+        candidate_models_override=args.candidate_models,
+        phase=args.phase,
+    )
     print(json.dumps(output["metrics"], indent=2, sort_keys=True))
     print(f"metrics: {output['metrics_path']}")
     print(f"debug: {output['debug_path']}")
