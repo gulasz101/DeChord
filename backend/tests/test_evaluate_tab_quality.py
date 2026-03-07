@@ -219,7 +219,14 @@ def test_resolve_benchmark_config_full_enables_ensemble_and_candidate_selection(
     assert config.use_analysis_stem is True
     assert config.analysis_config.enable_bass_refinement is True
     assert config.analysis_config.enable_model_ensemble is True
-    assert config.analysis_config.candidate_models == ["htdemucs_ft", "htdemucs"]
+    expected_candidates: list[str] = []
+    for candidate in [
+        config.analysis_config.demucs_model,
+        config.analysis_config.demucs_fallback_model,
+    ]:
+        if candidate not in expected_candidates:
+            expected_candidates.append(candidate)
+    assert config.analysis_config.candidate_models == expected_candidates
 
 
 def test_resolve_benchmark_config_baseline_uses_raw_bass_stem() -> None:

@@ -7,7 +7,7 @@
 - [x] Update docs / README / report scripts if needed
 - [x] Run focused verification reruns with resource guardrails
 - [x] Write recommendation report
-- [ ] Run relevant tests
+- [x] Run relevant tests
 - [ ] Run `make reset`
 - [ ] Mark plan complete
 
