@@ -16,18 +16,18 @@
 - Create: `docs/plans/2026-03-07-subagent-summary-routing-design.md`
 - Create: `docs/plans/2026-03-07-subagent-summary-routing-implementation.md`
 
-- [ ] Step 1: Add the approved design doc for subagent-based summary routing.
-- [ ] Step 2: Add this implementation plan.
-- [ ] Step 3: Commit the planning artifacts with a commit message that references `docs/plans/2026-03-07-subagent-summary-routing-implementation.md`.
+- [x] Step 1: Add the approved design doc for subagent-based summary routing.
+- [x] Step 2: Add this implementation plan.
+- [x] Step 3: Commit the planning artifacts with a commit message that references `docs/plans/2026-03-07-subagent-summary-routing-implementation.md`.
 
 ### Task 2: Update the repo instruction policy
 
 **Files:**
 - Modify: `AGENTS.md`
 
-- [ ] Step 1: Update the completion-notification rules so final-summary preparation, SOPS decryption, and Telegram delivery must be delegated to a subagent whenever the environment supports subagents.
-- [ ] Step 2: Add an explicit fallback rule allowing the main agent to do the work only when subagents are unavailable.
-- [ ] Step 3: Commit the instruction update with a commit message that references `docs/plans/2026-03-07-subagent-summary-routing-implementation.md`.
+- [x] Step 1: Update the completion-notification rules so final-summary preparation, SOPS decryption, and Telegram delivery must be delegated to a subagent whenever the environment supports subagents.
+- [x] Step 2: Add an explicit fallback rule allowing the main agent to do the work only when subagents are unavailable.
+- [x] Step 3: Commit the instruction update with a commit message that references `docs/plans/2026-03-07-subagent-summary-routing-implementation.md`.
 
 ### Task 3: Final verification and completion
 
@@ -35,6 +35,6 @@
 - Modify: `docs/plans/2026-03-07-subagent-summary-routing-design.md`
 - Modify: `docs/plans/2026-03-07-subagent-summary-routing-implementation.md`
 
-- [ ] Step 1: Run `make reset`.
-- [ ] Step 2: Mark the completed plan tasks as `[x]`.
-- [ ] Step 3: Commit the final verification updates with a commit message that references `docs/plans/2026-03-07-subagent-summary-routing-implementation.md`.
+- [x] Step 1: Run `make reset`.
+- [x] Step 2: Mark the completed plan tasks as `[x]`.
+- [x] Step 3: Commit the final verification updates with a commit message that references `docs/plans/2026-03-07-subagent-summary-routing-implementation.md`.

@@ -1,8 +1,8 @@
 # Subagent Summary Routing Design
 
-- [ ] Confirm the desired delegation policy for handoff summaries and Telegram delivery.
-- [ ] Define how subagents should handle summary preparation, SOPS decryption, and notification sending.
-- [ ] Document the approved instruction change for future jobs.
+- [x] Confirm the desired delegation policy for handoff summaries and Telegram delivery.
+- [x] Define how subagents should handle summary preparation, SOPS decryption, and notification sending.
+- [x] Document the approved instruction change for future jobs.
 
 ## Goal
 
