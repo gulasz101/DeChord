@@ -1,0 +1,254 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+from app.services.alphatex_exporter import SyncPoint
+from app.services.bass_transcriber import BasicPitchTranscriber, BassTranscriptionResult, RawNoteEvent
+from app.services.dense_note_generator import DenseNoteCandidate
+from app.services.fingering import FingeredNote
+from app.services.pipeline_trace import build_pipeline_trace_report
+from app.services.quantization import QuantizedNote
+from app.services.rhythm_grid import Bar
+from app.services.tab_pipeline import TabPipeline
+
+
+def test_basic_pitch_transcriber_emits_stage_metrics() -> None:
+    raw_notes = [
+        RawNoteEvent(pitch_midi=40, start_sec=0.0, end_sec=0.24, confidence=0.95),
+        RawNoteEvent(pitch_midi=52, start_sec=0.25, end_sec=0.30, confidence=0.92),
+        RawNoteEvent(pitch_midi=40, start_sec=0.31, end_sec=0.56, confidence=0.94),
+        RawNoteEvent(pitch_midi=43, start_sec=0.80, end_sec=0.84, confidence=0.20),
+    ]
+
+    transcriber = BasicPitchTranscriber(
+        midi_transcribe_fn=lambda _path: b"MThd",
+        parse_notes_fn=lambda _midi_bytes: list(raw_notes),
+    )
+
+    result = transcriber.transcribe(Path("bass.wav"))
+
+    pipeline_stats = result.debug_info["pipeline_trace"]["pipeline_stats"]
+
+    assert set(pipeline_stats) == {"basic_pitch_raw", "pitch_stabilized", "admission_filtered"}
+    assert pipeline_stats["basic_pitch_raw"]["note_count"] == 4
+    assert pipeline_stats["pitch_stabilized"]["note_count"] == 3
+    assert pipeline_stats["admission_filtered"]["note_count"] == 2
+    assert pipeline_stats["admission_filtered"]["notes_removed_by_stage"] == 1
+    assert isinstance(pipeline_stats["pitch_stabilized"], dict)
+    assert isinstance(pipeline_stats["admission_filtered"], dict)
+
+
+def test_tab_pipeline_emits_all_stage_metrics_and_consistent_counts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stage1 = [
+        RawNoteEvent(pitch_midi=40, start_sec=0.0, end_sec=0.20, confidence=0.9),
+        RawNoteEvent(pitch_midi=40, start_sec=0.30, end_sec=0.50, confidence=0.9),
+    ]
+    stage2 = list(stage1)
+    stage3 = [stage1[0]]
+
+    class FakeTranscriber:
+        def transcribe(self, _bass_wav: Path) -> BassTranscriptionResult:
+            return BassTranscriptionResult(
+                engine="basic_pitch",
+                midi_bytes=b"MThd",
+                raw_notes=list(stage3),
+                debug_info={
+                    "pipeline_trace": {
+                        "pipeline_stats": {
+                            "basic_pitch_raw": {
+                                "note_count": 2,
+                                "average_duration_ms": 200.0,
+                                "median_duration_ms": 200.0,
+                                "short_note_threshold_ms": 80,
+                                "short_note_count": 0,
+                                "octave_jump_count": 0,
+                                "confidence_stats": {"mean": 0.9, "min": 0.9, "max": 0.9},
+                                "notes_added_by_stage": 0,
+                                "notes_removed_by_stage": 0,
+                                "notes_merged_by_stage": 0,
+                                "notes_altered_by_stage": 0,
+                            },
+                            "pitch_stabilized": {
+                                "note_count": 2,
+                                "average_duration_ms": 200.0,
+                                "median_duration_ms": 200.0,
+                                "short_note_threshold_ms": 80,
+                                "short_note_count": 0,
+                                "octave_jump_count": 0,
+                                "confidence_stats": {"mean": 0.9, "min": 0.9, "max": 0.9},
+                                "notes_added_by_stage": 0,
+                                "notes_removed_by_stage": 0,
+                                "notes_merged_by_stage": 0,
+                                "notes_altered_by_stage": 0,
+                            },
+                            "admission_filtered": {
+                                "note_count": 1,
+                                "average_duration_ms": 200.0,
+                                "median_duration_ms": 200.0,
+                                "short_note_threshold_ms": 80,
+                                "short_note_count": 0,
+                                "octave_jump_count": 0,
+                                "confidence_stats": {"mean": 0.9, "min": 0.9, "max": 0.9},
+                                "notes_added_by_stage": 0,
+                                "notes_removed_by_stage": 1,
+                                "notes_merged_by_stage": 0,
+                                "notes_altered_by_stage": 0,
+                            },
+                        }
+                    }
+                },
+            )
+
+    bars = [Bar(index=0, start_sec=0.0, end_sec=1.0, beats_sec=[0.0, 0.25, 0.5, 0.75])]
+    dense_candidates = [
+        DenseNoteCandidate(pitch_midi=40, start_sec=0.10, end_sec=0.18, confidence=0.92),
+        DenseNoteCandidate(pitch_midi=40, start_sec=0.20, end_sec=0.28, confidence=0.91),
+    ]
+    quantize_inputs: list[RawNoteEvent] = []
+
+    def fake_quantize(events, _grid, **_kwargs):
+        quantize_inputs[:] = list(events)
+        return [
+            QuantizedNote(
+                bar_index=0,
+                beat_position=float(index),
+                duration_beats=0.5,
+                pitch_midi=note.pitch_midi,
+                start_sec=note.start_sec,
+                end_sec=note.end_sec,
+            )
+            for index, note in enumerate(events)
+        ]
+
+    pipeline = TabPipeline(
+        transcriber=FakeTranscriber(),
+        rhythm_extract_fn=lambda _drums, **_kwargs: ([0.0, 0.25, 0.5, 0.75], [0.0], "madmom"),
+        bar_builder_fn=lambda _beats, _downbeats, **_kwargs: bars,
+        onset_detect_fn=lambda _bass: [0.05, 0.12, 0.19, 0.26, 0.33, 0.40],
+        cleanup_fn=lambda events, **_kwargs: list(events),
+        quantize_fn=fake_quantize,
+        fingering_fn=lambda notes, **_kwargs: [
+            FingeredNote(
+                bar_index=note.bar_index,
+                beat_position=note.beat_position,
+                duration_beats=note.duration_beats,
+                pitch_midi=note.pitch_midi,
+                start_sec=note.start_sec,
+                end_sec=note.end_sec,
+                string=4,
+                fret=max(0, note.pitch_midi - 28),
+            )
+            for note in notes
+        ],
+        export_fn=lambda _notes, _bars, **_kwargs: ("\\tempo 120", [SyncPoint(bar_index=0, millisecond_offset=0)]),
+        dense_note_generator=type(
+            "FakeDenseGenerator",
+            (),
+            {
+                "generate": lambda self, **_kwargs: list(dense_candidates),
+            },
+        )(),
+    )
+    monkeypatch.setattr(TabPipeline, "_bar_rms_values", staticmethod(lambda _bass, _bars: [0.1]))
+    monkeypatch.setattr(TabPipeline, "_bar_onset_peaks", staticmethod(lambda _bass, _bars: [6]))
+    monkeypatch.setattr(
+        TabPipeline,
+        "_confidence_gate_dense_note_candidates",
+        staticmethod(lambda candidates, **_kwargs: ([candidates[0]], [{"accepted": True}, {"accepted": False}])),
+    )
+
+    result = pipeline.run(
+        Path("bass.wav"),
+        Path("drums.wav"),
+        bpm_hint=120.0,
+        tab_generation_quality_mode="high_accuracy_aggressive",
+    )
+
+    pipeline_stats = result.debug_info["pipeline_trace"]["pipeline_stats"]
+
+    assert set(pipeline_stats) == {
+        "basic_pitch_raw",
+        "pitch_stabilized",
+        "admission_filtered",
+        "dense_candidates",
+        "dense_accepted",
+        "final_notes",
+    }
+    assert pipeline_stats["dense_candidates"]["note_count"] == 2
+    assert pipeline_stats["dense_accepted"]["note_count"] == 1
+    assert pipeline_stats["dense_accepted"]["note_count"] <= pipeline_stats["dense_candidates"]["note_count"]
+    assert pipeline_stats["final_notes"]["note_count"] == len(quantize_inputs)
+    assert result.debug_info["quantized_note_count"] == pipeline_stats["final_notes"]["note_count"]
+
+
+def test_build_pipeline_trace_report_has_stable_json_structure() -> None:
+    report = build_pipeline_trace_report(
+        song_name="Muse - Hysteria",
+        pipeline_stats={
+            "basic_pitch_raw": {
+                "note_count": 2,
+                "average_duration_ms": 120.0,
+                "median_duration_ms": 120.0,
+                "short_note_threshold_ms": 80,
+                "short_note_count": 1,
+                "octave_jump_count": 0,
+                "confidence_stats": {"mean": 0.8, "min": 0.7, "max": 0.9},
+                "notes_added_by_stage": 0,
+                "notes_removed_by_stage": 0,
+                "notes_merged_by_stage": 0,
+                "notes_altered_by_stage": 0,
+            },
+            "pitch_stabilized": {
+                "note_count": 1,
+                "average_duration_ms": 240.0,
+                "median_duration_ms": 240.0,
+                "short_note_threshold_ms": 80,
+                "short_note_count": 0,
+                "octave_jump_count": 0,
+                "confidence_stats": {"mean": 0.85, "min": 0.85, "max": 0.85},
+                "notes_added_by_stage": 0,
+                "notes_removed_by_stage": 1,
+                "notes_merged_by_stage": 1,
+                "notes_altered_by_stage": 1,
+            },
+        },
+    )
+
+    payload = json.loads(json.dumps(report, sort_keys=True))
+
+    assert payload == {
+        "pipeline_stats": {
+            "basic_pitch_raw": {
+                "average_duration_ms": 120.0,
+                "confidence_stats": {"max": 0.9, "mean": 0.8, "min": 0.7},
+                "median_duration_ms": 120.0,
+                "note_count": 2,
+                "notes_added_by_stage": 0,
+                "notes_altered_by_stage": 0,
+                "notes_merged_by_stage": 0,
+                "notes_removed_by_stage": 0,
+                "octave_jump_count": 0,
+                "short_note_count": 1,
+                "short_note_threshold_ms": 80,
+            },
+            "pitch_stabilized": {
+                "average_duration_ms": 240.0,
+                "confidence_stats": {"max": 0.85, "mean": 0.85, "min": 0.85},
+                "median_duration_ms": 240.0,
+                "note_count": 1,
+                "notes_added_by_stage": 0,
+                "notes_altered_by_stage": 1,
+                "notes_merged_by_stage": 1,
+                "notes_removed_by_stage": 1,
+                "octave_jump_count": 0,
+                "short_note_count": 0,
+                "short_note_threshold_ms": 80,
+            },
+        },
+        "song": "Muse - Hysteria",
+    }

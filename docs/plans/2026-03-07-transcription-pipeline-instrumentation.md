@@ -1,6 +1,6 @@
 [x] inspect transcription pipeline flow
-[ ] design stage metric schema
-[ ] add RED tests for pipeline metrics
+[x] design stage metric schema
+[x] add RED tests for pipeline metrics
 [ ] implement instrumentation hooks
 [ ] extend evaluation script
 [ ] run instrumentation benchmark
