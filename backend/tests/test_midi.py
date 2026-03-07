@@ -169,6 +169,46 @@ def test_estimate_monophonic_notes_short_clip_uses_legacy_backstop(tmp_path: Pat
     assert diagnostics["fallback_legacy_backstop_used"] in (0, 1)
 
 
+def test_estimate_monophonic_notes_from_wav_uses_pitch_stabilizer(tmp_path: Path, monkeypatch) -> None:
+    sr = 22050
+    duration_sec = 4.0
+    t = np.linspace(0.0, duration_sec, int(sr * duration_sec), endpoint=False)
+    audio = (0.22 * np.sin(2.0 * np.pi * 55.0 * t) * 32767.0).astype(np.int16)
+    wav_path = tmp_path / "long.wav"
+    with wave.open(str(wav_path), "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(sr)
+        wav_file.writeframes(audio.tobytes())
+
+    called: dict[str, object] = {}
+
+    def fake_stabilizer(**kwargs):
+        called["frame_count"] = len(kwargs["frame_midi"])
+        called["config"] = kwargs["config"]
+        return (
+            np.full(len(kwargs["frame_midi"]), 40, dtype=int),
+            [(0.0, duration_sec, 40, 0.92)],
+            {
+                "stabilizer_enabled": True,
+                "octave_corrections_applied": 2,
+                "harmonic_rechecks_applied": 1,
+                "suppressed_short_transitions": 3,
+                "merged_gap_regions": 1,
+            },
+        )
+
+    monkeypatch.setattr(midi_mod, "stabilize_bass_pitch_track", fake_stabilizer)
+
+    events, diagnostics = _estimate_monophonic_notes_from_wav(wav_path)
+
+    assert events == [(0.0, duration_sec, 40, 0.92)]
+    assert called["frame_count"]
+    assert diagnostics["fallback_pitch_stability_enabled"] == 1
+    assert diagnostics["fallback_pitch_short_transition_suppressions"] == 3
+    assert diagnostics["fallback_pitch_gap_merges"] == 1
+
+
 def test_preprocess_bass_for_fallback_transcription_uses_bass_focused_filters(
     tmp_path: Path,
     monkeypatch,

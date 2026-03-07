@@ -11,6 +11,7 @@ import numpy as np
 from mido import Message, MetaMessage, MidiFile, MidiTrack, second2tick
 
 from app.stems import StemAnalysisConfig, _get_stem_analysis_config
+from app.stems import _load_stem_env, _parse_bool_env, _parse_float_env_bounded, _parse_int_env
 
 MidiTranscribeFn = Callable[[Path, Path], None]
 FallbackTranscribeFn = Callable[[Path, Path], dict[str, object] | None]
@@ -21,6 +22,90 @@ class MidiTranscriptionResult:
     midi_bytes: bytes
     engine_used: str
     diagnostics: dict[str, object]
+
+
+DEFAULT_PITCH_STABILITY_ENABLE = True
+DEFAULT_PITCH_MIN_CONFIDENCE = 0.55
+DEFAULT_PITCH_TRANSITION_HYSTERESIS_FRAMES = 3
+DEFAULT_PITCH_OCTAVE_JUMP_PENALTY = 0.8
+DEFAULT_PITCH_MAX_CENTS_DRIFT_WITHIN_NOTE = 45.0
+DEFAULT_PITCH_MIN_NOTE_DURATION_MS = 70
+DEFAULT_PITCH_MERGE_GAP_MS = 40
+DEFAULT_PITCH_SMOOTHING_WINDOW_FRAMES = 5
+DEFAULT_PITCH_HARMONIC_RECHECK_ENABLE = True
+
+
+@dataclass(frozen=True)
+class PitchStabilityConfig:
+    pitch_stability_enable: bool = DEFAULT_PITCH_STABILITY_ENABLE
+    pitch_min_confidence: float = DEFAULT_PITCH_MIN_CONFIDENCE
+    pitch_transition_hysteresis_frames: int = DEFAULT_PITCH_TRANSITION_HYSTERESIS_FRAMES
+    pitch_octave_jump_penalty: float = DEFAULT_PITCH_OCTAVE_JUMP_PENALTY
+    pitch_max_cents_drift_within_note: float = DEFAULT_PITCH_MAX_CENTS_DRIFT_WITHIN_NOTE
+    pitch_min_note_duration_ms: int = DEFAULT_PITCH_MIN_NOTE_DURATION_MS
+    pitch_merge_gap_ms: int = DEFAULT_PITCH_MERGE_GAP_MS
+    pitch_smoothing_window_frames: int = DEFAULT_PITCH_SMOOTHING_WINDOW_FRAMES
+    pitch_harmonic_recheck_enable: bool = DEFAULT_PITCH_HARMONIC_RECHECK_ENABLE
+
+
+def _get_pitch_stability_config() -> PitchStabilityConfig:
+    _load_stem_env()
+    min_confidence = _parse_float_env_bounded(
+        "DECHORD_PITCH_MIN_CONFIDENCE",
+        DEFAULT_PITCH_MIN_CONFIDENCE,
+        minimum=0.0,
+        maximum=1.0,
+    )
+    hysteresis_frames = _parse_int_env(
+        "DECHORD_PITCH_TRANSITION_HYSTERESIS_FRAMES",
+        DEFAULT_PITCH_TRANSITION_HYSTERESIS_FRAMES,
+    )
+    if hysteresis_frames is None or hysteresis_frames < 1:
+        hysteresis_frames = DEFAULT_PITCH_TRANSITION_HYSTERESIS_FRAMES
+    octave_jump_penalty = _parse_float_env_bounded(
+        "DECHORD_PITCH_OCTAVE_JUMP_PENALTY",
+        DEFAULT_PITCH_OCTAVE_JUMP_PENALTY,
+        minimum=0.0,
+        maximum=4.0,
+    )
+    max_cents_drift = _parse_float_env_bounded(
+        "DECHORD_PITCH_MAX_CENTS_DRIFT_WITHIN_NOTE",
+        DEFAULT_PITCH_MAX_CENTS_DRIFT_WITHIN_NOTE,
+        minimum=1.0,
+        maximum=2400.0,
+    )
+    min_note_duration_ms = _parse_int_env(
+        "DECHORD_PITCH_MIN_NOTE_DURATION_MS",
+        DEFAULT_PITCH_MIN_NOTE_DURATION_MS,
+    )
+    if min_note_duration_ms is None or min_note_duration_ms < 1:
+        min_note_duration_ms = DEFAULT_PITCH_MIN_NOTE_DURATION_MS
+    merge_gap_ms = _parse_int_env("DECHORD_PITCH_MERGE_GAP_MS", DEFAULT_PITCH_MERGE_GAP_MS)
+    if merge_gap_ms is None or merge_gap_ms < 0:
+        merge_gap_ms = DEFAULT_PITCH_MERGE_GAP_MS
+    smoothing_window = _parse_int_env(
+        "DECHORD_PITCH_SMOOTHING_WINDOW_FRAMES",
+        DEFAULT_PITCH_SMOOTHING_WINDOW_FRAMES,
+    )
+    if smoothing_window is None or smoothing_window < 1:
+        smoothing_window = DEFAULT_PITCH_SMOOTHING_WINDOW_FRAMES
+    return PitchStabilityConfig(
+        pitch_stability_enable=_parse_bool_env(
+            "DECHORD_PITCH_STABILITY_ENABLE",
+            DEFAULT_PITCH_STABILITY_ENABLE,
+        ),
+        pitch_min_confidence=min_confidence,
+        pitch_transition_hysteresis_frames=hysteresis_frames,
+        pitch_octave_jump_penalty=octave_jump_penalty,
+        pitch_max_cents_drift_within_note=max_cents_drift,
+        pitch_min_note_duration_ms=min_note_duration_ms,
+        pitch_merge_gap_ms=merge_gap_ms,
+        pitch_smoothing_window_frames=smoothing_window,
+        pitch_harmonic_recheck_enable=_parse_bool_env(
+            "DECHORD_PITCH_HARMONIC_RECHECK_ENABLE",
+            DEFAULT_PITCH_HARMONIC_RECHECK_ENABLE,
+        ),
+    )
 
 
 def _transcribe_with_basic_pitch(input_path: Path, output_path: Path) -> None:
@@ -154,6 +239,299 @@ def _apply_spectral_octave_verification(
             corrected[idx] = midi_note - 12
             correction_count += 1
     return corrected, correction_count
+
+
+def _frame_step_seconds(times: np.ndarray) -> float:
+    if times.size <= 1:
+        return 0.1
+    step = float(np.median(np.diff(times)))
+    return max(step, 1e-3)
+
+
+def _pitch_distance_semitones(a: int, b: int) -> float:
+    return float(abs(a - b))
+
+
+def _resolve_pitch_near_reference(
+    raw_pitch: int,
+    reference_pitch: int | None,
+    *,
+    max_pitch: int = 64,
+) -> tuple[int, int]:
+    if reference_pitch is None:
+        clipped = int(np.clip(raw_pitch, 28, max_pitch))
+        return clipped, int(clipped != raw_pitch)
+
+    candidates = [raw_pitch + (12 * shift) for shift in (-2, -1, 0, 1, 2)]
+    candidates = [candidate for candidate in candidates if 28 <= candidate <= max_pitch]
+    if not candidates:
+        clipped = int(np.clip(raw_pitch, 28, max_pitch))
+        return clipped, int(clipped != raw_pitch)
+    best = min(candidates, key=lambda candidate: (_pitch_distance_semitones(candidate, reference_pitch), abs(candidate - raw_pitch)))
+    return int(best), int(best != raw_pitch)
+
+
+def _majority_pitch(window: np.ndarray) -> int | None:
+    valid = [int(value) for value in window if int(value) > 0]
+    if not valid:
+        return None
+    counts = np.bincount(np.array(valid, dtype=int))
+    return int(np.argmax(counts))
+
+
+def _segment_pitch_regions(
+    stabilized: np.ndarray,
+    voiced_prob: np.ndarray,
+    times: np.ndarray,
+    *,
+    min_note_duration_ms: int,
+    merge_gap_ms: int,
+) -> tuple[list[tuple[float, float, int, float]], int]:
+    if stabilized.size == 0 or times.size == 0:
+        return [], 0
+
+    step_sec = _frame_step_seconds(times)
+    min_note_duration_sec = max(float(min_note_duration_ms) / 1000.0, step_sec * 0.5)
+    merge_gap_frames = max(int(round((float(merge_gap_ms) / 1000.0) / step_sec)), 0)
+    merged_gap_regions = 0
+    working = np.array(stabilized, copy=True)
+
+    if merge_gap_frames > 0 and working.size >= 3:
+        idx = 1
+        while idx < working.size - 1:
+            if working[idx] > 0:
+                idx += 1
+                continue
+            gap_start = idx
+            while idx < working.size and working[idx] <= 0:
+                idx += 1
+            gap_end = idx
+            gap_frames = gap_end - gap_start
+            if gap_start == 0 or gap_end >= working.size:
+                continue
+            left = int(working[gap_start - 1])
+            right = int(working[gap_end])
+            if left <= 0 or right <= 0 or left != right or gap_frames > merge_gap_frames:
+                continue
+            working[gap_start:gap_end] = left
+            merged_gap_regions += 1
+
+    events: list[tuple[float, float, int, float]] = []
+    idx = 0
+    while idx < working.size:
+        pitch = int(working[idx])
+        if pitch <= 0:
+            idx += 1
+            continue
+        start_idx = idx
+        while idx < working.size and int(working[idx]) == pitch:
+            idx += 1
+        end_idx = idx
+        start_sec = round(float(times[start_idx]), 6)
+        end_sec = round(float(times[end_idx - 1] + step_sec), 6)
+        if (end_sec - start_sec) < min_note_duration_sec:
+            continue
+        segment_conf = float(np.median(voiced_prob[start_idx:end_idx])) if end_idx > start_idx else 0.0
+        events.append((start_sec, end_sec, pitch, max(0.1, min(segment_conf, 1.0))))
+
+    return events, merged_gap_regions
+
+
+def _raw_pitch_frames_to_segments(
+    frame_midi: np.ndarray,
+    voiced_prob: np.ndarray,
+    times: np.ndarray,
+    *,
+    min_confidence: float,
+    min_note_duration_ms: int,
+) -> tuple[np.ndarray, list[tuple[float, float, int, float]]]:
+    if frame_midi.size == 0:
+        return np.array([], dtype=int), []
+    raw = np.full(frame_midi.shape, -1, dtype=int)
+    valid = np.isfinite(frame_midi) & (voiced_prob >= min_confidence)
+    raw[valid] = np.clip(np.rint(frame_midi[valid]).astype(int), 28, 64)
+    events, _ = _segment_pitch_regions(
+        raw,
+        voiced_prob,
+        times,
+        min_note_duration_ms=min_note_duration_ms,
+        merge_gap_ms=0,
+    )
+    return raw, events
+
+
+def stabilize_bass_pitch_track(
+    *,
+    frame_midi: np.ndarray,
+    voiced_prob: np.ndarray,
+    times: np.ndarray,
+    onset_frames: np.ndarray,
+    config: PitchStabilityConfig | None = None,
+    freqs: np.ndarray | None = None,
+    spectrogram: np.ndarray | None = None,
+) -> tuple[np.ndarray, list[tuple[float, float, int, float]], dict[str, object]]:
+    resolved_config = config or _get_pitch_stability_config()
+    frame_midi = np.asarray(frame_midi, dtype=float)
+    voiced_prob = np.asarray(voiced_prob, dtype=float)
+    times = np.asarray(times, dtype=float)
+    onset_frame_set = {int(frame) for frame in np.asarray(onset_frames, dtype=int).tolist() if int(frame) >= 0}
+
+    raw_track, raw_events = _raw_pitch_frames_to_segments(
+        frame_midi,
+        voiced_prob,
+        times,
+        min_confidence=resolved_config.pitch_min_confidence,
+        min_note_duration_ms=resolved_config.pitch_min_note_duration_ms,
+    )
+    if not resolved_config.pitch_stability_enable:
+        return raw_track, raw_events, {"stabilizer_enabled": False}
+
+    smoothed = _smooth_midi_track_viterbi(frame_midi, voiced_prob)
+    working = np.array(smoothed, copy=True)
+    octave_corrections = 0
+    harmonic_rechecks_applied = 0
+    smoothing_adjustments = int(
+        np.sum(
+            (raw_track > 0)
+            & (working > 0)
+            & (np.abs(raw_track - working) >= 12)
+        )
+    )
+    octave_corrections += smoothing_adjustments
+    if (
+        resolved_config.pitch_harmonic_recheck_enable
+        and freqs is not None
+        and spectrogram is not None
+        and working.size > 0
+    ):
+        spectral_corrected, spectral_corrections = _apply_spectral_octave_verification(
+            working,
+            np.asarray(freqs, dtype=float),
+            np.asarray(spectrogram, dtype=float),
+        )
+        working = spectral_corrected
+        harmonic_rechecks_applied = int(spectral_corrections)
+        octave_corrections += int(spectral_corrections)
+
+    step_sec = _frame_step_seconds(times)
+    merge_gap_frames = max(int(round((resolved_config.pitch_merge_gap_ms / 1000.0) / step_sec)), 0)
+    drift_semitones = max(resolved_config.pitch_max_cents_drift_within_note / 100.0, 0.1)
+    stabilized = np.full(frame_midi.shape, -1, dtype=int)
+    stable_pitch: int | None = None
+    candidate_pitch: int | None = None
+    candidate_frames = 0
+    weak_gap_frames = 0
+    active_gap_region = False
+    bridged_gap_regions = 0
+    octave_remaps = 0
+    continuity_holds = 0
+
+    for idx in range(frame_midi.size):
+        conf = float(voiced_prob[idx]) if idx < voiced_prob.size else 0.0
+        raw_pitch = int(working[idx]) if idx < working.size else -1
+        if raw_pitch <= 0 or conf < resolved_config.pitch_min_confidence:
+            if stable_pitch is not None and weak_gap_frames < merge_gap_frames:
+                stabilized[idx] = stable_pitch
+                weak_gap_frames += 1
+                if not active_gap_region:
+                    bridged_gap_regions += 1
+                    active_gap_region = True
+            else:
+                stabilized[idx] = -1
+            continue
+
+        weak_gap_frames = 0
+        active_gap_region = False
+        adjusted_pitch = raw_pitch
+        if stable_pitch is not None:
+            adjusted_pitch, remapped = _resolve_pitch_near_reference(raw_pitch, stable_pitch)
+            octave_remaps += remapped
+            if remapped:
+                octave_corrections += 1
+
+        if stable_pitch is None:
+            stable_pitch = adjusted_pitch
+            stabilized[idx] = adjusted_pitch
+            candidate_pitch = None
+            candidate_frames = 0
+            continue
+
+        pitch_delta = _pitch_distance_semitones(adjusted_pitch, stable_pitch)
+        if pitch_delta <= drift_semitones:
+            stabilized[idx] = stable_pitch
+            if np.isfinite(frame_midi[idx]) and abs(float(frame_midi[idx]) - float(stable_pitch)) >= 0.2:
+                continuity_holds += 1
+            candidate_pitch = None
+            candidate_frames = 0
+            continue
+
+        if candidate_pitch == adjusted_pitch:
+            candidate_frames += 1
+        else:
+            candidate_pitch = adjusted_pitch
+            candidate_frames = 1
+
+        hysteresis_frames = resolved_config.pitch_transition_hysteresis_frames
+        if idx in onset_frame_set:
+            hysteresis_frames = max(1, hysteresis_frames - 1)
+        if pitch_delta >= 12.0:
+            hysteresis_frames += max(1, int(round(resolved_config.pitch_octave_jump_penalty)))
+
+        local_window_start = max(0, idx - resolved_config.pitch_smoothing_window_frames + 1)
+        local_majority = _majority_pitch(stabilized[local_window_start:idx])
+        if local_majority is not None and local_majority == stable_pitch and pitch_delta >= 5.0:
+            hysteresis_frames += 1
+
+        if candidate_frames >= hysteresis_frames:
+            stable_pitch = adjusted_pitch
+            stabilized[idx] = stable_pitch
+            candidate_pitch = None
+            candidate_frames = 0
+        else:
+            stabilized[idx] = stable_pitch
+
+    suppressed_short_transitions = 0
+    if stabilized.size >= 3:
+        idx = 1
+        while idx < stabilized.size - 1:
+            pitch = int(stabilized[idx])
+            if pitch <= 0:
+                idx += 1
+                continue
+            start_idx = idx
+            while idx < stabilized.size and int(stabilized[idx]) == pitch:
+                idx += 1
+            end_idx = idx
+            left_pitch = int(stabilized[start_idx - 1]) if start_idx > 0 else -1
+            right_pitch = int(stabilized[end_idx]) if end_idx < stabilized.size else -1
+            if (
+                left_pitch > 0
+                and left_pitch == right_pitch
+                and left_pitch != pitch
+                and (end_idx - start_idx) < resolved_config.pitch_transition_hysteresis_frames
+                and start_idx not in onset_frame_set
+            ):
+                stabilized[start_idx:end_idx] = left_pitch
+                suppressed_short_transitions += 1
+                if abs(pitch - left_pitch) == 12:
+                    octave_corrections += 1
+
+    events, merged_gap_regions = _segment_pitch_regions(
+        stabilized,
+        voiced_prob,
+        times,
+        min_note_duration_ms=resolved_config.pitch_min_note_duration_ms,
+        merge_gap_ms=resolved_config.pitch_merge_gap_ms,
+    )
+    return stabilized, events, {
+        "stabilizer_enabled": True,
+        "octave_corrections_applied": int(octave_corrections),
+        "harmonic_rechecks_applied": int(harmonic_rechecks_applied),
+        "suppressed_short_transitions": int(
+            suppressed_short_transitions + continuity_holds + max(0, octave_remaps - harmonic_rechecks_applied)
+        ),
+        "merged_gap_regions": int(merged_gap_regions + bridged_gap_regions),
+    }
 
 
 def _stabilize_octaves_sequence(
@@ -314,64 +692,47 @@ def _estimate_monophonic_notes_from_wav(
             "fallback_octave_corrections_applied": 0,
             "fallback_spectral_octave_corrections_applied": 0,
             "fallback_sequence_octave_corrections_applied": 0,
+            "fallback_pitch_stability_enabled": int(_get_pitch_stability_config().pitch_stability_enable),
         }
 
     frame_midi = _hz_to_midi(np.asarray(f0, dtype=float))
     voiced_prob_arr = np.nan_to_num(np.asarray(voiced_prob, dtype=float), nan=0.0)
-    smoothed_midi = _smooth_midi_track_viterbi(frame_midi, voiced_prob_arr)
 
     stft = librosa.stft(audio, n_fft=frame_length, hop_length=hop_length)
     spectrogram = np.abs(stft)
     freqs = librosa.fft_frequencies(sr=sr, n_fft=frame_length)
-    spectral_midi, spectral_corrections = _apply_spectral_octave_verification(smoothed_midi, freqs, spectrogram)
     times = librosa.times_like(np.asarray(f0), sr=sr, hop_length=hop_length)
     if times.size == 0:
         return [], {
-            "fallback_octave_corrections_applied": spectral_corrections,
-            "fallback_spectral_octave_corrections_applied": spectral_corrections,
+            "fallback_octave_corrections_applied": 0,
+            "fallback_spectral_octave_corrections_applied": 0,
             "fallback_sequence_octave_corrections_applied": 0,
+            "fallback_pitch_stability_enabled": int(_get_pitch_stability_config().pitch_stability_enable),
         }
 
     onset_frames = librosa.onset.onset_detect(y=audio, sr=sr, hop_length=hop_length, units="frames")
-    boundaries = {0, len(spectral_midi)}
-    boundaries.update(int(frame) for frame in onset_frames if 0 <= int(frame) < len(spectral_midi))
-    for idx in range(1, len(spectral_midi)):
-        if (spectral_midi[idx] <= 0) != (spectral_midi[idx - 1] <= 0):
-            boundaries.add(idx)
-    ordered_bounds = sorted(boundaries)
-
-    raw_events: list[tuple[float, float, int, float]] = []
-    for start_idx, end_idx in zip(ordered_bounds, ordered_bounds[1:]):
-        if end_idx <= start_idx:
-            continue
-        segment = spectral_midi[start_idx:end_idx]
-        voiced_mask = segment > 0
-        if np.sum(voiced_mask) < 1:
-            continue
-        voiced_ratio = float(np.mean(voiced_mask))
-        if voiced_ratio < 0.35:
-            continue
-
-        pitch = int(round(float(np.median(segment[voiced_mask]))))
-        if pitch < 28 or pitch > 76:
-            continue
-        start_sec = float(times[start_idx])
-        end_base = float(times[end_idx - 1])
-        end_sec = end_base + float(hop_length / sr)
-        if end_sec - start_sec < 0.08:
-            continue
-        seg_conf = float(np.median(voiced_prob_arr[start_idx:end_idx][voiced_mask]))
-        raw_events.append((start_sec, end_sec, pitch, max(0.1, min(seg_conf, 1.0))))
-
-    stabilized_events, sequence_corrections = _stabilize_octaves_sequence(raw_events, window_sec=1.5)
+    pitch_stability_config = _get_pitch_stability_config()
+    _stabilized_frames, stabilized_events, stability_diagnostics = stabilize_bass_pitch_track(
+        frame_midi=frame_midi,
+        voiced_prob=voiced_prob_arr,
+        times=times,
+        onset_frames=np.asarray(onset_frames, dtype=int),
+        config=pitch_stability_config,
+        freqs=freqs,
+        spectrogram=spectrogram,
+    )
+    stabilized_events, sequence_corrections = _stabilize_octaves_sequence(stabilized_events, window_sec=1.5)
     if not stabilized_events:
         stabilized_events = _estimate_monophonic_notes_legacy_from_audio(audio, sr=sr)
 
     diagnostics = {
-        "fallback_octave_corrections_applied": int(spectral_corrections + sequence_corrections),
-        "fallback_spectral_octave_corrections_applied": int(spectral_corrections),
+        "fallback_octave_corrections_applied": int(stability_diagnostics.get("octave_corrections_applied", 0) + sequence_corrections),
+        "fallback_spectral_octave_corrections_applied": int(stability_diagnostics.get("harmonic_rechecks_applied", 0)),
         "fallback_sequence_octave_corrections_applied": int(sequence_corrections),
-        "fallback_legacy_backstop_used": int(not raw_events),
+        "fallback_pitch_stability_enabled": int(pitch_stability_config.pitch_stability_enable),
+        "fallback_pitch_short_transition_suppressions": int(stability_diagnostics.get("suppressed_short_transitions", 0)),
+        "fallback_pitch_gap_merges": int(stability_diagnostics.get("merged_gap_regions", 0)),
+        "fallback_legacy_backstop_used": int(not stabilized_events),
     }
     return stabilized_events, diagnostics
 
