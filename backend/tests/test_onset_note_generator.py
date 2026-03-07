@@ -167,6 +167,40 @@ def test_estimate_pitch_for_region_rejects_noisy_weak_regions() -> None:
     assert estimate is None
 
 
+def test_estimate_pitch_for_region_uses_frame_consensus_after_harmonic_attack() -> None:
+    sr = 8000
+    duration_sec = 0.20
+    total_samples = int(sr * duration_sec)
+    audio = []
+    for idx in range(total_samples):
+        t = idx / sr
+        if t < 0.035:
+            audio.append(
+                (0.04 * math.sin(2.0 * math.pi * 55.0 * t))
+                + (0.92 * math.sin(2.0 * math.pi * 110.0 * t))
+                + (0.25 * math.sin(2.0 * math.pi * 220.0 * t))
+            )
+            continue
+        audio.append(
+            (0.32 * math.sin(2.0 * math.pi * 55.0 * t))
+            + (0.58 * math.sin(2.0 * math.pi * 110.0 * t))
+            + (0.18 * math.sin(2.0 * math.pi * 165.0 * t))
+        )
+
+    estimate = estimate_pitch_for_region(
+        audio,
+        sr,
+        region=(0.0, duration_sec),
+        config=OnsetNoteGeneratorConfig(),
+    )
+
+    assert estimate is not None
+    assert estimate.pitch_midi == 33
+    assert estimate.support["frame_primary_pitch_midi"] == 33
+    assert estimate.support["frame_support_ratio"] >= 0.5
+    assert estimate.support["frame_candidate_count"] >= 3
+
+
 def test_generate_onset_note_candidates_emits_bounded_candidates() -> None:
     sr = 4000
     audio = _sine_pulse_signal(

@@ -2,13 +2,13 @@
 
 - [x] Inspect latest onset benchmark report and current onset note generator implementation
 - [x] Inspect current benchmark harness for resource-safety gaps
-- [ ] Add RED tests for regional pitch estimation and octave suppression
+- [x] Add RED tests for regional pitch estimation and octave suppression
 - [x] Add RED tests for resource monitoring and safe benchmark aborts
-- [ ] Add RED tests for trace metrics and real-path integration
+- [x] Add RED tests for trace metrics and real-path integration
 - [ ] Add typed config for onset-region pitch estimation
 - [x] Add lightweight resource monitoring to benchmark/test harness
-- [ ] Implement bass-specific regional pitch estimator
-- [ ] Implement octave-up harmonic suppression for onset regions
+- [x] Implement bass-specific regional pitch estimator
+- [x] Implement octave-up harmonic suppression for onset regions
 - [ ] Integrate improved regional pitch estimation into the real pipeline
 - [ ] Extend pipeline tracing for onset-region pitch metrics and resource-monitor metadata
 - [ ] Run targeted tests

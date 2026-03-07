@@ -1678,3 +1678,7 @@ def test_tab_pipeline_real_onset_path_uses_region_pitch_estimator_output(
     assert len(called_regions) == 2
     assert [(round(note.start_sec, 2), note.pitch_midi) for note in quantized_inputs] == [(0.10, 33), (0.34, 35)]
     assert result.debug_info["raw_note_source_summary"]["onset_note_generator"] == 2
+    assert (
+        result.debug_info["pipeline_trace"]["pipeline_stats"]["onset_candidates"]["candidate_flow"]["pitch_corrected_region_count"]
+        == 1
+    )
