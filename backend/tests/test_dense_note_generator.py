@@ -109,3 +109,21 @@ def test_dense_note_candidate_to_raw_note_preserves_core_fields() -> None:
     assert raw_note.start_sec == 1.0
     assert raw_note.end_sec == 1.14
     assert raw_note.confidence == 0.73
+
+
+def test_dense_note_generator_rejects_very_short_candidate_without_strong_support() -> None:
+    generator = DenseNoteGenerator(
+        pitch_estimator=lambda _audio, _sr, _onset, _end, _anchor_pitch: (40, 0.61),
+        audio_loader=lambda _path: ([0.0] * 32, 22050),
+    )
+
+    candidates = generator.generate(
+        bass_wav="ignored.wav",
+        window_start=0.0,
+        window_end=0.09,
+        onset_times=[0.02],
+        base_notes=[],
+        context_notes=[RawNoteEvent(pitch_midi=40, start_sec=0.3, end_sec=0.5, confidence=0.92)],
+    )
+
+    assert candidates == []

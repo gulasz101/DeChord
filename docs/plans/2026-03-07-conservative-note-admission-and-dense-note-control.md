@@ -2,8 +2,8 @@
 
 - [x] Inspect current Basic Pitch cleanup and dense-note generation behavior
 - [x] Inspect latest benchmark report for observed precision failure modes
-- [ ] Add RED tests for conservative note admission and octave-intrusion rejection
-- [ ] Add RED tests for dense-note overgeneration control
+- [x] Add RED tests for conservative note admission and octave-intrusion rejection
+- [x] Add RED tests for dense-note overgeneration control
 - [ ] Add typed config for note admission and dense-note conservatism
 - [ ] Implement stronger Basic Pitch note admission/cleanup
 - [ ] Implement stronger dense-note candidate suppression

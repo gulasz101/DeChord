@@ -132,3 +132,72 @@ def test_basic_pitch_transcriber_keeps_short_intrusion_when_pitch_stability_disa
 
     assert result.raw_notes == raw_notes
     assert result.debug_info["basicpitch_short_intrusions_suppressed"] == 0
+
+
+def test_basic_pitch_transcriber_rejects_isolated_short_low_confidence_note(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("DECHORD_PITCH_STABILITY_ENABLE", "1")
+    monkeypatch.setenv("DECHORD_NOTE_ADMISSION_ENABLE", "1")
+    monkeypatch.setenv("DECHORD_NOTE_MIN_DURATION_MS", "60")
+    monkeypatch.setenv("DECHORD_NOTE_LOW_CONFIDENCE_THRESHOLD", "0.45")
+
+    transcriber = BasicPitchTranscriber(
+        midi_transcribe_fn=lambda _path: b"MThd\x00\x00\x00\x06",
+        parse_notes_fn=lambda _midi: [
+            RawNoteEvent(pitch_midi=40, start_sec=0.0, end_sec=0.04, confidence=0.24),
+        ],
+    )
+
+    result = transcriber.transcribe(Path("bass.wav"))
+
+    assert result.raw_notes == []
+    assert result.debug_info["basicpitch_rejected_notes"] == 1
+
+
+def test_basic_pitch_transcriber_merges_same_pitch_fragments_across_short_octave_intrusion(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("DECHORD_PITCH_STABILITY_ENABLE", "1")
+    monkeypatch.setenv("DECHORD_NOTE_ADMISSION_ENABLE", "1")
+    monkeypatch.setenv("DECHORD_NOTE_MIN_DURATION_MS", "60")
+    monkeypatch.setenv("DECHORD_NOTE_OCTAVE_INTRUSION_MAX_DURATION_MS", "90")
+    monkeypatch.setenv("DECHORD_NOTE_MERGE_GAP_MS", "50")
+
+    raw_notes = [
+        RawNoteEvent(pitch_midi=40, start_sec=0.00, end_sec=0.18, confidence=0.93),
+        RawNoteEvent(pitch_midi=52, start_sec=0.18, end_sec=0.22, confidence=0.41),
+        RawNoteEvent(pitch_midi=40, start_sec=0.22, end_sec=0.42, confidence=0.91),
+    ]
+    transcriber = BasicPitchTranscriber(
+        midi_transcribe_fn=lambda _path: b"MThd\x00\x00\x00\x06",
+        parse_notes_fn=lambda _midi: raw_notes,
+    )
+
+    result = transcriber.transcribe(Path("bass.wav"))
+
+    assert result.raw_notes == [
+        RawNoteEvent(pitch_midi=40, start_sec=0.0, end_sec=0.42, confidence=0.93),
+    ]
+    assert result.debug_info["basicpitch_short_intrusions_suppressed"] == 1
+
+
+def test_basic_pitch_transcriber_keeps_real_repeated_same_pitch_notes_distinct(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("DECHORD_PITCH_STABILITY_ENABLE", "1")
+    monkeypatch.setenv("DECHORD_NOTE_ADMISSION_ENABLE", "1")
+    monkeypatch.setenv("DECHORD_NOTE_MERGE_GAP_MS", "60")
+
+    raw_notes = [
+        RawNoteEvent(pitch_midi=40, start_sec=0.00, end_sec=0.12, confidence=0.96),
+        RawNoteEvent(pitch_midi=40, start_sec=0.16, end_sec=0.28, confidence=0.97),
+    ]
+    transcriber = BasicPitchTranscriber(
+        midi_transcribe_fn=lambda _path: b"MThd\x00\x00\x00\x06",
+        parse_notes_fn=lambda _midi: raw_notes,
+    )
+
+    result = transcriber.transcribe(Path("bass.wav"))
+
+    assert result.raw_notes == raw_notes

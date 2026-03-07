@@ -171,3 +171,48 @@ def test_stabilize_bass_pitch_track_returns_raw_segmentation_when_disabled() -> 
         (0.2, 0.4, 40),
     ]
     assert diagnostics["stabilizer_enabled"] is False
+
+
+def test_get_pitch_stability_config_reads_note_admission_env_overrides(monkeypatch) -> None:
+    monkeypatch.setenv("DECHORD_NOTE_ADMISSION_ENABLE", "0")
+    monkeypatch.setenv("DECHORD_NOTE_MIN_DURATION_MS", "65")
+    monkeypatch.setenv("DECHORD_NOTE_LOW_CONFIDENCE_THRESHOLD", "0.47")
+    monkeypatch.setenv("DECHORD_NOTE_OCTAVE_INTRUSION_MAX_DURATION_MS", "95")
+    monkeypatch.setenv("DECHORD_NOTE_MERGE_GAP_MS", "52")
+    monkeypatch.setenv("DECHORD_DENSE_CANDIDATE_MIN_DURATION_MS", "58")
+    monkeypatch.setenv("DECHORD_DENSE_UNSTABLE_CONTEXT_PENALTY", "0.22")
+    monkeypatch.setenv("DECHORD_DENSE_OCTAVE_NEIGHBOR_PENALTY", "0.27")
+
+    config = _get_pitch_stability_config()
+
+    assert config.note_admission_enable is False
+    assert config.note_min_duration_ms == 65
+    assert config.note_low_confidence_threshold == pytest.approx(0.47)
+    assert config.note_octave_intrusion_max_duration_ms == 95
+    assert config.note_merge_gap_ms == 52
+    assert config.note_dense_candidate_min_duration_ms == 58
+    assert config.note_dense_unstable_context_penalty == pytest.approx(0.22)
+    assert config.note_dense_octave_neighbor_penalty == pytest.approx(0.27)
+
+
+def test_get_pitch_stability_config_falls_back_for_invalid_note_admission_env(monkeypatch) -> None:
+    monkeypatch.setenv("DECHORD_NOTE_ADMISSION_ENABLE", "not-a-bool")
+    monkeypatch.setenv("DECHORD_NOTE_MIN_DURATION_MS", "-5")
+    monkeypatch.setenv("DECHORD_NOTE_LOW_CONFIDENCE_THRESHOLD", "2.0")
+    monkeypatch.setenv("DECHORD_NOTE_OCTAVE_INTRUSION_MAX_DURATION_MS", "0")
+    monkeypatch.setenv("DECHORD_NOTE_MERGE_GAP_MS", "-20")
+    monkeypatch.setenv("DECHORD_DENSE_CANDIDATE_MIN_DURATION_MS", "-1")
+    monkeypatch.setenv("DECHORD_DENSE_UNSTABLE_CONTEXT_PENALTY", "-3")
+    monkeypatch.setenv("DECHORD_DENSE_OCTAVE_NEIGHBOR_PENALTY", "9")
+
+    config = _get_pitch_stability_config()
+
+    assert isinstance(config.note_admission_enable, bool)
+    assert config.note_admission_enable is True
+    assert config.note_min_duration_ms > 0
+    assert 0.0 <= config.note_low_confidence_threshold <= 1.0
+    assert config.note_octave_intrusion_max_duration_ms > 0
+    assert config.note_merge_gap_ms >= 0
+    assert config.note_dense_candidate_min_duration_ms > 0
+    assert 0.0 <= config.note_dense_unstable_context_penalty <= 1.0
+    assert 0.0 <= config.note_dense_octave_neighbor_penalty <= 1.0
