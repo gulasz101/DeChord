@@ -1,0 +1,12 @@
+{
+  "accepted_dense_candidates": null,
+  "command": "cd backend && uv run python scripts/evaluate_tab_quality.py --mp3 \"../test songs/Iron Maiden - The Trooper.mp3\" --gp5 \"../test songs/Iron Maiden - The Trooper.gp5\" --quality high_accuracy_aggressive --phase phase6_trooper_final",
+  "elapsed_minutes_before_abort": 15,
+  "phase": "phase6_trooper_final",
+  "reason": "Phase 6 dense-note generator remained CPU-bound and did not produce final artifacts in a reasonable benchmark window.",
+  "rejected_dense_candidates": null,
+  "rejected_dense_reasons": {},
+  "song": "Iron Maiden - The Trooper",
+  "source_counts": {},
+  "status": "benchmark_timeout"
+}

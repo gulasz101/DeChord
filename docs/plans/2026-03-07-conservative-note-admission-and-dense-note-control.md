@@ -1,0 +1,16 @@
+# 2026-03-07 Conservative Note Admission And Dense Note Control
+
+- [x] Inspect current Basic Pitch cleanup and dense-note generation behavior
+- [x] Inspect latest benchmark report for observed precision failure modes
+- [x] Add RED tests for conservative note admission and octave-intrusion rejection
+- [x] Add RED tests for dense-note overgeneration control
+- [x] Add typed config for note admission and dense-note conservatism
+- [x] Implement stronger Basic Pitch note admission/cleanup
+- [x] Implement stronger dense-note candidate suppression
+- [x] Integrate changes into the real transcription path
+- [x] Run targeted tests
+- [x] Run benchmark songs with updated logic
+- [x] Write benchmark report
+- [x] Run broader backend tests
+- [x] Run `make reset`
+- [x] Mark plan complete

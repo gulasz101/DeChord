@@ -1,0 +1,22 @@
+{
+  "basicpitch_octave_corrections_applied": 0,
+  "fallback_octave_corrections_applied": 0,
+  "mean_pitch_confidence": 1.0,
+  "non_octave_pitch_error_count": 44,
+  "note_duration_histogram": {
+    "0.1-0.25s": 33,
+    "0.25-0.5s": 4,
+    "<0.1s": 14
+  },
+  "octave_error_count": 1,
+  "pitch_histogram": {
+    "28": 3,
+    "31": 18,
+    "33": 21,
+    "36": 2,
+    "38": 5,
+    "40": 2
+  },
+  "raw_note_count": 51,
+  "transcription_engine_used": "basic_pitch"
+}

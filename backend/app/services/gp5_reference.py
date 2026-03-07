@@ -17,82 +17,89 @@ class ReferenceNote:
 
 
 @dataclass(frozen=True)
+class ReferenceBar:
+    index: int
+
+
+@dataclass(frozen=True)
 class ReferenceTab:
-    tempo: int
+    tempo: float
     time_signature: tuple[int, int]
-    bars: list[int]
+    bars: list[ReferenceBar]
     notes: list[ReferenceNote]
-    track_name: str
 
 
-def _duration_value_to_beats(value: int, *, dotted: bool) -> float:
-    """Convert pyguitarpro duration.value to beats (quarter = 1.0)."""
-    base = 4.0 / value
-    if dotted:
-        base *= 1.5
-    return base
+def _duration_to_beats(duration) -> float:
+    base_beats = 4.0 / float(duration.value)
+    if duration.isDotted:
+        base_beats *= 1.5
+    if getattr(duration, "isDoubleDotted", False):
+        base_beats *= 1.75
+
+    tuplet = duration.tuplet
+    if tuplet and tuplet.enters:
+        base_beats *= float(tuplet.times) / float(tuplet.enters)
+    return base_beats
 
 
-def _find_bass_track(song: guitarpro.Song) -> guitarpro.Track | None:
+def _select_bass_track(song) -> object:
     for track in song.tracks:
-        if len(track.strings) == 4:
-            values = sorted(s.value for s in track.strings)
-            if values == [28, 33, 38, 43]:
-                return track
-    for track in song.tracks:
-        if "bass" in track.name.lower():
+        if track.isPercussionTrack:
+            continue
+        if "bass" in track.name.lower() and len(track.strings) >= 4:
             return track
-    return None
+
+    # Fallback: select lowest 4-string track by tuning
+    candidates = [track for track in song.tracks if not track.isPercussionTrack and len(track.strings) >= 4]
+    if not candidates:
+        raise RuntimeError("No suitable non-percussion track found in GP5 file")
+
+    candidates.sort(key=lambda track: min(s.value for s in track.strings))
+    return candidates[0]
 
 
-def parse_gp5_bass_track(
-    gp5_path: Path,
-    *,
-    encoding: str | None = None,
-) -> ReferenceTab:
-    kwargs = {"encoding": encoding} if encoding else {}
-    song = guitarpro.parse(str(gp5_path), **kwargs)
+def parse_gp5_bass_track(path: Path, encoding: str | None = None) -> ReferenceTab:
+    gp_song = guitarpro.parse(str(path), encoding=encoding or "cp1252")
+    bass_track = _select_bass_track(gp_song)
 
-    bass_track = _find_bass_track(song)
-    if bass_track is None:
-        raise ValueError(f"No bass track found in {gp5_path.name}")
+    tempo = float(gp_song.tempo)
+    first_measure = bass_track.measures[0]
+    numerator = int(first_measure.timeSignature.numerator)
+    denominator = int(first_measure.timeSignature.denominator.value)
 
-    string_midi: dict[int, int] = {}
-    for s in bass_track.strings:
-        string_midi[s.number] = s.value
-
+    ticks_per_quarter = 960.0
+    bars = [ReferenceBar(index=i) for i, _ in enumerate(bass_track.measures)]
     notes: list[ReferenceNote] = []
-    bar_indices: list[int] = []
 
-    for m_idx, measure in enumerate(bass_track.measures):
-        bar_indices.append(m_idx)
-
-        beat_position = 0.0
-        for beat in measure.voices[0].beats:
-            dur_beats = _duration_value_to_beats(
-                beat.duration.value,
-                dotted=beat.duration.isDotted,
-            )
-            for note in beat.notes:
-                open_midi = string_midi.get(note.string, 0)
-                pitch_midi = open_midi + note.value
-                notes.append(
-                    ReferenceNote(
-                        bar_index=m_idx,
-                        beat_position=round(beat_position, 6),
-                        duration_beats=round(dur_beats, 6),
-                        pitch_midi=pitch_midi,
-                        string=note.string,
-                        fret=note.value,
+    for bar_index, measure in enumerate(bass_track.measures):
+        measure_start = float(measure.start)
+        for voice in measure.voices:
+            for beat in voice.beats:
+                beat_position = (float(beat.start) - measure_start) / ticks_per_quarter
+                duration_beats = _duration_to_beats(beat.duration)
+                for note in beat.notes:
+                    if note.type.name.lower() == "rest":
+                        continue
+                    string_idx = int(note.string)
+                    open_midi = bass_track.strings[string_idx - 1].value
+                    fret = int(note.value)
+                    pitch_midi = int(open_midi + fret)
+                    notes.append(
+                        ReferenceNote(
+                            bar_index=bar_index,
+                            beat_position=max(0.0, beat_position),
+                            duration_beats=duration_beats,
+                            pitch_midi=pitch_midi,
+                            string=string_idx,
+                            fret=fret,
+                        )
                     )
-                )
-            beat_position += dur_beats
 
-    ts = song.measureHeaders[0].timeSignature
+    notes.sort(key=lambda item: (item.bar_index, item.beat_position, item.pitch_midi, item.string, item.fret))
+
     return ReferenceTab(
-        tempo=song.tempo,
-        time_signature=(ts.numerator, ts.denominator.value),
-        bars=bar_indices,
+        tempo=tempo,
+        time_signature=(numerator, denominator),
+        bars=bars,
         notes=notes,
-        track_name=bass_track.name,
     )

@@ -1,0 +1,175 @@
+{
+  "pipeline_stats": {
+    "admission_filtered": {
+      "average_duration_ms": 148.29995054401064,
+      "confidence_stats": {
+        "max": 1.0,
+        "mean": 1.0,
+        "min": 1.0
+      },
+      "median_duration_ms": 92.70833333333428,
+      "note_count": 337,
+      "notes_added_by_stage": 0,
+      "notes_altered_by_stage": 0,
+      "notes_merged_by_stage": 0,
+      "notes_removed_by_stage": 0,
+      "octave_jump_count": 0,
+      "pitch_range": {
+        "max": 40,
+        "min": 28
+      },
+      "short_note_count": 0,
+      "short_note_threshold_ms": 60
+    },
+    "basic_pitch_raw": {
+      "average_duration_ms": 148.29995054401064,
+      "candidate_flow": {
+        "filter_rejection_histogram": {},
+        "filtered_out_note_count": 0,
+        "post_filter_note_count": 337,
+        "pre_filter_note_count": 337
+      },
+      "confidence_stats": {
+        "max": 1.0,
+        "mean": 1.0,
+        "min": 1.0
+      },
+      "median_duration_ms": 92.70833333333428,
+      "note_count": 337,
+      "notes_added_by_stage": 0,
+      "notes_altered_by_stage": 0,
+      "notes_merged_by_stage": 0,
+      "notes_removed_by_stage": 0,
+      "octave_jump_count": 0,
+      "pitch_range": {
+        "max": 40,
+        "min": 28
+      },
+      "short_note_count": 0,
+      "short_note_threshold_ms": 60
+    },
+    "dense_accepted": {
+      "average_duration_ms": 0.0,
+      "candidate_flow": {
+        "accepted_note_count": 0,
+        "proposed_note_count": 0,
+        "rejected_note_count": 0,
+        "rejection_histogram": {}
+      },
+      "confidence_stats": {
+        "max": null,
+        "mean": null,
+        "min": null
+      },
+      "median_duration_ms": 0.0,
+      "note_count": 0,
+      "notes_added_by_stage": 0,
+      "notes_altered_by_stage": 0,
+      "notes_merged_by_stage": 0,
+      "notes_removed_by_stage": 0,
+      "octave_jump_count": 0,
+      "pitch_range": {
+        "max": null,
+        "min": null
+      },
+      "short_note_count": 0,
+      "short_note_threshold_ms": 55
+    },
+    "dense_candidates": {
+      "average_duration_ms": 0.0,
+      "candidate_flow": {
+        "proposed_note_count": 0
+      },
+      "confidence_stats": {
+        "max": null,
+        "mean": null,
+        "min": null
+      },
+      "median_duration_ms": 0.0,
+      "note_count": 0,
+      "notes_added_by_stage": 0,
+      "notes_altered_by_stage": 0,
+      "notes_merged_by_stage": 0,
+      "notes_removed_by_stage": 0,
+      "octave_jump_count": 0,
+      "pitch_range": {
+        "max": null,
+        "min": null
+      },
+      "short_note_count": 0,
+      "short_note_threshold_ms": 55
+    },
+    "final_notes": {
+      "average_duration_ms": 127.2850122850122,
+      "confidence_stats": {
+        "max": null,
+        "mean": null,
+        "min": null
+      },
+      "median_duration_ms": 93.12500000001478,
+      "note_count": 407,
+      "notes_added_by_stage": 407,
+      "notes_altered_by_stage": 0,
+      "notes_merged_by_stage": 0,
+      "notes_removed_by_stage": 337,
+      "octave_jump_count": 0,
+      "pitch_range": {
+        "max": 40,
+        "min": 28
+      },
+      "short_note_count": 24,
+      "short_note_threshold_ms": 60
+    },
+    "onset_candidates": {
+      "average_duration_ms": 0.0,
+      "candidate_flow": {
+        "accepted_note_count": 0,
+        "generator_enabled": false,
+        "generator_mode": "fallback",
+        "materially_changed_final_note_count": false,
+        "proposed_note_count": 0,
+        "rejected_note_count": 0
+      },
+      "confidence_stats": {
+        "max": null,
+        "mean": null,
+        "min": null
+      },
+      "median_duration_ms": 0.0,
+      "note_count": 0,
+      "notes_added_by_stage": 0,
+      "notes_altered_by_stage": 0,
+      "notes_merged_by_stage": 0,
+      "notes_removed_by_stage": 0,
+      "octave_jump_count": 0,
+      "pitch_range": {
+        "max": null,
+        "min": null
+      },
+      "short_note_count": 0,
+      "short_note_threshold_ms": 40
+    },
+    "pitch_stabilized": {
+      "average_duration_ms": 148.29995054401064,
+      "confidence_stats": {
+        "max": 1.0,
+        "mean": 1.0,
+        "min": 1.0
+      },
+      "median_duration_ms": 92.70833333333428,
+      "note_count": 337,
+      "notes_added_by_stage": 0,
+      "notes_altered_by_stage": 0,
+      "notes_merged_by_stage": 0,
+      "notes_removed_by_stage": 0,
+      "octave_jump_count": 0,
+      "pitch_range": {
+        "max": 40,
+        "min": 28
+      },
+      "short_note_count": 0,
+      "short_note_threshold_ms": 60
+    }
+  },
+  "song": "bass"
+}

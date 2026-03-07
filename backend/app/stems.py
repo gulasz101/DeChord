@@ -3,21 +3,40 @@ from __future__ import annotations
 import logging
 import mimetypes
 import os
+import shutil
+import inspect
 import subprocess
 import tempfile
 from importlib import import_module
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
 import torch
 from dotenv import load_dotenv
 
+from app.pipeline_presets import active_pipeline_preset_name, resolve_pipeline_preset
+
 logger = logging.getLogger(__name__)
 
-# Model preference order: fine-tuned first, then standard
-DEMUCS_MODEL = os.getenv("DECHORD_DEMUCS_MODEL", "htdemucs_ft")
-DEMUCS_FALLBACK_MODEL = "htdemucs"
+DEFAULT_DEMUCS_MODEL = "htdemucs_ft"
+DEFAULT_DEMUCS_FALLBACK_MODEL = "htdemucs"
+DEFAULT_ANALYSIS_HIGHPASS_HZ = 35.0
+DEFAULT_ANALYSIS_LOWPASS_HZ = 300.0
+DEFAULT_ANALYSIS_SAMPLE_RATE = 22050
+DEFAULT_ANALYSIS_OTHER_SUBTRACT_WEIGHT = 0.30
+DEFAULT_ANALYSIS_GUITAR_SUBTRACT_WEIGHT = 0.55
+DEFAULT_ANALYSIS_NOISE_GATE_DB = -40.0
+DEFAULT_ANALYSIS_SELECTION_MODE = "transcription"
+DEFAULT_ANALYSIS_SCORING_WEIGHTS: dict[str, float] = {
+    "bass_energy": 3.0,
+    "low_energy": 1.5,
+    "other_correlation": 1.2,
+    "guitar_correlation": 1.6,
+    "spectral_flatness": 1.25,
+    "pitch_confidence": 0.9,
+    "transient_penalty": 1.0,
+}
 
 
 @dataclass
@@ -30,6 +49,7 @@ class StemResult:
 
 DemucsProgressCallback = Callable[[float, str], None]
 DemucsSeparateFn = Callable[[str, Path, DemucsProgressCallback], dict[str, Path]]
+CandidateSeparateFn = Callable[..., dict[str, Path]]
 
 
 @dataclass
@@ -41,6 +61,40 @@ class SeparationConfig:
     input_gain_db: float
     output_gain_db: float
     jobs: int | None
+
+
+@dataclass(frozen=True)
+class StemAnalysisConfig:
+    demucs_model: str
+    demucs_fallback_model: str
+    enable_bass_refinement: bool
+    analysis_highpass_hz: float
+    analysis_lowpass_hz: float
+    analysis_sample_rate: int
+    enable_model_ensemble: bool
+    candidate_models: list[str]
+    analysis_other_subtract_weight: float = DEFAULT_ANALYSIS_OTHER_SUBTRACT_WEIGHT
+    analysis_guitar_subtract_weight: float = DEFAULT_ANALYSIS_GUITAR_SUBTRACT_WEIGHT
+    analysis_noise_gate_db: float = DEFAULT_ANALYSIS_NOISE_GATE_DB
+    analysis_selection_mode: str = DEFAULT_ANALYSIS_SELECTION_MODE
+    scoring_weights: dict[str, float] = field(
+        default_factory=lambda: dict(DEFAULT_ANALYSIS_SCORING_WEIGHTS)
+    )
+
+
+@dataclass(frozen=True)
+class BassAnalysisStemResult:
+    path: Path
+    source_model: str
+    diagnostics: dict[str, object]
+
+
+@dataclass(frozen=True)
+class CandidateAnalysisResult:
+    model_name: str
+    analysis_path: Path
+    refined_audio: "np.ndarray"
+    diagnostics: dict[str, object]
 
 
 def check_stem_runtime_ready(
@@ -79,6 +133,23 @@ def _get_model_params(model_name: str) -> dict:
     }
 
 
+def _load_stem_env() -> None:
+    load_dotenv(dotenv_path=Path.cwd() / ".env", override=False)
+
+
+def _parse_bool_env(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    logger.warning("Invalid bool for %s=%r. Using default %s", name, raw, default)
+    return default
+
+
 def _parse_float_env(name: str, default: float) -> float:
     raw = os.getenv(name)
     if raw is None:
@@ -88,6 +159,23 @@ def _parse_float_env(name: str, default: float) -> float:
     except ValueError:
         logger.warning("Invalid float for %s=%r. Using default %s", name, raw, default)
         return default
+
+
+def _parse_float_env_bounded(
+    name: str,
+    default: float,
+    *,
+    minimum: float | None = None,
+    maximum: float | None = None,
+) -> float:
+    value = _parse_float_env(name, default)
+    if minimum is not None and value < minimum:
+        logger.warning("%s must be >= %s. Falling back to %s", name, minimum, default)
+        return default
+    if maximum is not None and value > maximum:
+        logger.warning("%s must be <= %s. Falling back to %s", name, maximum, default)
+        return default
+    return value
 
 
 def _parse_int_env(name: str, default: int | None) -> int | None:
@@ -101,10 +189,133 @@ def _parse_int_env(name: str, default: int | None) -> int | None:
         return default
 
 
-def _get_separation_config(model_name: str = DEMUCS_MODEL) -> SeparationConfig:
-    load_dotenv(dotenv_path=Path.cwd() / ".env", override=False)
+def _get_nonempty_env(name: str, default: str) -> str:
+    _load_stem_env()
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    value = raw.strip()
+    if value:
+        return value
+    logger.warning("Invalid empty value for %s. Using default %s", name, default)
+    return default
 
-    defaults = _get_model_params(model_name)
+
+def _get_demucs_model_name() -> str:
+    return _get_nonempty_env("DECHORD_DEMUCS_MODEL", DEFAULT_DEMUCS_MODEL)
+
+
+def _get_demucs_fallback_model_name() -> str:
+    return _get_nonempty_env("DECHORD_DEMUCS_FALLBACK_MODEL", DEFAULT_DEMUCS_FALLBACK_MODEL)
+
+
+def _parse_candidate_models_env(primary_model: str) -> list[str]:
+    raw = os.getenv("DECHORD_STEM_ANALYSIS_CANDIDATE_MODELS")
+    if raw is None:
+        return [primary_model]
+    candidates = [value.strip() for value in raw.split(",") if value.strip()]
+    if not candidates:
+        logger.warning(
+            "Invalid empty value for DECHORD_STEM_ANALYSIS_CANDIDATE_MODELS. Using default %s",
+            primary_model,
+        )
+        return [primary_model]
+    deduped: list[str] = []
+    for candidate in [primary_model, *candidates]:
+        if candidate not in deduped:
+            deduped.append(candidate)
+    return deduped
+
+
+def _get_stem_analysis_config() -> StemAnalysisConfig:
+    _load_stem_env()
+    preset_name = active_pipeline_preset_name()
+    preset = resolve_pipeline_preset(preset_name) if preset_name is not None else None
+    stem_defaults = preset.stem_defaults if preset is not None else None
+    demucs_model = _get_demucs_model_name()
+    demucs_fallback_model = _get_demucs_fallback_model_name()
+    analysis_highpass_hz = _parse_float_env(
+        "DECHORD_STEM_ANALYSIS_HIGHPASS_HZ",
+        DEFAULT_ANALYSIS_HIGHPASS_HZ,
+    )
+    if analysis_highpass_hz <= 0:
+        logger.warning(
+            "DECHORD_STEM_ANALYSIS_HIGHPASS_HZ must be > 0. Falling back to %s",
+            DEFAULT_ANALYSIS_HIGHPASS_HZ,
+        )
+        analysis_highpass_hz = DEFAULT_ANALYSIS_HIGHPASS_HZ
+
+    analysis_lowpass_hz = _parse_float_env(
+        "DECHORD_STEM_ANALYSIS_LOWPASS_HZ",
+        DEFAULT_ANALYSIS_LOWPASS_HZ,
+    )
+    if analysis_lowpass_hz <= analysis_highpass_hz:
+        logger.warning(
+            "DECHORD_STEM_ANALYSIS_LOWPASS_HZ must be > analysis highpass (%s). Falling back to %s",
+            analysis_highpass_hz,
+            DEFAULT_ANALYSIS_LOWPASS_HZ,
+        )
+        analysis_lowpass_hz = DEFAULT_ANALYSIS_LOWPASS_HZ
+
+    analysis_sample_rate = _parse_int_env(
+        "DECHORD_STEM_ANALYSIS_SAMPLE_RATE",
+        DEFAULT_ANALYSIS_SAMPLE_RATE,
+    )
+    if analysis_sample_rate is None or analysis_sample_rate <= 0:
+        logger.warning(
+            "DECHORD_STEM_ANALYSIS_SAMPLE_RATE must be > 0. Falling back to %s",
+            DEFAULT_ANALYSIS_SAMPLE_RATE,
+        )
+        analysis_sample_rate = DEFAULT_ANALYSIS_SAMPLE_RATE
+
+    analysis_other_subtract_weight = _parse_float_env_bounded(
+        "DECHORD_STEM_ANALYSIS_OTHER_SUBTRACT_WEIGHT",
+        DEFAULT_ANALYSIS_OTHER_SUBTRACT_WEIGHT,
+        minimum=0.0,
+        maximum=1.0,
+    )
+    analysis_guitar_subtract_weight = _parse_float_env_bounded(
+        "DECHORD_STEM_ANALYSIS_GUITAR_SUBTRACT_WEIGHT",
+        DEFAULT_ANALYSIS_GUITAR_SUBTRACT_WEIGHT,
+        minimum=0.0,
+        maximum=1.0,
+    )
+    analysis_noise_gate_db = _parse_float_env(
+        "DECHORD_STEM_ANALYSIS_NOISE_GATE_DB",
+        DEFAULT_ANALYSIS_NOISE_GATE_DB,
+    )
+    analysis_selection_mode = _get_nonempty_env(
+        "DECHORD_STEM_ANALYSIS_SELECTION_MODE",
+        DEFAULT_ANALYSIS_SELECTION_MODE,
+    )
+
+    return StemAnalysisConfig(
+        demucs_model=demucs_model,
+        demucs_fallback_model=demucs_fallback_model,
+        enable_bass_refinement=_parse_bool_env(
+            "DECHORD_STEM_ANALYSIS_ENABLE",
+            stem_defaults.enable_bass_refinement if stem_defaults is not None else True,
+        ),
+        analysis_highpass_hz=analysis_highpass_hz,
+        analysis_lowpass_hz=analysis_lowpass_hz,
+        analysis_sample_rate=analysis_sample_rate,
+        enable_model_ensemble=_parse_bool_env(
+            "DECHORD_STEM_ANALYSIS_ENSEMBLE",
+            stem_defaults.enable_model_ensemble if stem_defaults is not None else False,
+        ),
+        candidate_models=_parse_candidate_models_env(demucs_model),
+        analysis_other_subtract_weight=analysis_other_subtract_weight,
+        analysis_guitar_subtract_weight=analysis_guitar_subtract_weight,
+        analysis_noise_gate_db=analysis_noise_gate_db,
+        analysis_selection_mode=analysis_selection_mode,
+    )
+
+
+def _get_separation_config(model_name: str | None = None) -> SeparationConfig:
+    _load_stem_env()
+    resolved_model_name = model_name or _get_demucs_model_name()
+
+    defaults = _get_model_params(resolved_model_name)
     device = os.getenv("DECHORD_STEM_DEVICE", defaults["device"]).strip().lower()
     if device not in {"auto", "cpu", "mps", "cuda"}:
         logger.warning("Invalid DECHORD_STEM_DEVICE=%r. Falling back to 'auto'.", device)
@@ -151,10 +362,512 @@ def _db_to_linear(gain_db: float) -> float:
     return 10 ** (gain_db / 20.0)
 
 
+def _read_wav_mono(path: Path) -> tuple[int, "np.ndarray"]:
+    import numpy as np
+    from scipy.io import wavfile as scipy_wav
+
+    sample_rate, audio = scipy_wav.read(str(path))
+    audio_f32 = audio.astype(np.float32)
+    if np.issubdtype(audio.dtype, np.integer):
+        audio_f32 /= max(float(np.iinfo(audio.dtype).max), 1.0)
+    elif audio_f32.size:
+        audio_f32 = np.clip(audio_f32, -1.0, 1.0)
+    if audio_f32.ndim == 2:
+        audio_f32 = np.mean(audio_f32, axis=1)
+    return int(sample_rate), np.asarray(audio_f32, dtype=np.float32)
+
+
+def _resample_audio(audio: "np.ndarray", source_rate: int, target_rate: int) -> "np.ndarray":
+    if source_rate == target_rate:
+        return audio
+    from scipy.signal import resample_poly
+
+    return resample_poly(audio, target_rate, source_rate).astype("float32")
+
+
+def _apply_analysis_filters(
+    audio: "np.ndarray",
+    *,
+    sample_rate: int,
+    highpass_hz: float,
+    lowpass_hz: float,
+) -> "np.ndarray":
+    from scipy.signal import butter, sosfiltfilt
+
+    nyquist = max(sample_rate / 2.0, 1.0)
+    hp = min(max(highpass_hz, 1.0), nyquist * 0.95)
+    lp = min(max(lowpass_hz, hp + 1.0), nyquist * 0.99)
+    highpass = butter(4, hp, btype="highpass", fs=sample_rate, output="sos")
+    lowpass = butter(4, lp, btype="lowpass", fs=sample_rate, output="sos")
+    filtered = sosfiltfilt(highpass, audio)
+    filtered = sosfiltfilt(lowpass, filtered)
+    return filtered.astype("float32")
+
+
+def _combine_bleed_tracks(
+    *,
+    target: "np.ndarray",
+    other_bleed: "np.ndarray | None",
+    guitar_bleed: "np.ndarray | None",
+    other_weight: float,
+    guitar_weight: float,
+) -> tuple["np.ndarray", list[str]]:
+    import numpy as np
+
+    if target.size == 0:
+        return target, []
+
+    adjusted = np.array(target, copy=True)
+    used_sources: list[str] = []
+
+    def subtract(bleed: "np.ndarray | None", weight: float, name: str) -> None:
+        nonlocal adjusted
+        if bleed is None or bleed.size == 0 or weight <= 0.0:
+            return
+        frame_count = min(adjusted.size, bleed.size)
+        if frame_count == 0:
+            return
+        adjusted[:frame_count] = adjusted[:frame_count] - (bleed[:frame_count] * weight)
+        used_sources.append(name)
+
+    subtract(other_bleed, other_weight, "other")
+    subtract(guitar_bleed, guitar_weight, "guitar")
+    return adjusted.astype("float32"), used_sources
+
+
+def _apply_noise_gate(audio: "np.ndarray", *, threshold_db: float) -> tuple["np.ndarray", int]:
+    import numpy as np
+
+    if audio.size == 0:
+        return audio, 0
+    threshold = max(10 ** (threshold_db / 20.0), 1e-5)
+    gated = np.where(np.abs(audio) >= threshold, audio, 0.0).astype("float32")
+    return gated, int(np.any(gated != audio))
+
+
+def _low_band_correlation(audio: "np.ndarray", bleed_audio: "np.ndarray | None", *, sample_rate: int) -> float:
+    import numpy as np
+
+    if bleed_audio is None or audio.size == 0 or bleed_audio.size == 0:
+        return 0.0
+    frame_count = min(audio.size, bleed_audio.size)
+    if frame_count < 32:
+        return 0.0
+    audio_view = _apply_analysis_filters(
+        audio[:frame_count],
+        sample_rate=sample_rate,
+        highpass_hz=35.0,
+        lowpass_hz=140.0,
+    )
+    bleed_view = _apply_analysis_filters(
+        bleed_audio[:frame_count],
+        sample_rate=sample_rate,
+        highpass_hz=35.0,
+        lowpass_hz=140.0,
+    )
+    if float(np.std(audio_view)) <= 1e-8 or float(np.std(bleed_view)) <= 1e-8:
+        return 0.0
+    corr = float(np.corrcoef(audio_view, bleed_view)[0, 1])
+    if not np.isfinite(corr):
+        return 0.0
+    return max(corr, 0.0)
+
+
+def _score_bass_analysis_candidate_components(
+    audio: "np.ndarray",
+    *,
+    sample_rate: int,
+    other_bleed_audio: "np.ndarray | None" = None,
+    guitar_bleed_audio: "np.ndarray | None" = None,
+    scoring_weights: dict[str, float] | None = None,
+) -> dict[str, float]:
+    import numpy as np
+
+    weights = scoring_weights or DEFAULT_ANALYSIS_SCORING_WEIGHTS
+    if audio.size == 0:
+        return {
+            "bass_energy": 0.0,
+            "low_energy": 0.0,
+            "other_correlation": 0.0,
+            "guitar_correlation": 0.0,
+            "spectral_flatness": 1.0,
+            "pitch_confidence": 0.0,
+            "transient_penalty": 0.0,
+            "total": 0.0,
+        }
+
+    spectrum = np.abs(np.fft.rfft(audio))
+    freqs = np.fft.rfftfreq(audio.size, d=1.0 / sample_rate)
+    bass_band = (freqs >= 35.0) & (freqs <= 320.0)
+    low_band = (freqs >= 35.0) & (freqs <= 120.0)
+    transient_band = (freqs >= 320.0) & (freqs <= 2200.0)
+    total_energy = float(np.sum(spectrum) + 1e-9)
+    bass_energy = float(np.sum(spectrum[bass_band])) / total_energy
+    low_energy = float(np.sum(spectrum[low_band])) / max(float(np.sum(spectrum[bass_band])), 1e-9)
+    transient_penalty = float(np.sum(spectrum[transient_band])) / total_energy
+
+    spectral_flatness = 1.0
+    pitch_confidence = 0.0
+    normalized_spectrum = spectrum[bass_band]
+    if normalized_spectrum.size and float(np.mean(normalized_spectrum)) > 0.0:
+        safe_spectrum = np.maximum(normalized_spectrum, 1e-9)
+        spectral_flatness = float(np.exp(np.mean(np.log(safe_spectrum))) / np.mean(safe_spectrum))
+        pitch_confidence = float(np.max(safe_spectrum) / np.mean(safe_spectrum))
+
+    other_correlation = _low_band_correlation(audio, other_bleed_audio, sample_rate=sample_rate)
+    guitar_correlation = _low_band_correlation(audio, guitar_bleed_audio, sample_rate=sample_rate)
+
+    total = (
+        bass_energy * weights["bass_energy"]
+        + low_energy * weights["low_energy"]
+        - other_correlation * weights["other_correlation"]
+        - guitar_correlation * weights["guitar_correlation"]
+        - spectral_flatness * weights["spectral_flatness"]
+        + pitch_confidence * weights["pitch_confidence"]
+        - transient_penalty * weights["transient_penalty"]
+    )
+    return {
+        "bass_energy": bass_energy,
+        "low_energy": low_energy,
+        "other_correlation": other_correlation,
+        "guitar_correlation": guitar_correlation,
+        "spectral_flatness": spectral_flatness,
+        "pitch_confidence": pitch_confidence,
+        "transient_penalty": transient_penalty,
+        "total": float(total),
+    }
+
+
+def _score_bass_analysis_candidate(
+    audio: "np.ndarray",
+    *,
+    sample_rate: int,
+    bleed_audio: "np.ndarray | None" = None,
+) -> float:
+    components = _score_bass_analysis_candidate_components(
+        audio,
+        sample_rate=sample_rate,
+        other_bleed_audio=bleed_audio,
+    )
+    return float(components["total"])
+
+
+def _select_best_candidate_model(
+    candidate_scores: dict[str, float],
+    candidate_order: list[str],
+) -> str:
+    if not candidate_scores or not candidate_order:
+        return DEFAULT_DEMUCS_MODEL
+    best_model = candidate_order[0]
+    best_score = candidate_scores.get(best_model, float("-inf"))
+    for model_name in candidate_order[1:]:
+        score = candidate_scores.get(model_name, float("-inf"))
+        if score > best_score:
+            best_model = model_name
+            best_score = score
+    return best_model
+
+
+def _write_wav_mono(path: Path, *, sample_rate: int, audio: "np.ndarray") -> None:
+    import numpy as np
+    from scipy.io import wavfile as scipy_wav
+
+    clipped = np.clip(audio, -1.0, 1.0)
+    pcm = (clipped * 32767.0).astype(np.int16)
+    scipy_wav.write(str(path), sample_rate, pcm)
+
+
+def _prepare_analysis_audio(
+    path: Path | None,
+    *,
+    config: StemAnalysisConfig,
+) -> "np.ndarray | None":
+    if path is None or not path.exists():
+        return None
+    sample_rate, audio = _read_wav_mono(path)
+    audio = _resample_audio(audio, sample_rate, config.analysis_sample_rate)
+    return _apply_analysis_filters(
+        audio,
+        sample_rate=config.analysis_sample_rate,
+        highpass_hz=config.analysis_highpass_hz,
+        lowpass_hz=config.analysis_lowpass_hz,
+    )
+
+
+def _refine_bass_candidate(
+    stems: dict[str, Path],
+    *,
+    config: StemAnalysisConfig,
+) -> tuple["np.ndarray", dict[str, object]]:
+    import numpy as np
+
+    bass_audio = _prepare_analysis_audio(stems.get("bass"), config=config)
+    if bass_audio is None:
+        raise RuntimeError("Bass stem missing; cannot build analysis stem.")
+
+    other_audio = _prepare_analysis_audio(stems.get("other"), config=config)
+    guitar_audio = _prepare_analysis_audio(stems.get("guitar"), config=config)
+
+    refined = np.array(bass_audio, copy=True)
+    bleed_sources_used: list[str] = []
+    if config.enable_bass_refinement:
+        refined, bleed_sources_used = _combine_bleed_tracks(
+            target=refined,
+            other_bleed=other_audio,
+            guitar_bleed=guitar_audio,
+            other_weight=config.analysis_other_subtract_weight,
+            guitar_weight=config.analysis_guitar_subtract_weight,
+        )
+        refined, gate_applied = _apply_noise_gate(
+            refined,
+            threshold_db=config.analysis_noise_gate_db,
+        )
+    else:
+        gate_applied = 0
+
+    scoring_components = _score_bass_analysis_candidate_components(
+        refined,
+        sample_rate=config.analysis_sample_rate,
+        other_bleed_audio=other_audio,
+        guitar_bleed_audio=guitar_audio,
+        scoring_weights=config.scoring_weights,
+    )
+    diagnostics = {
+        "has_other": other_audio is not None,
+        "has_guitar": guitar_audio is not None,
+        "bleed_sources_used": bleed_sources_used,
+        "subtract_weights": {
+            "other": config.analysis_other_subtract_weight if other_audio is not None else 0.0,
+            "guitar": config.analysis_guitar_subtract_weight if guitar_audio is not None else 0.0,
+        },
+        "noise_gate_db": config.analysis_noise_gate_db,
+        "noise_gate_applied": gate_applied,
+        "scoring_components": scoring_components,
+        "total_score": float(scoring_components["total"]),
+    }
+    return refined.astype("float32"), diagnostics
+
+
+def _build_candidate_analysis_from_stems(
+    *,
+    stems: dict[str, Path],
+    candidate_model: str,
+    candidate_output_dir: Path,
+    config: StemAnalysisConfig,
+) -> CandidateAnalysisResult:
+    refined_audio, diagnostics = _refine_bass_candidate(stems, config=config)
+    candidate_output_dir.mkdir(parents=True, exist_ok=True)
+    analysis_path = candidate_output_dir / "bass_analysis_candidate.wav"
+    _write_wav_mono(
+        analysis_path,
+        sample_rate=config.analysis_sample_rate,
+        audio=refined_audio,
+    )
+    return CandidateAnalysisResult(
+        model_name=candidate_model,
+        analysis_path=analysis_path,
+        refined_audio=refined_audio,
+        diagnostics=diagnostics,
+    )
+
+
+def _run_candidate_separation(
+    *,
+    source_audio_path: Path,
+    model_name: str,
+    output_dir: Path,
+    separate_fn: CandidateSeparateFn | None,
+) -> dict[str, Path]:
+    runner = separate_fn or _separate_with_demucs
+    output_dir.mkdir(parents=True, exist_ok=True)
+    signature = inspect.signature(runner)
+    if "model_name" in signature.parameters:
+        kwargs: dict[str, object] = {"model_name": model_name}
+        if "allow_fallback" in signature.parameters:
+            kwargs["allow_fallback"] = False
+        return runner(
+            str(source_audio_path),
+            output_dir,
+            lambda _pct, _msg: None,
+            **kwargs,
+        )
+    return runner(str(source_audio_path), output_dir, lambda _pct, _msg: None)
+
+
+def _candidate_models_for_analysis(config: StemAnalysisConfig) -> list[str]:
+    if config.enable_model_ensemble:
+        return config.candidate_models
+    return [config.demucs_model]
+
+
+def _should_reuse_supplied_stems(
+    *,
+    config: StemAnalysisConfig,
+    candidate_model: str,
+    stems: dict[str, Path],
+) -> bool:
+    return (
+        not config.enable_model_ensemble
+        and candidate_model == config.demucs_model
+        and stems.get("bass") is not None
+    )
+
+
+def build_bass_analysis_stem(
+    *,
+    stems: dict[str, Path],
+    output_dir: Path,
+    analysis_config: StemAnalysisConfig | None = None,
+    source_audio_path: Path | None = None,
+    separate_fn: CandidateSeparateFn | None = None,
+) -> BassAnalysisStemResult:
+    import numpy as np
+
+    config = analysis_config or _get_stem_analysis_config()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / "bass_analysis.wav"
+
+    candidate_scores: dict[str, float] = {}
+    candidate_diagnostics: dict[str, object] = {}
+    candidate_results: dict[str, CandidateAnalysisResult] = {}
+    unavailable_candidate_models: list[str] = []
+    attempted_candidate_models = _candidate_models_for_analysis(config)
+
+    for candidate_model in attempted_candidate_models:
+        candidate_output_dir = output_dir / f"candidate_{candidate_model}"
+        try:
+            if _should_reuse_supplied_stems(
+                config=config,
+                candidate_model=candidate_model,
+                stems=stems,
+            ):
+                candidate_stems = stems
+            else:
+                if source_audio_path is None:
+                    raise RuntimeError("Source audio path required for ensemble candidate separation.")
+                candidate_stems = _run_candidate_separation(
+                    source_audio_path=source_audio_path,
+                    model_name=candidate_model,
+                    output_dir=candidate_output_dir,
+                    separate_fn=separate_fn,
+                )
+
+            candidate_result = _build_candidate_analysis_from_stems(
+                stems=candidate_stems,
+                candidate_model=candidate_model,
+                candidate_output_dir=candidate_output_dir,
+                config=config,
+            )
+            candidate_results[candidate_model] = candidate_result
+            candidate_scores[candidate_model] = float(candidate_result.diagnostics["total_score"])
+            candidate_diagnostics[candidate_model] = {
+                "model": candidate_model,
+                "source_model": candidate_model,
+                "available": True,
+                "success": True,
+                "status": "ok",
+                "selected": False,
+                "error": None,
+                "analysis_path": str(candidate_result.analysis_path),
+                **candidate_result.diagnostics,
+            }
+        except Exception as exc:
+            logger.warning("Bass analysis candidate %s failed: %s", candidate_model, exc)
+            unavailable_candidate_models.append(candidate_model)
+            candidate_diagnostics[candidate_model] = {
+                "model": candidate_model,
+                "source_model": candidate_model,
+                "available": False,
+                "success": False,
+                "status": "failed",
+                "selected": False,
+                "error": str(exc),
+            }
+
+    if not candidate_scores:
+        bass_path = stems.get("bass")
+        if bass_path is not None and bass_path.exists():
+            shutil.copyfile(bass_path, output_path)
+            candidate_diagnostics[config.demucs_model] = {
+                **candidate_diagnostics.get(config.demucs_model, {}),
+                "model": config.demucs_model,
+                "source_model": config.demucs_model,
+                "available": True,
+                "success": False,
+                "status": "fallback_raw_bass",
+                "selected": True,
+                "error": candidate_diagnostics.get(config.demucs_model, {}).get("error"),
+                "analysis_path": str(output_path),
+            }
+            return BassAnalysisStemResult(
+                path=output_path,
+                source_model=config.demucs_model,
+                diagnostics={
+                    "selected_model": config.demucs_model,
+                    "analysis_highpass_hz": config.analysis_highpass_hz,
+                    "analysis_lowpass_hz": config.analysis_lowpass_hz,
+                    "analysis_sample_rate": config.analysis_sample_rate,
+                    "analysis_selection_mode": config.analysis_selection_mode,
+                    "ensemble_requested": int(config.enable_model_ensemble),
+                    "attempted_candidate_models": attempted_candidate_models,
+                    "successful_candidate_models": [],
+                    "candidate_scores": {config.demucs_model: 0.0},
+                    "candidate_diagnostics": candidate_diagnostics,
+                    "unavailable_candidate_models": unavailable_candidate_models,
+                    "bleed_subtraction_applied": 0,
+                    "noise_gate_applied": 0,
+                    "analysis_rms": 0.0,
+                    "refinement_fallback_used": 1,
+                    "guitar_assisted_cancellation_available": 0,
+                },
+            )
+        raise RuntimeError("All bass analysis candidate models failed.")
+
+    successful_candidate_models = [
+        model_name for model_name in attempted_candidate_models if model_name in candidate_scores
+    ]
+    selected_model = _select_best_candidate_model(candidate_scores, successful_candidate_models)
+    selected_candidate = candidate_results[selected_model]
+    selected_audio = selected_candidate.refined_audio
+    candidate_diagnostics[selected_model]["selected"] = True
+    shutil.copyfile(selected_candidate.analysis_path, output_path)
+
+    diagnostics = {
+        "selected_model": selected_model,
+        "analysis_highpass_hz": config.analysis_highpass_hz,
+        "analysis_lowpass_hz": config.analysis_lowpass_hz,
+        "analysis_sample_rate": config.analysis_sample_rate,
+        "analysis_selection_mode": config.analysis_selection_mode,
+        "ensemble_requested": int(config.enable_model_ensemble),
+        "attempted_candidate_models": attempted_candidate_models,
+        "successful_candidate_models": successful_candidate_models,
+        "candidate_scores": candidate_scores,
+        "candidate_diagnostics": candidate_diagnostics,
+        "unavailable_candidate_models": unavailable_candidate_models,
+        "bleed_subtraction_applied": int(
+            bool(candidate_diagnostics[selected_model].get("bleed_sources_used"))
+        ),
+        "noise_gate_applied": int(candidate_diagnostics[selected_model].get("noise_gate_applied", 0)),
+        "analysis_rms": float(np.sqrt(np.mean(np.square(selected_audio))) if selected_audio.size else 0.0),
+        "refinement_fallback_used": 0,
+        "guitar_assisted_cancellation_available": int(
+            bool(candidate_diagnostics[selected_model].get("has_guitar"))
+        ),
+    }
+    return BassAnalysisStemResult(
+        path=output_path,
+        source_model=selected_model,
+        diagnostics=diagnostics,
+    )
+
+
 def _separate_with_demucs(
     input_audio: str,
     output_dir: Path,
     progress_callback: DemucsProgressCallback,
+    *,
+    model_name: str | None = None,
+    allow_fallback: bool = True,
 ) -> dict[str, Path]:
     logger.info("Demucs: checking runtime dependencies")
     check_stem_runtime_ready()
@@ -164,17 +877,27 @@ def _separate_with_demucs(
     output_dir.mkdir(parents=True, exist_ok=True)
     config = _get_separation_config()
     device = _detect_device() if config.device == "auto" else config.device
-    model_name = DEMUCS_MODEL
+    model_name = model_name or _get_demucs_model_name()
+    fallback_model_name = _get_demucs_fallback_model_name()
 
-    logger.info("Demucs: initializing separator model=%s device=%s", model_name, device)
+    logger.info(
+        "Demucs: initializing separator model=%s fallback_model=%s device=%s config=%s",
+        model_name,
+        fallback_model_name,
+        device,
+        config,
+    )
     try:
         separator = demucs.api.Separator(model=model_name, device=device)
     except Exception:
+        if not allow_fallback:
+            raise RuntimeError(f"Demucs model unavailable: {model_name}")
         logger.warning(
             "Demucs: model %s unavailable, falling back to %s",
-            model_name, DEMUCS_FALLBACK_MODEL,
+            model_name,
+            fallback_model_name,
         )
-        model_name = DEMUCS_FALLBACK_MODEL
+        model_name = fallback_model_name
         separator = demucs.api.Separator(model=model_name, device=device)
 
     params = _get_separation_config(model_name)

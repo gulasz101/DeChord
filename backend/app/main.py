@@ -1,5 +1,6 @@
 # backend/app/main.py
 import asyncio
+from dataclasses import replace
 import logging
 import os
 import re
@@ -11,7 +12,7 @@ from typing import Literal
 
 logger = logging.getLogger(__name__)
 
-from fastapi import FastAPI, Form, HTTPException, Response, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -21,8 +22,15 @@ from app.analysis import AnalysisResult, analyze_audio
 from app.db import close_db, execute, get_default_user, init_db
 from app.midi import transcribe_bass_stem_to_midi
 from app.models import ProcessMode
+from app.pipeline_presets import active_pipeline_preset_name, resolve_pipeline_preset
 from app.services.tab_pipeline import FingeringCollapseError, TabPipeline
-from app.stems import StemResult, split_to_stems
+from app.stems import (
+    BassAnalysisStemResult,
+    StemResult,
+    _get_stem_analysis_config,
+    build_bass_analysis_stem,
+    split_to_stems,
+)
 from app.tabs import build_gp5_from_tab_positions, map_midi_to_eadg_positions
 
 app = FastAPI(title="DeChord API")
@@ -43,6 +51,41 @@ STEMS_DIR.mkdir(exist_ok=True)
 jobs: dict[str, dict] = {}
 executor = ThreadPoolExecutor(max_workers=2)
 tab_pipeline = TabPipeline()
+
+
+def _get_analysis_config_for_quality_mode(
+    quality_mode: Literal["standard", "high_accuracy", "high_accuracy_aggressive"],
+):
+    config = _get_stem_analysis_config()
+    preset_name = active_pipeline_preset_name()
+    preset = resolve_pipeline_preset(preset_name) if preset_name is not None else None
+    quality_mode_auto_ensemble = (
+        preset.stem_defaults.auto_enable_quality_mode_ensemble
+        if preset is not None
+        else True
+    )
+    should_enable_ensemble = config.enable_model_ensemble or (
+        quality_mode_auto_ensemble
+        and quality_mode in {
+            "high_accuracy",
+            "high_accuracy_aggressive",
+        }
+    )
+    if should_enable_ensemble == config.enable_model_ensemble:
+        return config
+    return replace(config, enable_model_ensemble=should_enable_ensemble)
+
+
+def _get_uploaded_stems_analysis_config(
+    quality_mode: Literal["standard", "high_accuracy", "high_accuracy_aggressive"],
+):
+    config = _get_analysis_config_for_quality_mode(quality_mode)
+    if not config.enable_model_ensemble:
+        return config
+    logger.info(
+        "Uploaded Demucs stems route has no source mix; disabling ensemble candidate reseparation for analysis."
+    )
+    return replace(config, enable_model_ensemble=False)
 
 
 class NoteCreate(BaseModel):
@@ -280,6 +323,7 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                 jobs[job_id]["stems_error"] = None
                 bass_stem = next((stem for stem in stems if stem.stem_key == "bass"), None)
                 drums_stem = next((stem for stem in stems if stem.stem_key == "drums"), None)
+                analysis_stem_result: BassAnalysisStemResult | None = None
                 if bass_stem is None:
                     jobs[job_id]["midi_status"] = "failed"
                     jobs[job_id]["midi_error"] = "Bass stem missing; cannot transcribe MIDI."
@@ -293,6 +337,20 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                 else:
                     try:
                         tab_generation_quality = jobs[job_id].get("tab_generation_quality", "standard")
+                        stem_paths = {
+                            stem.stem_key: Path(stem.relative_path)
+                            for stem in stems
+                        }
+                        analysis_output_dir = STEMS_DIR / str(song_id) / "analysis"
+                        analysis_output_dir.mkdir(parents=True, exist_ok=True)
+                        analysis_stem_result = build_bass_analysis_stem(
+                            stems=stem_paths,
+                            output_dir=analysis_output_dir,
+                            analysis_config=_get_analysis_config_for_quality_mode(tab_generation_quality),
+                            source_audio_path=Path(audio_path),
+                        )
+                        jobs[job_id]["analysis_stem_path"] = str(analysis_stem_result.path)
+                        jobs[job_id]["analysis_stem_diagnostics"] = analysis_stem_result.diagnostics
                         set_stage(
                             "transcribing_bass_midi",
                             message="Transcribing bass stem to MIDI...",
@@ -300,7 +358,7 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                             stage_progress_pct=0,
                         )
                         tab_result = tab_pipeline.run(
-                            Path(bass_stem.relative_path),
+                            analysis_stem_result.path,
                             Path(drums_stem.relative_path),
                             bpm_hint=float(result.tempo) if result.tempo else None,
                             time_signature=(4, 4),
@@ -308,6 +366,7 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                             max_fret=24,
                             sync_every_bars=8,
                             tab_generation_quality_mode=tab_generation_quality,
+                            onset_recovery=jobs[job_id].get("tab_onset_recovery"),
                         )
                         midi_id = asyncio.run(
                             _persist_midi(
@@ -337,6 +396,11 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                         )
                         jobs[job_id]["tab_status"] = "complete"
                         jobs[job_id]["tab_error"] = None
+                        jobs[job_id]["tab_debug_info"] = {
+                            **tab_result.debug_info,
+                            "analysis_stem_path": str(analysis_stem_result.path),
+                            "analysis_stem_diagnostics": analysis_stem_result.diagnostics,
+                        }
                     except FingeringCollapseError as exc:
                         logger.error("Job %s: phase2 tab pipeline fingering collapse: %s", job_id, exc, exc_info=True)
                         jobs[job_id]["midi_status"] = "failed"
@@ -423,8 +487,10 @@ def _parse_time_signature(time_signature: str) -> tuple[int, int]:
 
 @app.post("/api/tab/from-demucs-stems")
 async def tab_from_demucs_stems(
-    bass: UploadFile,
-    drums: UploadFile,
+    bass: UploadFile = File(...),
+    drums: UploadFile = File(...),
+    other: UploadFile | None = File(None),
+    guitar: UploadFile | None = File(None),
     song_id: int | None = Form(None),
     bpm: float | None = Form(None),
     time_signature: str = Form("4/4"),
@@ -432,10 +498,13 @@ async def tab_from_demucs_stems(
     max_fret: int = Form(24),
     sync_every_bars: int = Form(8),
     tabGenerationQuality: Literal["standard", "high_accuracy", "high_accuracy_aggressive"] = Form("standard"),
+    onset_recovery: bool = Form(False),
 ):
     signature = _parse_time_signature(time_signature)
     bass_bytes = await bass.read()
     drums_bytes = await drums.read()
+    other_bytes = await other.read() if other is not None else b""
+    guitar_bytes = await guitar.read() if guitar is not None else b""
     if not bass_bytes:
         raise HTTPException(400, "bass file is empty")
     if not drums_bytes:
@@ -455,10 +524,44 @@ async def tab_from_demucs_stems(
     drums_path = stem_tmp_dir / "drums.wav"
     bass_path.write_bytes(bass_bytes)
     drums_path.write_bytes(drums_bytes)
+    uploaded_stems: dict[str, Path] = {
+        "bass": bass_path,
+        "drums": drums_path,
+    }
+    if other_bytes:
+        other_path = stem_tmp_dir / "other.wav"
+        other_path.write_bytes(other_bytes)
+        uploaded_stems["other"] = other_path
+    if guitar_bytes:
+        guitar_path = stem_tmp_dir / "guitar.wav"
+        guitar_path.write_bytes(guitar_bytes)
+        uploaded_stems["guitar"] = guitar_path
 
+    analysis_config = _get_uploaded_stems_analysis_config(tabGenerationQuality)
+    analysis_stem_result: BassAnalysisStemResult
     try:
+        try:
+            analysis_stem_result = build_bass_analysis_stem(
+                stems=uploaded_stems,
+                output_dir=stem_tmp_dir / "analysis",
+                analysis_config=analysis_config,
+                source_audio_path=None,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Uploaded stems analysis build failed; falling back to provided bass stem: %s",
+                exc,
+            )
+            analysis_stem_result = BassAnalysisStemResult(
+                path=bass_path,
+                source_model="uploaded_bass_fallback",
+                diagnostics={
+                    "selected_model": "uploaded_bass_fallback",
+                    "analysis_build_error": str(exc),
+                },
+            )
         result = tab_pipeline.run(
-            bass_path,
+            analysis_stem_result.path,
             drums_path,
             bpm_hint=bpm,
             time_signature=signature,
@@ -466,6 +569,7 @@ async def tab_from_demucs_stems(
             max_fret=max_fret,
             sync_every_bars=sync_every_bars,
             tab_generation_quality_mode=tabGenerationQuality,
+            onset_recovery=onset_recovery,
         )
     except FingeringCollapseError as exc:
         raise HTTPException(
@@ -512,7 +616,11 @@ async def tab_from_demucs_stems(
             {"bar_index": point.bar_index, "millisecond_offset": point.millisecond_offset}
             for point in result.sync_points
         ],
-        "debug_info": result.debug_info,
+        "debug_info": {
+            **result.debug_info,
+            "analysis_stem_path": str(analysis_stem_result.path),
+            "analysis_stem_diagnostics": analysis_stem_result.diagnostics,
+        },
     }
 
 
@@ -521,6 +629,7 @@ async def analyze(
     file: UploadFile,
     process_mode: ProcessMode = Form("analysis_only"),
     tabGenerationQuality: Literal["standard", "high_accuracy", "high_accuracy_aggressive"] = Form("standard"),
+    onset_recovery: bool | None = Form(None),
 ):
     job_id = uuid.uuid4().hex[:12]
     ext = Path(file.filename).suffix if file.filename else ".mp3"
@@ -541,6 +650,7 @@ async def analyze(
         "stage_progress_pct": 0,
         "process_mode": process_mode,
         "tab_generation_quality": tabGenerationQuality,
+        "tab_onset_recovery": onset_recovery,
         "stems_status": "queued" if process_mode == "analysis_and_stems" else "not_requested",
         "stems_error": None,
         "midi_status": "queued" if process_mode == "analysis_and_stems" else "not_requested",

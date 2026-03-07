@@ -1,0 +1,1063 @@
+{
+  "evaluation_context": {
+    "derived_tempo": 93.74999999999784,
+    "grid_source": "madmom",
+    "onset_recovery_enabled": true,
+    "quality_mode": "high_accuracy_aggressive",
+    "resolved_gp5_path": "/Users/wojciechgula/Projects/DeChord/test songs/Muse - Hysteria.gp5",
+    "resolved_mp3_path": "/Users/wojciechgula/Projects/DeChord/test songs/Muse - Hysteria.mp3"
+  },
+  "generated": {
+    "notes": 339
+  },
+  "pipeline_debug": {
+    "QUALITY_MODE_SUSPECT_SILENCE": true,
+    "after_cleanup_count": 314,
+    "after_exporting": 339,
+    "after_fingering": 339,
+    "after_fingering_count": 339,
+    "after_onset_recovery_count": 193,
+    "after_quantize_count": 339,
+    "audio_duration_sec": 226.58133786848072,
+    "beat_bpm_estimate_corrected": 93.74999999999784,
+    "beat_bpm_estimate_raw": 187.49999999999983,
+    "beat_count": 316,
+    "bpm_hint": 94.0,
+    "candidate_probe": {
+      "all_ok": true,
+      "candidate_map": {
+        "33": [
+          [
+            3,
+            0
+          ],
+          [
+            4,
+            5
+          ]
+        ],
+        "34": [
+          [
+            3,
+            1
+          ],
+          [
+            4,
+            6
+          ]
+        ],
+        "40": [
+          [
+            2,
+            2
+          ],
+          [
+            3,
+            7
+          ],
+          [
+            4,
+            12
+          ]
+        ],
+        "62": [
+          [
+            1,
+            19
+          ],
+          [
+            2,
+            24
+          ]
+        ]
+      },
+      "checked_pitches": [
+        34,
+        33,
+        40,
+        62
+      ],
+      "failures": {},
+      "max_fret": 24
+    },
+    "cleaned_note_count": 314,
+    "cleanup_params": {
+      "apply_octave_correction": true,
+      "merge_gap_sec": 0.0398936170212766,
+      "min_confidence": 0.15,
+      "min_duration_sec": 0.09574468085106383
+    },
+    "cleanup_stats": {
+      "merged_same_pitch": 13,
+      "merges_blocked_by_onset": 1,
+      "merges_blocked_by_tag": 0,
+      "octave_corrected": 1,
+      "removed_low_conf": 0,
+      "removed_overlap": 0,
+      "removed_short": 66
+    },
+    "cleanup_stats_second_pass": {
+      "merged_same_pitch": 107,
+      "merges_blocked_by_onset": 0,
+      "merges_blocked_by_tag": 0,
+      "octave_corrected": 1,
+      "removed_low_conf": 0,
+      "removed_overlap": 94,
+      "removed_short": 353
+    },
+    "derived_bpm": 93.74999999999784,
+    "downbeat_count": 79,
+    "fingered_note_count": 339,
+    "fingering": {
+      "dropped_note_count": 0,
+      "dropped_reasons": {},
+      "input_note_count": 339,
+      "max_fret": 24,
+      "octave_salvage_enabled": false,
+      "octave_salvaged_notes": 0,
+      "playable_note_count": 339,
+      "tuning_midi": {
+        "1": 43,
+        "2": 38,
+        "3": 33,
+        "4": 28
+      }
+    },
+    "grid_correction_applied": "double_time",
+    "notes_added_second_pass": 227,
+    "notes_per_bar_after_high_accuracy": [
+      5,
+      6,
+      2,
+      2,
+      4,
+      6,
+      2,
+      3,
+      5,
+      4,
+      4,
+      3,
+      6,
+      4,
+      6,
+      5,
+      4,
+      6,
+      5,
+      5,
+      5,
+      4,
+      7,
+      4,
+      6,
+      6,
+      2,
+      4,
+      4,
+      5,
+      5,
+      5,
+      5,
+      3,
+      4,
+      4,
+      6,
+      4,
+      4,
+      3,
+      4,
+      6,
+      5,
+      3,
+      3,
+      6,
+      2,
+      7,
+      4,
+      3,
+      4,
+      3,
+      5,
+      4,
+      4,
+      5,
+      3,
+      3,
+      5,
+      4,
+      4,
+      6,
+      5,
+      5,
+      4,
+      2,
+      7,
+      4,
+      6,
+      6,
+      5,
+      5,
+      3,
+      4,
+      2,
+      3,
+      5,
+      3
+    ],
+    "notes_per_bar_before_high_accuracy": [
+      2,
+      1,
+      1,
+      1,
+      2,
+      1,
+      0,
+      1,
+      1,
+      0,
+      2,
+      0,
+      1,
+      0,
+      1,
+      3,
+      0,
+      3,
+      4,
+      3,
+      1,
+      3,
+      2,
+      0,
+      3,
+      2,
+      0,
+      1,
+      1,
+      0,
+      1,
+      0,
+      2,
+      0,
+      1,
+      3,
+      0,
+      4,
+      3,
+      2,
+      1,
+      3,
+      1,
+      3,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      2,
+      1,
+      3,
+      5,
+      3,
+      1,
+      3,
+      2,
+      4,
+      0,
+      2,
+      5,
+      3,
+      0,
+      4,
+      2,
+      4,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0
+    ],
+    "onset_count": 640,
+    "onset_recovery_applied": true,
+    "onset_split_count": 5,
+    "quantized_note_count": 339,
+    "raw_note_count": 190,
+    "raw_notes_count": 190,
+    "rhythm_source": "madmom",
+    "song_bpm": 94.0,
+    "stage_counts": {
+      "cleaned": 314,
+      "exported": 339,
+      "fingered": 339,
+      "quantized": 339,
+      "raw": 190
+    },
+    "suspect_bars": [
+      {
+        "bar_index": 0,
+        "local_median_rms": 0.1438876281989337,
+        "onset_peaks": 70,
+        "rms": 0.08642263223945922,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 1,
+        "local_median_rms": 0.14002687206308348,
+        "onset_peaks": 69,
+        "rms": 0.07854878395332375,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 2,
+        "local_median_rms": 0.13616611592723327,
+        "onset_peaks": 71,
+        "rms": 0.1509671985416967,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 3,
+        "local_median_rms": 0.1259270029882109,
+        "onset_peaks": 74,
+        "rms": 0.14831592534957297,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 4,
+        "local_median_rms": 0.11568789004918859,
+        "onset_peaks": 38,
+        "rms": 0.14996412431436568,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 5,
+        "local_median_rms": 0.11478500407343661,
+        "onset_peaks": 36,
+        "rms": 0.13616611592723327,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 6,
+        "local_median_rms": 0.11388211809768464,
+        "onset_peaks": 37,
+        "rms": 0.1472557298752521,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 7,
+        "local_median_rms": 0.1121751030313104,
+        "onset_peaks": 41,
+        "rms": 0.1438876281989337,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 8,
+        "local_median_rms": 0.11046808796493615,
+        "onset_peaks": 37,
+        "rms": 0.11388211809768464,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 9,
+        "local_median_rms": 0.11046808796493615,
+        "onset_peaks": 36,
+        "rms": 0.11035507459123696,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 10,
+        "local_median_rms": 0.11046808796493615,
+        "onset_peaks": 27,
+        "rms": 0.11568789004918859,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 11,
+        "local_median_rms": 0.11046808796493615,
+        "onset_peaks": 31,
+        "rms": 0.09590090169746784,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 12,
+        "local_median_rms": 0.11035507459123696,
+        "onset_peaks": 41,
+        "rms": 0.09759649116926314,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 13,
+        "local_median_rms": 0.11020732691165519,
+        "onset_peaks": 39,
+        "rms": 0.09596727920566915,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 14,
+        "local_median_rms": 0.10491204567230651,
+        "onset_peaks": 30,
+        "rms": 0.11020732691165519,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 15,
+        "local_median_rms": 0.10002922656851661,
+        "onset_peaks": 47,
+        "rms": 0.11046808796493615,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 16,
+        "local_median_rms": 0.10002922656851661,
+        "onset_peaks": 39,
+        "rms": 0.08148042372643372,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 17,
+        "local_median_rms": 0.10002922656851661,
+        "onset_peaks": 35,
+        "rms": 0.10491204567230651,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 18,
+        "local_median_rms": 0.10002922656851661,
+        "onset_peaks": 39,
+        "rms": 0.09357690431259502,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 19,
+        "local_median_rms": 0.10002922656851661,
+        "onset_peaks": 40,
+        "rms": 0.12135787867310018,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 20,
+        "local_median_rms": 0.10491204567230651,
+        "onset_peaks": 39,
+        "rms": 0.09971869844902335,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 21,
+        "local_median_rms": 0.10491204567230651,
+        "onset_peaks": 40,
+        "rms": 0.09921168587000334,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 22,
+        "local_median_rms": 0.11020732691165519,
+        "onset_peaks": 42,
+        "rms": 0.08847805547857425,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 23,
+        "local_median_rms": 0.10491204567230651,
+        "onset_peaks": 32,
+        "rms": 0.10002922656851661,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 24,
+        "local_median_rms": 0.10466678836105954,
+        "onset_peaks": 29,
+        "rms": 0.12871091221298925,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 25,
+        "local_median_rms": 0.10466678836105954,
+        "onset_peaks": 40,
+        "rms": 0.13847219867722968,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 26,
+        "local_median_rms": 0.10466678836105954,
+        "onset_peaks": 35,
+        "rms": 0.13781895279749334,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 27,
+        "local_median_rms": 0.10466678836105954,
+        "onset_peaks": 38,
+        "rms": 0.1442801584738506,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 28,
+        "local_median_rms": 0.10174925889597362,
+        "onset_peaks": 37,
+        "rms": 0.11390652617854995,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 29,
+        "local_median_rms": 0.10466678836105954,
+        "onset_peaks": 41,
+        "rms": 0.10174925889597362,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 30,
+        "local_median_rms": 0.10621821301304368,
+        "onset_peaks": 31,
+        "rms": 0.11175056546238352,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 31,
+        "local_median_rms": 0.10890046742239952,
+        "onset_peaks": 41,
+        "rms": 0.10466678836105954,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 32,
+        "local_median_rms": 0.10890046742239952,
+        "onset_peaks": 37,
+        "rms": 0.09975737700376684,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 33,
+        "local_median_rms": 0.10621821301304368,
+        "onset_peaks": 36,
+        "rms": 0.10019020012949323,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 34,
+        "local_median_rms": 0.10466678836105954,
+        "onset_peaks": 32,
+        "rms": 0.10890046742239952,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 35,
+        "local_median_rms": 0.10174925889597362,
+        "onset_peaks": 41,
+        "rms": 0.09418073174241905,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 36,
+        "local_median_rms": 0.10174925889597362,
+        "onset_peaks": 35,
+        "rms": 0.0877942620523474,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 37,
+        "local_median_rms": 0.10174925889597362,
+        "onset_peaks": 32,
+        "rms": 0.10962282682954971,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 38,
+        "local_median_rms": 0.10466678836105954,
+        "onset_peaks": 35,
+        "rms": 0.10621821301304368,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 39,
+        "local_median_rms": 0.10466678836105954,
+        "onset_peaks": 37,
+        "rms": 0.12429552246710175,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 40,
+        "local_median_rms": 0.10621821301304368,
+        "onset_peaks": 36,
+        "rms": 0.09770221558903812,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 41,
+        "local_median_rms": 0.10890046742239952,
+        "onset_peaks": 35,
+        "rms": 0.09418224305601904,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 42,
+        "local_median_rms": 0.10962282682954971,
+        "onset_peaks": 44,
+        "rms": 0.0787532082933464,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 43,
+        "local_median_rms": 0.12429552246710175,
+        "onset_peaks": 40,
+        "rms": 0.08255134825613794,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 44,
+        "local_median_rms": 0.12521626382422588,
+        "onset_peaks": 33,
+        "rms": 0.12521626382422588,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 45,
+        "local_median_rms": 0.12733569582949728,
+        "onset_peaks": 38,
+        "rms": 0.1340815167030861,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 46,
+        "local_median_rms": 0.12927927683565352,
+        "onset_peaks": 40,
+        "rms": 0.12733569582949728,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 47,
+        "local_median_rms": 0.12927927683565352,
+        "onset_peaks": 41,
+        "rms": 0.12927927683565352,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 48,
+        "local_median_rms": 0.12927927683565352,
+        "onset_peaks": 35,
+        "rms": 0.1311414090889912,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 49,
+        "local_median_rms": 0.1311414090889912,
+        "onset_peaks": 37,
+        "rms": 0.13579878923559358,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 50,
+        "local_median_rms": 0.1311414090889912,
+        "onset_peaks": 41,
+        "rms": 0.1390339018528175,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 51,
+        "local_median_rms": 0.13177758446178214,
+        "onset_peaks": 39,
+        "rms": 0.1319285252869,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 52,
+        "local_median_rms": 0.13177758446178214,
+        "onset_peaks": 40,
+        "rms": 0.13988521178328878,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 53,
+        "local_median_rms": 0.13177758446178214,
+        "onset_peaks": 37,
+        "rms": 0.1426175914525476,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 54,
+        "local_median_rms": 0.1311414090889912,
+        "onset_peaks": 39,
+        "rms": 0.14832527847123855,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 55,
+        "local_median_rms": 0.1311414090889912,
+        "onset_peaks": 42,
+        "rms": 0.12679288651729387,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 56,
+        "local_median_rms": 0.1311414090889912,
+        "onset_peaks": 38,
+        "rms": 0.11681466671289914,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 57,
+        "local_median_rms": 0.12881537775638854,
+        "onset_peaks": 38,
+        "rms": 0.135467715539742,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 58,
+        "local_median_rms": 0.1286566666228167,
+        "onset_peaks": 42,
+        "rms": 0.1286566666228167,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 59,
+        "local_median_rms": 0.12679288651729387,
+        "onset_peaks": 48,
+        "rms": 0.13177758446178214,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 60,
+        "local_median_rms": 0.11681466671289914,
+        "onset_peaks": 41,
+        "rms": 0.11035831888355233,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 61,
+        "local_median_rms": 0.11100446640580348,
+        "onset_peaks": 37,
+        "rms": 0.12881537775638854,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 62,
+        "local_median_rms": 0.11071971529019839,
+        "onset_peaks": 37,
+        "rms": 0.11071971529019839,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 63,
+        "local_median_rms": 0.11035831888355233,
+        "onset_peaks": 46,
+        "rms": 0.11100446640580348,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 64,
+        "local_median_rms": 0.11035831888355233,
+        "onset_peaks": 44,
+        "rms": 0.07611676815239514,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 65,
+        "local_median_rms": 0.11035831888355233,
+        "onset_peaks": 37,
+        "rms": 0.09029591130971493,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 66,
+        "local_median_rms": 0.11035831888355233,
+        "onset_peaks": 38,
+        "rms": 0.08151471537457856,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 67,
+        "local_median_rms": 0.11035831888355233,
+        "onset_peaks": 38,
+        "rms": 0.08099760544302276,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 68,
+        "local_median_rms": 0.11035831888355233,
+        "onset_peaks": 42,
+        "rms": 0.08620428041985644,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 69,
+        "local_median_rms": 0.11071971529019839,
+        "onset_peaks": 41,
+        "rms": 0.10860148378800401,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 70,
+        "local_median_rms": 0.1096605995391012,
+        "onset_peaks": 36,
+        "rms": 0.10348237885598069,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 71,
+        "local_median_rms": 0.10860148378800401,
+        "onset_peaks": 44,
+        "rms": 0.07360025701742204,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 72,
+        "local_median_rms": 0.10604193132199236,
+        "onset_peaks": 33,
+        "rms": 0.13521078767608324,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 73,
+        "local_median_rms": 0.10860148378800401,
+        "onset_peaks": 43,
+        "rms": 0.145563291139505,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 74,
+        "local_median_rms": 0.11673407093724648,
+        "onset_peaks": 41,
+        "rms": 0.15118102516369603,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 75,
+        "local_median_rms": 0.12486665808648896,
+        "onset_peaks": 39,
+        "rms": 0.12918989410861614,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      },
+      {
+        "bar_index": 76,
+        "local_median_rms": 0.12556187294070784,
+        "onset_peaks": 39,
+        "rms": 0.12486665808648896,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": false,
+        "triggered_by_rms": false
+      },
+      {
+        "bar_index": 77,
+        "local_median_rms": 0.1262570877949267,
+        "onset_peaks": 38,
+        "rms": 0.1262570877949267,
+        "triggered_by_dense_sparse": true,
+        "triggered_by_onsets": true,
+        "triggered_by_rms": true
+      }
+    ],
+    "suspect_silence_bars_count": 78,
+    "tab_generation_quality_mode": "high_accuracy_aggressive",
+    "tab_last_sync_ms": 224240,
+    "tempo_used": 94.0,
+    "total_bars": 79
+  },
+  "reference": {
+    "bars": 87,
+    "notes": 1339,
+    "tempo": 94.0,
+    "time_signature": [
+      4,
+      4
+    ]
+  },
+  "song": "Muse - Hysteria",
+  "track": {
+    "bass_stem": "/Users/wojciechgula/Projects/DeChord/backend/stems/test_songs/muse__hysteria/bass.wav",
+    "drums_stem": "/Users/wojciechgula/Projects/DeChord/backend/stems/test_songs/muse__hysteria/drums.wav",
+    "gp5": "/Users/wojciechgula/Projects/DeChord/test songs/Muse - Hysteria.gp5",
+    "mp3": "/Users/wojciechgula/Projects/DeChord/test songs/Muse - Hysteria.mp3"
+  },
+  "transcription_audit": {
+    "basicpitch_octave_corrections_applied": 1,
+    "fallback_octave_corrections_applied": 0,
+    "mean_pitch_confidence": 1.0,
+    "non_octave_pitch_error_count": 167,
+    "note_duration_histogram": {
+      "0.1-0.25s": 96,
+      "0.25-0.5s": 26,
+      "0.5-1.0s": 3,
+      "<0.1s": 64,
+      ">=1.0s": 1
+    },
+    "octave_error_count": 6,
+    "pitch_histogram": {
+      "28": 11,
+      "29": 6,
+      "31": 41,
+      "33": 69,
+      "34": 2,
+      "35": 1,
+      "36": 5,
+      "37": 1,
+      "38": 38,
+      "40": 6,
+      "41": 3,
+      "43": 1,
+      "45": 1,
+      "46": 1,
+      "47": 2,
+      "48": 2
+    },
+    "raw_note_count": 190,
+    "transcription_engine_used": "basic_pitch"
+  }
+}

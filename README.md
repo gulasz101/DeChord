@@ -256,14 +256,14 @@ The repository now includes a browser-based DeChord practice app (FastAPI backen
   - per-stem stream endpoints (`/api/songs/{song_id}/stems`, `/api/audio/{song_id}/stems/{stem_key}`)
 - Bass artifact pipeline (EADG 4-string v2):
   - drums stem -> beat/downbeat bar grid
-  - bass stem -> MIDI artifact generation
+  - analysis-refined bass stem -> MIDI artifact generation
   - cleaned + quantized notes -> AlphaTex (`.alphatex`) tab generation with `\sync` points
   - status stages: `transcribing_bass_midi`, `generating_tabs`
   - artifact file endpoints:
     - `/api/songs/{song_id}/midi/file`
     - `/api/songs/{song_id}/tabs/file`
   - dedicated stems-to-tab endpoint:
-    - `POST /api/tab/from-demucs-stems`
+    - `POST /api/tab/from-demucs-stems` (accepts `bass` + `drums`, with optional `other` and `guitar` stems for analysis-only bleed cancellation)
 
 ### Start Locally
 
@@ -283,11 +283,12 @@ Open:
 
 ### Stem Separation Configuration (Environment)
 
-The backend stem splitter is configurable through environment variables and supports loading a local `backend/.env` file for quick laptop tuning.
+The backend stem splitter is configurable through environment variables and loads `backend/.env` at runtime, so Demucs model overrides apply even when the process was imported before env setup. Playback/download stems still use the raw separated files; tab/MIDI generation now builds a dedicated `bass_analysis.wav` artifact for transcription-focused preprocessing and diagnostics. In ensemble mode, each candidate model produces its own temporary analysis stem, gets scored for transcription suitability, and only the selected winner is persisted as the final `bass_analysis.wav`.
 
 | Variable | Default | Description |
 | --- | --- | --- |
 | `DECHORD_DEMUCS_MODEL` | `htdemucs_ft` | Primary Demucs model name. |
+| `DECHORD_DEMUCS_FALLBACK_MODEL` | `htdemucs` | Fallback Demucs model when the primary model is unavailable. |
 | `DECHORD_STEM_ENGINE` | `demucs` | Stem engine: `demucs` or `fallback`. |
 | `DECHORD_STEM_FALLBACK_ON_ERROR` | `0` | If `1`, fallback splitter runs when Demucs fails. |
 | `DECHORD_STEM_DEVICE` | `auto` | Compute device: `auto`, `cpu`, `mps`, `cuda`. |
@@ -297,16 +298,66 @@ The backend stem splitter is configurable through environment variables and supp
 | `DECHORD_STEM_INPUT_GAIN_DB` | `0.0` | Gain applied before separation. |
 | `DECHORD_STEM_OUTPUT_GAIN_DB` | `0.0` | Gain applied before writing output stems. |
 | `DECHORD_STEM_JOBS` | unset | Optional Demucs CPU jobs/thread workers (`>= 0`). |
+| `DECHORD_STEM_ANALYSIS_ENABLE` | `1` | If `1`, build a separate analysis-only bass stem for tab/MIDI generation. |
+| `DECHORD_STEM_ANALYSIS_HIGHPASS_HZ` | `35` | Analysis stem high-pass filter cutoff (`> 0`). |
+| `DECHORD_STEM_ANALYSIS_LOWPASS_HZ` | `300` | Analysis stem low-pass filter cutoff (`> high-pass`). |
+| `DECHORD_STEM_ANALYSIS_SAMPLE_RATE` | `22050` | Analysis stem sample rate for refinement and fallback transcription. |
+| `DECHORD_STEM_ANALYSIS_CANDIDATE_MODELS` | primary model | Comma-separated candidate Demucs models for analysis-only ensemble selection. |
+| `DECHORD_STEM_ANALYSIS_ENSEMBLE` | `0` | If `1`, run each configured candidate model for analysis-only scoring/selection. |
+| `DECHORD_STEM_ANALYSIS_OTHER_SUBTRACT_WEIGHT` | `0.30` | Generic `other` stem bleed subtraction weight (`0.0` to `1.0`). |
+| `DECHORD_STEM_ANALYSIS_GUITAR_SUBTRACT_WEIGHT` | `0.55` | Dedicated `guitar` stem bleed subtraction weight (`0.0` to `1.0`) when available. |
+| `DECHORD_STEM_ANALYSIS_NOISE_GATE_DB` | `-40` | Absolute post-refinement noise gate threshold in dBFS. |
+| `DECHORD_STEM_ANALYSIS_SELECTION_MODE` | `transcription` | Candidate selection mode for deterministic analysis-stem scoring. |
+| `DECHORD_PIPELINE_PRESET` | unset | Optional operating preset: `stable_baseline`, `balanced_benchmark`, or `distorted_bass_recall`. |
+
+### Pipeline Presets
+
+Use `DECHORD_PIPELINE_PRESET` when you want one explicit operating profile instead of tuning low-level note-generation flags by hand.
+
+- `stable_baseline`
+  - Intended pairing: `standard` quality.
+  - Benchmark harness pairing: `--config refinement`.
+  - Keeps analysis-stem refinement on, leaves ensemble off, and disables recall-expansion paths that were shown to be unstable or clearly worse.
+- `balanced_benchmark`
+  - Intended pairing: `high_accuracy_aggressive`.
+  - Benchmark harness pairing: `--config baseline`.
+  - Keeps the aggressive second-pass recovery path, but disables the dense-note-generator branch that drifted toward the historically rejected Phase 6 behavior.
+- `distorted_bass_recall`
+  - Intended pairing: `high_accuracy_aggressive`.
+  - Benchmark harness pairing: `--config baseline`.
+  - Leaves the dense-note-generator path enabled for Hysteria-like material, accepting a larger pitch-accuracy tradeoff in exchange for higher recall.
+
+When `DECHORD_PIPELINE_PRESET` is set, benchmark runs also default to the guarded resource-monitor profile used in the recommendation report:
+
+- `DECHORD_BENCH_RESOURCE_MONITOR=1`
+- `DECHORD_BENCH_MAX_MEMORY_MB=12000`
+- `DECHORD_BENCH_MAX_CHILD_PROCS=4`
+
+The recommended presets intentionally exclude:
+
+- full analysis-stem ensemble by default, because the gain was marginal relative to the runtime cost
+- upstream raw sparse-boost and Phase 6 hybrid-style dense recovery, because those paths produced non-practical or timeout-prone benchmark runs
 
 Example `backend/.env` for local tinkering:
 
 ```bash
+DECHORD_DEMUCS_MODEL=htdemucs_ft
+DECHORD_DEMUCS_FALLBACK_MODEL=htdemucs
 DECHORD_STEM_DEVICE=auto
 DECHORD_STEM_SEGMENT=7.8
 DECHORD_STEM_OVERLAP=0.25
 DECHORD_STEM_SHIFTS=0
 DECHORD_STEM_INPUT_GAIN_DB=0.0
 DECHORD_STEM_OUTPUT_GAIN_DB=0.0
+DECHORD_STEM_ANALYSIS_ENABLE=1
+DECHORD_STEM_ANALYSIS_ENSEMBLE=1
+DECHORD_STEM_ANALYSIS_CANDIDATE_MODELS=htdemucs_ft,htdemucs_6s
+DECHORD_STEM_ANALYSIS_OTHER_SUBTRACT_WEIGHT=0.30
+DECHORD_STEM_ANALYSIS_GUITAR_SUBTRACT_WEIGHT=0.55
+DECHORD_STEM_ANALYSIS_NOISE_GATE_DB=-40
+DECHORD_STEM_ANALYSIS_HIGHPASS_HZ=35
+DECHORD_STEM_ANALYSIS_LOWPASS_HZ=300
+DECHORD_STEM_ANALYSIS_SELECTION_MODE=transcription
 ```
 
 Example Linux host CPU-focused config:

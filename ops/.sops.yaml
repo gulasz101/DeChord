@@ -1,0 +1,3 @@
+creation_rules:
+  - path_regex: .*telegram.*\.ya?ml$
+    age: age1mt6y86q9lhrmky0c0j7xwvacfzpep3w6e7z8zsrr22jj2u49gs6s59h7w2

@@ -57,39 +57,45 @@ def test_cleanup_corrects_single_octave_jump_when_neighbors_support_it() -> None
     assert cleaned[1].pitch_midi == 40
 
 
-def test_cleanup_params_for_high_bpm() -> None:
-    """At 160 BPM, 16th notes are ~94ms. Cleanup should accommodate them."""
-    params = cleanup_params_for_bpm(160.0)
-    # min_duration should be less than a 16th note at 160 BPM
-    sixteenth = 60.0 / 160.0 / 4.0  # ~0.094s
-    assert params["min_duration_sec"] < sixteenth
-    assert params["apply_octave_correction"] is True
-    assert params["min_confidence"] <= 0.2
+def test_cleanup_params_for_bpm_are_tempo_adaptive() -> None:
+    slow = cleanup_params_for_bpm(90.0)
+    fast = cleanup_params_for_bpm(180.0)
+
+    assert slow["min_duration_sec"] >= fast["min_duration_sec"]
+    assert slow["merge_gap_sec"] >= fast["merge_gap_sec"]
+    assert slow["apply_octave_correction"] is True
 
 
-def test_cleanup_params_for_low_bpm() -> None:
-    """At 60 BPM, 16th notes are 250ms. More room for filtering."""
-    params = cleanup_params_for_bpm(60.0)
-    assert params["min_duration_sec"] > 0.03
-
-
-def test_adaptive_cleanup_at_high_bpm_keeps_short_notes() -> None:
-    """At 160 BPM, 16th notes are ~94ms. Cleanup should not filter them."""
-    fast_notes = [
-        RawNoteEvent(pitch_midi=33, start_sec=0.0, end_sec=0.094, confidence=0.5),
-        RawNoteEvent(pitch_midi=33, start_sec=0.1, end_sec=0.194, confidence=0.5),
+def test_cleanup_collects_rule_counters() -> None:
+    events = [
+        RawNoteEvent(pitch_midi=40, start_sec=0.0, end_sec=0.03, confidence=0.9),  # short
+        RawNoteEvent(pitch_midi=42, start_sec=0.10, end_sec=0.30, confidence=0.1),  # low conf
+        RawNoteEvent(pitch_midi=40, start_sec=0.30, end_sec=0.55, confidence=0.7),
+        RawNoteEvent(pitch_midi=40, start_sec=0.57, end_sec=0.80, confidence=0.8),  # merged
     ]
-    params = cleanup_params_for_bpm(160.0)
-    result = cleanup_note_events(fast_notes, **params)
-    assert len(result) >= 1  # at least some notes kept
+    stats: dict[str, int] = {}
+
+    cleaned = cleanup_note_events(events, stats=stats)
+
+    assert len(cleaned) == 1
+    assert stats["removed_short"] == 1
+    assert stats["removed_low_conf"] == 1
+    assert stats["merged_same_pitch"] == 1
 
 
-def test_octave_correction_fixes_jump() -> None:
-    """Octave jumps should be corrected when enabled."""
-    notes = [
-        RawNoteEvent(pitch_midi=33, start_sec=0.0, end_sec=0.5, confidence=0.9),
-        RawNoteEvent(pitch_midi=45, start_sec=0.5, end_sec=1.0, confidence=0.9),  # +12 jump
-        RawNoteEvent(pitch_midi=35, start_sec=1.0, end_sec=1.5, confidence=0.9),
+def test_cleanup_does_not_merge_same_pitch_when_onset_between_notes() -> None:
+    events = [
+        RawNoteEvent(pitch_midi=40, start_sec=0.0, end_sec=0.5, confidence=0.7),
+        RawNoteEvent(pitch_midi=40, start_sec=0.52, end_sec=0.9, confidence=0.9),
     ]
-    result = cleanup_note_events(notes, apply_octave_correction=True)
-    assert result[1].pitch_midi == 33  # corrected down one octave
+    stats: dict[str, int] = {}
+
+    cleaned = cleanup_note_events(
+        events,
+        merge_gap_sec=0.04,
+        onset_times=[0.51],
+        stats=stats,
+    )
+
+    assert len(cleaned) == 2
+    assert stats["merges_blocked_by_onset"] == 1
