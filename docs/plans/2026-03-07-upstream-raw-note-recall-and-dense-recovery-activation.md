@@ -10,8 +10,8 @@
 - [x] Extend trace metrics for upstream candidate generation
 - [x] Integrate changes into the real transcription path
 - [x] Run targeted tests
-- [ ] Run benchmark songs with tracing
-- [ ] Write benchmark report
-- [ ] Run broader backend tests
-- [ ] Run `make reset`
-- [ ] Mark plan complete
+- [x] Run benchmark songs with tracing
+- [x] Write benchmark report
+- [x] Run broader backend tests
+- [x] Run `make reset`
+- [x] Mark plan complete
