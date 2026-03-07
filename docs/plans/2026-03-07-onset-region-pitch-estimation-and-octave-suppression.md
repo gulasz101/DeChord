@@ -1,8 +1,8 @@
 # 2026-03-07 Onset Region Pitch Estimation And Octave Suppression
 
 - [x] Inspect latest onset benchmark report and current onset note generator implementation
-- [ ] Add RED tests for regional pitch estimation and octave suppression
-- [ ] Add RED tests for trace metrics and real-path integration
+- [x] Add RED tests for regional pitch estimation and octave suppression
+- [x] Add RED tests for trace metrics and real-path integration
 - [ ] Add typed config for onset-region pitch estimation
 - [ ] Implement bass-specific regional pitch estimator
 - [ ] Implement octave-up harmonic suppression for onset regions

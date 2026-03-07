@@ -5,6 +5,7 @@ import wave
 from pathlib import Path
 
 import pytest
+import app.services.onset_note_generator as onset_note_generator_mod
 
 from app.services.alphatex_exporter import SyncPoint
 from app.services.bass_transcriber import BassTranscriptionResult, RawNoteEvent
@@ -1564,4 +1565,116 @@ def test_tab_pipeline_uses_onset_candidates_when_basic_pitch_is_sparse(monkeypat
         "accepted_note_count": 2,
         "rejected_note_count": 0,
         "materially_changed_final_note_count": True,
+        "analyzed_region_count": 2,
+        "accepted_pitch_count": 2,
+        "rejected_weak_region_count": 0,
+        "average_region_pitch_confidence": pytest.approx(0.70),
+        "octave_suppressed_count": 0,
+        "pitch_corrected_region_count": 0,
+        "accepted_pitch_range": {"min": 33, "max": 36},
     }
+
+
+def test_tab_pipeline_real_onset_path_uses_region_pitch_estimator_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DECHORD_ONSET_NOTE_GENERATOR_ENABLE", "1")
+    monkeypatch.setenv("DECHORD_ONSET_NOTE_GENERATOR_MODE", "fallback")
+    monkeypatch.setenv("DECHORD_ONSET_DENSITY_NOTES_PER_SEC_THRESHOLD", "3.0")
+
+    class FakeTranscriber:
+        def transcribe(self, _bass_wav: Path) -> BassTranscriptionResult:
+            return BassTranscriptionResult(
+                engine="basic_pitch",
+                midi_bytes=b"MThd",
+                raw_notes=[],
+                debug_info={"pipeline_trace": {"pipeline_stats": {}}},
+            )
+
+    quantized_inputs: list[RawNoteEvent] = []
+
+    def fake_quantize(events, _grid, **_kwargs):
+        quantized_inputs[:] = list(events)
+        return [
+            QuantizedNote(
+                bar_index=0,
+                beat_position=float(index) * 0.5,
+                duration_beats=0.5,
+                pitch_midi=note.pitch_midi,
+                start_sec=note.start_sec,
+                end_sec=note.end_sec,
+            )
+            for index, note in enumerate(events)
+        ]
+
+    called_regions: list[tuple[float, float]] = []
+
+    def fake_estimate_pitch_for_region(audio, sr, *, region, config):
+        called_regions.append(region)
+        if region[0] < 0.2:
+            return onset_note_generator_mod.OnsetRegionPitchEstimate(
+                pitch_midi=33,
+                confidence=0.74,
+                support={
+                    "region_start_sec": region[0],
+                    "region_end_sec": region[1],
+                    "initial_pitch_midi": 45,
+                    "octave_suppressed": True,
+                    "pitch_corrected": True,
+                    "region_pitch_confidence": 0.74,
+                    "evaluated_candidate_count": 4,
+                },
+            )
+        return onset_note_generator_mod.OnsetRegionPitchEstimate(
+            pitch_midi=35,
+            confidence=0.71,
+            support={
+                "region_start_sec": region[0],
+                "region_end_sec": region[1],
+                "initial_pitch_midi": 35,
+                "octave_suppressed": False,
+                "pitch_corrected": False,
+                "region_pitch_confidence": 0.71,
+                "evaluated_candidate_count": 4,
+            },
+        )
+
+    monkeypatch.setattr(onset_note_generator_mod, "estimate_pitch_for_region", fake_estimate_pitch_for_region)
+
+    pipeline = TabPipeline(
+        transcriber=FakeTranscriber(),
+        rhythm_extract_fn=lambda _drums, **_kwargs: ([0.0, 0.25, 0.5, 0.75], [0.0], "madmom"),
+        bar_builder_fn=lambda _beats, _downbeats, **_kwargs: [Bar(index=0, start_sec=0.0, end_sec=1.0, beats_sec=[0.0, 0.25, 0.5, 0.75])],
+        onset_detect_fn=lambda _bass: [0.10, 0.34],
+        cleanup_fn=lambda events, **_kwargs: list(events),
+        quantize_fn=fake_quantize,
+        fingering_fn=lambda notes, **_kwargs: [
+            FingeredNote(
+                bar_index=note.bar_index,
+                beat_position=note.beat_position,
+                duration_beats=note.duration_beats,
+                pitch_midi=note.pitch_midi,
+                start_sec=note.start_sec,
+                end_sec=note.end_sec,
+                string=4,
+                fret=max(0, note.pitch_midi - 28),
+            )
+            for note in notes
+        ],
+        export_fn=lambda _notes, _bars, **_kwargs: ("\\tempo 120", [SyncPoint(bar_index=0, millisecond_offset=0)]),
+    )
+    pipeline._onset_note_generator = onset_note_generator_mod.OnsetNoteGenerator(
+        audio_loader=lambda _path: ([0.1] * 8000, 8000),
+        config=onset_note_generator_mod.OnsetNoteGeneratorConfig(
+            onset_min_spacing_ms=70,
+            onset_strength_threshold=0.2,
+            onset_region_min_duration_ms=40,
+            onset_region_max_duration_ms=180,
+        ),
+    )
+
+    result = pipeline.run(Path("bass.wav"), Path("drums.wav"), bpm_hint=120.0, onset_recovery=False)
+
+    assert len(called_regions) == 2
+    assert [(round(note.start_sec, 2), note.pitch_midi) for note in quantized_inputs] == [(0.10, 33), (0.34, 35)]
+    assert result.debug_info["raw_note_source_summary"]["onset_note_generator"] == 2

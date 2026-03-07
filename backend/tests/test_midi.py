@@ -268,6 +268,15 @@ def test_pitch_stability_config_parses_onset_note_generator_settings(monkeypatch
     monkeypatch.setenv("DECHORD_ONSET_REGION_MAX_DURATION_MS", "220")
     monkeypatch.setenv("DECHORD_ONSET_REGION_MIN_DURATION_MS", "40")
     monkeypatch.setenv("DECHORD_ONSET_DENSITY_NOTES_PER_SEC_THRESHOLD", "4.5")
+    monkeypatch.setenv("DECHORD_ONSET_REGION_PITCH_ENABLE", "1")
+    monkeypatch.setenv("DECHORD_ONSET_REGION_PITCH_METHOD", "bass_harmonic_weighted")
+    monkeypatch.setenv("DECHORD_ONSET_REGION_OCTAVE_SUPPRESSION_ENABLE", "1")
+    monkeypatch.setenv("DECHORD_ONSET_REGION_OCTAVE_PENALTY", "0.4")
+    monkeypatch.setenv("DECHORD_ONSET_REGION_MIN_CONFIDENCE", "0.18")
+    monkeypatch.setenv("DECHORD_ONSET_REGION_LOWBAND_SUPPORT_WEIGHT", "0.6")
+    monkeypatch.setenv("DECHORD_ONSET_REGION_HARMONIC_PENALTY_WEIGHT", "0.35")
+    monkeypatch.setenv("DECHORD_ONSET_REGION_PITCH_FLOOR_MIDI", "24")
+    monkeypatch.setenv("DECHORD_ONSET_REGION_PITCH_CEILING_MIDI", "64")
 
     config = _get_pitch_stability_config()
 
@@ -278,6 +287,15 @@ def test_pitch_stability_config_parses_onset_note_generator_settings(monkeypatch
     assert config.onset_region_max_duration_ms == 220
     assert config.onset_region_min_duration_ms == 40
     assert config.onset_density_notes_per_sec_threshold == pytest.approx(4.5)
+    assert config.onset_region_pitch_enable is True
+    assert config.onset_region_pitch_method == "bass_harmonic_weighted"
+    assert config.onset_region_octave_suppression_enable is True
+    assert config.onset_region_octave_penalty == pytest.approx(0.4)
+    assert config.onset_region_min_confidence == pytest.approx(0.18)
+    assert config.onset_region_lowband_support_weight == pytest.approx(0.6)
+    assert config.onset_region_harmonic_penalty_weight == pytest.approx(0.35)
+    assert config.onset_region_pitch_floor_midi == 24
+    assert config.onset_region_pitch_ceiling_midi == 64
 
 
 def test_pitch_stability_config_falls_back_for_invalid_raw_recall_settings(

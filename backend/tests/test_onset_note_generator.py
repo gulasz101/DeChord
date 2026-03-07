@@ -8,6 +8,7 @@ from app.services.bass_transcriber import RawNoteEvent
 from app.services.onset_note_generator import (
     OnsetNoteGenerator,
     OnsetNoteGeneratorConfig,
+    OnsetRegionPitchEstimate,
     build_onset_regions,
     detect_bass_onsets,
     estimate_pitch_for_region,
@@ -113,9 +114,57 @@ def test_estimate_pitch_for_region_prefers_bass_fundamental_over_octave() -> Non
     )
 
     assert estimate is not None
-    pitch_midi, confidence = estimate
-    assert pitch_midi == 33
-    assert confidence >= 0.35
+    assert isinstance(estimate, OnsetRegionPitchEstimate)
+    assert estimate.pitch_midi == 33
+    assert estimate.confidence >= 0.35
+    assert estimate.support["octave_suppressed"] is True
+    assert estimate.support["initial_pitch_midi"] == 45
+    assert estimate.support["evaluated_candidate_count"] <= 6
+
+
+def test_estimate_pitch_for_region_keeps_true_higher_pitch_without_lower_support() -> None:
+    sr = 8000
+    duration_sec = 0.16
+    total_samples = int(sr * duration_sec)
+    audio = []
+    for idx in range(total_samples):
+        t = idx / sr
+        audio.append(
+            (0.08 * math.sin(2.0 * math.pi * 55.0 * t))
+            + (0.85 * math.sin(2.0 * math.pi * 110.0 * t))
+            + (0.35 * math.sin(2.0 * math.pi * 220.0 * t))
+        )
+
+    estimate = estimate_pitch_for_region(
+        audio,
+        sr,
+        region=(0.0, duration_sec),
+        config=OnsetNoteGeneratorConfig(),
+    )
+
+    assert estimate is not None
+    assert estimate.pitch_midi == 45
+    assert estimate.support["octave_suppressed"] is False
+    assert estimate.support["initial_pitch_midi"] == 45
+
+
+def test_estimate_pitch_for_region_rejects_noisy_weak_regions() -> None:
+    sr = 8000
+    duration_sec = 0.18
+    total_samples = int(sr * duration_sec)
+    audio = [
+        (0.002 * math.sin(2.0 * math.pi * 170.0 * (idx / sr))) + (0.0015 if idx % 29 == 0 else -0.0015)
+        for idx in range(total_samples)
+    ]
+
+    estimate = estimate_pitch_for_region(
+        audio,
+        sr,
+        region=(0.0, duration_sec),
+        config=OnsetNoteGeneratorConfig(),
+    )
+
+    assert estimate is None
 
 
 def test_generate_onset_note_candidates_emits_bounded_candidates() -> None:
@@ -143,6 +192,7 @@ def test_generate_onset_note_candidates_emits_bounded_candidates() -> None:
     assert all(note.confidence > 0.0 for note in candidates)
     assert all(28 <= note.pitch_midi <= 64 for note in candidates)
     assert all(note.source_tag == "onset_note_generator" for note in candidates)
+    assert all(int(note.support["evaluated_candidate_count"]) <= 6 for note in candidates)
 
 
 def test_generate_onset_note_candidates_rejects_empty_or_implausible_regions() -> None:

@@ -131,6 +131,13 @@ def test_tab_pipeline_emits_all_stage_metrics_and_consistent_counts(
                                     "accepted_note_count": 0,
                                     "rejected_note_count": 0,
                                     "materially_changed_final_note_count": False,
+                                    "analyzed_region_count": 0,
+                                    "accepted_pitch_count": 0,
+                                    "rejected_weak_region_count": 0,
+                                    "average_region_pitch_confidence": None,
+                                    "octave_suppressed_count": 0,
+                                    "pitch_corrected_region_count": 0,
+                                    "accepted_pitch_range": {"min": None, "max": None},
                                 },
                             },
                         }
@@ -227,6 +234,13 @@ def test_tab_pipeline_emits_all_stage_metrics_and_consistent_counts(
         "accepted_note_count": 0,
         "rejected_note_count": 0,
         "materially_changed_final_note_count": False,
+        "analyzed_region_count": 0,
+        "accepted_pitch_count": 0,
+        "rejected_weak_region_count": 0,
+        "average_region_pitch_confidence": None,
+        "octave_suppressed_count": 0,
+        "pitch_corrected_region_count": 0,
+        "accepted_pitch_range": {"min": None, "max": None},
     }
     assert pipeline_stats["dense_candidates"]["note_count"] == 2
     assert pipeline_stats["dense_candidates"]["candidate_flow"] == {
@@ -242,6 +256,114 @@ def test_tab_pipeline_emits_all_stage_metrics_and_consistent_counts(
     assert pipeline_stats["dense_accepted"]["note_count"] <= pipeline_stats["dense_candidates"]["note_count"]
     assert pipeline_stats["final_notes"]["note_count"] == len(quantize_inputs)
     assert result.debug_info["quantized_note_count"] == pipeline_stats["final_notes"]["note_count"]
+
+
+def test_tab_pipeline_onset_trace_reports_region_pitch_metrics() -> None:
+    class FakeTranscriber:
+        def transcribe(self, _bass_wav: Path) -> BassTranscriptionResult:
+            return BassTranscriptionResult(
+                engine="basic_pitch",
+                midi_bytes=b"MThd",
+                raw_notes=[],
+                debug_info={"pipeline_trace": {"pipeline_stats": {}}},
+            )
+
+    bars = [Bar(index=0, start_sec=0.0, end_sec=1.0, beats_sec=[0.0, 0.25, 0.5, 0.75])]
+    quantize_inputs: list[RawNoteEvent] = []
+
+    def fake_quantize(events, _grid, **_kwargs):
+        quantize_inputs[:] = list(events)
+        return [
+            QuantizedNote(
+                bar_index=0,
+                beat_position=0.0,
+                duration_beats=0.5,
+                pitch_midi=note.pitch_midi,
+                start_sec=note.start_sec,
+                end_sec=note.end_sec,
+            )
+            for note in events
+        ]
+
+    pipeline = TabPipeline(
+        transcriber=FakeTranscriber(),
+        rhythm_extract_fn=lambda _drums, **_kwargs: ([0.0, 0.25, 0.5, 0.75], [0.0], "madmom"),
+        bar_builder_fn=lambda _beats, _downbeats, **_kwargs: bars,
+        onset_detect_fn=lambda _bass: [0.10, 0.34, 0.58],
+        cleanup_fn=lambda events, **_kwargs: list(events),
+        quantize_fn=fake_quantize,
+        fingering_fn=lambda notes, **_kwargs: [
+            FingeredNote(
+                bar_index=note.bar_index,
+                beat_position=note.beat_position,
+                duration_beats=note.duration_beats,
+                pitch_midi=note.pitch_midi,
+                start_sec=note.start_sec,
+                end_sec=note.end_sec,
+                string=4,
+                fret=max(0, note.pitch_midi - 28),
+            )
+            for note in notes
+        ],
+        export_fn=lambda _notes, _bars, **_kwargs: ("\\tempo 120", [SyncPoint(bar_index=0, millisecond_offset=0)]),
+        onset_note_generator=type(
+            "FakeOnsetGenerator",
+            (),
+            {
+                "generate": lambda self, _bass_wav, onset_times=None: [
+                    DenseNoteCandidate(
+                        pitch_midi=33,
+                        start_sec=0.10,
+                        end_sec=0.24,
+                        confidence=0.72,
+                        source_tag="onset_note_generator",
+                        support={
+                            "region_start_sec": 0.10,
+                            "region_end_sec": 0.24,
+                            "initial_pitch_midi": 45,
+                            "octave_suppressed": True,
+                            "pitch_corrected": True,
+                            "region_pitch_confidence": 0.72,
+                            "analyzed_region_count": 3,
+                            "accepted_pitch_count": 2,
+                            "rejected_weak_region_count": 1,
+                        },
+                    ),
+                    DenseNoteCandidate(
+                        pitch_midi=35,
+                        start_sec=0.34,
+                        end_sec=0.46,
+                        confidence=0.66,
+                        source_tag="onset_note_generator",
+                        support={
+                            "region_start_sec": 0.34,
+                            "region_end_sec": 0.46,
+                            "initial_pitch_midi": 35,
+                            "octave_suppressed": False,
+                            "pitch_corrected": False,
+                            "region_pitch_confidence": 0.66,
+                            "analyzed_region_count": 3,
+                            "accepted_pitch_count": 2,
+                            "rejected_weak_region_count": 1,
+                        },
+                    ),
+                ],
+            },
+        )(),
+    )
+
+    result = pipeline.run(Path("bass.wav"), Path("drums.wav"), bpm_hint=120.0, onset_recovery=False)
+
+    onset_flow = result.debug_info["pipeline_trace"]["pipeline_stats"]["onset_candidates"]["candidate_flow"]
+
+    assert len(quantize_inputs) == 2
+    assert onset_flow["analyzed_region_count"] == 3
+    assert onset_flow["accepted_pitch_count"] == 2
+    assert onset_flow["rejected_weak_region_count"] == 1
+    assert onset_flow["octave_suppressed_count"] == 1
+    assert onset_flow["pitch_corrected_region_count"] == 1
+    assert onset_flow["average_region_pitch_confidence"] == pytest.approx(0.69)
+    assert onset_flow["accepted_pitch_range"] == {"min": 33, "max": 35}
 
 
 def test_build_pipeline_trace_report_has_stable_json_structure() -> None:
