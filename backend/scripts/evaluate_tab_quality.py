@@ -535,10 +535,10 @@ def evaluate_inputs(
     output["metrics"]["resource_monitor"] = resource_monitor_summary
     output["debug_info"]["resource_monitor"] = resource_monitor_summary
     output["pipeline_trace"]["resource_monitor"] = resource_monitor_summary
-    output["metrics_path"].write_text(json.dumps(output["metrics"], indent=2, sort_keys=True))
-    output["debug_path"].write_text(json.dumps(output["debug_info"], indent=2, sort_keys=True))
+    output["metrics_path_obj"].write_text(json.dumps(output["metrics"], indent=2, sort_keys=True))
+    output["debug_path_obj"].write_text(json.dumps(output["debug_info"], indent=2, sort_keys=True))
     if trace_pipeline:
-        output["pipeline_trace_path"].write_text(json.dumps(output["pipeline_trace"], indent=2, sort_keys=True))
+        output["pipeline_trace_path_obj"].write_text(json.dumps(output["pipeline_trace"], indent=2, sort_keys=True))
     return output
 
 
@@ -725,8 +725,10 @@ def _evaluate_inputs_inner(
     alphatex_path.write_text(result.alphatex)
 
     output = {
-        "metrics_path": metrics_path,
-        "debug_path": debug_path,
+        "metrics_path": str(metrics_path),
+        "metrics_path_obj": metrics_path,
+        "debug_path": str(debug_path),
+        "debug_path_obj": debug_path,
         "transcription_audit_path": str(transcription_audit_path),
         "transcription_sources_path": str(transcription_sources_path),
         "alphatex_path": str(alphatex_path),
@@ -735,7 +737,8 @@ def _evaluate_inputs_inner(
         "pipeline_trace": pipeline_trace,
     }
     if trace_pipeline:
-        output["pipeline_trace_path"] = pipeline_trace_path
+        output["pipeline_trace_path"] = str(pipeline_trace_path)
+        output["pipeline_trace_path_obj"] = pipeline_trace_path
     return output
 
 
