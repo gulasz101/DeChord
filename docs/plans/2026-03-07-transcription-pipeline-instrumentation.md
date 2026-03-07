@@ -6,4 +6,4 @@
 [x] run instrumentation benchmark
 [x] generate pipeline trace reports
 [x] run full backend tests
-[ ] run make reset
+[x] run make reset
