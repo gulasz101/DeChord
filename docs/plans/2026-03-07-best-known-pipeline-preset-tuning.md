@@ -5,7 +5,7 @@
 - [x] Add RED tests for preset parsing / mapping
 - [x] Implement preset resolver over existing config surface
 - [x] Update docs / README / report scripts if needed
-- [ ] Run focused verification reruns with resource guardrails
+- [x] Run focused verification reruns with resource guardrails
 - [ ] Write recommendation report
 - [ ] Run relevant tests
 - [ ] Run `make reset`
