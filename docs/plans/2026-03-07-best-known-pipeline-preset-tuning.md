@@ -9,7 +9,7 @@
 - [x] Write recommendation report
 - [x] Run relevant tests
 - [x] Run `make reset`
-- [ ] Mark plan complete
+- [x] Mark plan complete
 
 ## Strategy Notes
 
