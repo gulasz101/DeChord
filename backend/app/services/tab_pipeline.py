@@ -20,6 +20,7 @@ from app.services.fingering import (
 )
 from app.services.note_cleanup import cleanup_note_events, cleanup_params_for_bpm
 from app.services.onset_recovery import recover_missing_onsets, recovery_params_for_bpm
+from app.services.pipeline_trace import build_pipeline_trace_report, build_stage_metrics
 from app.services.quantization import QuantizedNote, quantize_note_events
 from app.services.rhythm_grid import (
     Bar,
@@ -128,6 +129,7 @@ class TabPipeline:
         tempo_used = float(song_bpm) if song_bpm is not None else reconcile_tempo(derived_bpm=derived_bpm, bpm_hint=bpm_hint)
 
         transcription = self._transcriber.transcribe(bass_wav)
+        note_config = _get_pitch_stability_config()
         quality_mode_suspect_silence = tab_generation_quality_mode in {"high_accuracy", "high_accuracy_aggressive"}
         should_onset_recovery = (
             onset_recovery
@@ -137,9 +139,12 @@ class TabPipeline:
         onset_times: list[float] = []
         analysis_onset_times: list[float] = []
         pre_cleanup_notes = transcription.raw_notes
+        quantize_input_notes = list(pre_cleanup_notes)
         onset_recovery_applied = False
         onset_split_starts: set[float] = set()
         onset_split_count = 0
+        all_dense_candidates: list[DenseNoteCandidate] = []
+        accepted_dense_candidates: list[DenseNoteCandidate] = []
         if (should_onset_recovery and pre_cleanup_notes) or quality_mode_suspect_silence:
             analysis_onset_times = self._onset_detect_fn(bass_wav)
         if should_onset_recovery and pre_cleanup_notes:
@@ -162,6 +167,7 @@ class TabPipeline:
             onset_split_starts=onset_split_starts,
             stats=cleanup_stats_pass1,
         )
+        quantize_input_notes = list(cleaned_notes)
         quantized_notes = self._quantize_fn(cleaned_notes, BarGrid(bars=bars), subdivision=subdivision)
         quality_diagnostics: dict[str, object] = {
             "QUALITY_MODE_SUSPECT_SILENCE": quality_mode_suspect_silence,
@@ -179,7 +185,6 @@ class TabPipeline:
             suspect_rows: list[dict[str, object]] = []
             dense_bar_fusion_candidates: list[dict[str, object]] = []
             dense_note_fusion_candidates: list[dict[str, object]] = []
-            accepted_dense_candidates: list[DenseNoteCandidate] = []
 
             if tab_generation_quality_mode == "high_accuracy":
                 median_bar_rms = self._median(bar_rms)
@@ -239,6 +244,7 @@ class TabPipeline:
                         base_notes=pre_cleanup_notes,
                         context_notes=local_context,
                     )
+                    all_dense_candidates.extend(dense_candidates)
                     accepted_candidates, dense_rows = self._confidence_gate_dense_note_candidates(
                         dense_candidates,
                         reference_notes=pre_cleanup_notes,
@@ -283,6 +289,7 @@ class TabPipeline:
                     onset_split_starts=onset_split_starts,
                     stats=cleanup_stats_pass2,
                 )
+                quantize_input_notes = list(cleaned_notes)
                 quantized_notes = self._quantize_fn(cleaned_notes, BarGrid(bars=bars), subdivision=subdivision)
                 quality_diagnostics["cleanup_stats_second_pass"] = cleanup_stats_pass2
                 raw_note_source_rows = self._build_raw_note_source_rows(
@@ -372,6 +379,53 @@ class TabPipeline:
             tempo_used=tempo_used,
             time_signature=(numerator, denominator),
             sync_every_bars=sync_every_bars,
+            )
+
+        transcription_trace = dict(getattr(transcription, "debug_info", {}) or {}).get("pipeline_trace")
+        transcription_stage_stats = {}
+        if isinstance(transcription_trace, dict):
+            raw_pipeline_stats = transcription_trace.get("pipeline_stats")
+            if isinstance(raw_pipeline_stats, dict):
+                transcription_stage_stats = dict(raw_pipeline_stats)
+        cleanup_stats_second_pass = quality_diagnostics.get("cleanup_stats_second_pass", {})
+        merged_cleanup_count = int(cleanup_stats_pass1.get("merged_same_pitch", 0))
+        if isinstance(cleanup_stats_second_pass, dict):
+            merged_cleanup_count += int(cleanup_stats_second_pass.get("merged_same_pitch", 0))
+        pipeline_trace_report = build_pipeline_trace_report(
+            song_name=str(bass_wav.stem),
+            pipeline_stats={
+                "basic_pitch_raw": dict(transcription_stage_stats.get("basic_pitch_raw", build_stage_metrics([]))),
+                "pitch_stabilized": dict(transcription_stage_stats.get("pitch_stabilized", build_stage_metrics([]))),
+                "admission_filtered": dict(
+                    transcription_stage_stats.get(
+                        "admission_filtered",
+                        build_stage_metrics(
+                            list(pre_cleanup_notes),
+                            short_note_threshold_ms=note_config.note_min_duration_ms,
+                        ),
+                    )
+                ),
+                "dense_candidates": build_stage_metrics(
+                    list(all_dense_candidates),
+                    short_note_threshold_ms=note_config.note_dense_candidate_min_duration_ms,
+                    added_override=len(all_dense_candidates),
+                    removed_override=0,
+                    altered_override=0,
+                ),
+                "dense_accepted": build_stage_metrics(
+                    [candidate.to_raw_note() for candidate in accepted_dense_candidates],
+                    short_note_threshold_ms=note_config.note_dense_candidate_min_duration_ms,
+                    added_override=len(accepted_dense_candidates),
+                    removed_override=max(0, len(all_dense_candidates) - len(accepted_dense_candidates)),
+                    altered_override=0,
+                ),
+                "final_notes": build_stage_metrics(
+                    list(quantized_notes),
+                    previous_notes=quantize_input_notes,
+                    short_note_threshold_ms=note_config.note_min_duration_ms,
+                    merged_count=merged_cleanup_count,
+                ),
+            },
         )
 
         debug_info = {
@@ -417,6 +471,7 @@ class TabPipeline:
             "onset_split_count": onset_split_count,
             "raw_note_source_rows": raw_note_source_rows,
             "raw_note_source_summary": self._raw_note_source_summary(raw_note_source_rows),
+            "pipeline_trace": pipeline_trace_report,
             **quality_diagnostics,
         }
 

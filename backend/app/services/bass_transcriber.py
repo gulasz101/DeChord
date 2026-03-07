@@ -11,6 +11,7 @@ import mido
 from app.midi import MidiTranscriptionResult
 from app.midi import PitchStabilityConfig, _get_pitch_stability_config
 from app.midi import transcribe_bass_stem_to_midi
+from app.services.pipeline_trace import build_stage_metrics
 
 MidiTranscribeFn = Callable[[Path], bytes | MidiTranscriptionResult]
 ParseNotesFn = Callable[[bytes], list["RawNoteEvent"]]
@@ -30,6 +31,13 @@ class BassTranscriptionResult:
     midi_bytes: bytes
     raw_notes: list[RawNoteEvent]
     debug_info: dict[str, object] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class BasicPitchStageTrace:
+    pitch_stabilized_notes: list[RawNoteEvent]
+    admission_filtered_notes: list[RawNoteEvent]
+    stats: dict[str, int]
 
 
 class BassTranscriber(Protocol):
@@ -95,23 +103,54 @@ class BasicPitchTranscriber:
         if not midi_bytes:
             raise RuntimeError("Bass MIDI transcription failed: generated MIDI is empty")
 
-        raw_notes = self._parse_notes_fn(midi_bytes)
+        parsed_notes = self._parse_notes_fn(midi_bytes)
         corrections = 0
         intrusion_suppressions = 0
         merged_fragments = 0
         rejected_notes = 0
-        if engine == "basic_pitch" and raw_notes:
+        pitch_stabilized_notes = list(parsed_notes)
+        admission_filtered_notes = list(parsed_notes)
+        if engine == "basic_pitch" and parsed_notes:
             pitch_config = _get_pitch_stability_config()
-            raw_notes, stability_stats = _stabilize_basicpitch_notes(raw_notes, pitch_config)
+            stage_trace = _trace_basicpitch_stages(parsed_notes, pitch_config)
+            pitch_stabilized_notes = list(stage_trace.pitch_stabilized_notes)
+            admission_filtered_notes = list(stage_trace.admission_filtered_notes)
+            stability_stats = stage_trace.stats
             corrections = int(stability_stats["octave_corrections_applied"])
             intrusion_suppressions = int(stability_stats["suppressed_short_intrusions"])
             merged_fragments = int(stability_stats["merged_fragments"])
             rejected_notes = int(stability_stats["rejected_notes"])
+        else:
+            pitch_config = _get_pitch_stability_config()
         debug_info["basicpitch_octave_corrections_applied"] = int(corrections)
         debug_info["basicpitch_short_intrusions_suppressed"] = int(intrusion_suppressions)
         debug_info["basicpitch_fragments_merged"] = int(merged_fragments)
         debug_info["basicpitch_rejected_notes"] = int(rejected_notes)
-        return BassTranscriptionResult(engine=engine, midi_bytes=midi_bytes, raw_notes=raw_notes, debug_info=debug_info)
+        debug_info["pipeline_trace"] = {
+            "pipeline_stats": {
+                "basic_pitch_raw": build_stage_metrics(
+                    parsed_notes,
+                    short_note_threshold_ms=pitch_config.note_min_duration_ms,
+                ),
+                "pitch_stabilized": build_stage_metrics(
+                    pitch_stabilized_notes,
+                    previous_notes=parsed_notes,
+                    short_note_threshold_ms=pitch_config.note_min_duration_ms,
+                ),
+                "admission_filtered": build_stage_metrics(
+                    admission_filtered_notes,
+                    previous_notes=pitch_stabilized_notes,
+                    short_note_threshold_ms=pitch_config.note_min_duration_ms,
+                    merged_count=merged_fragments,
+                ),
+            }
+        }
+        return BassTranscriptionResult(
+            engine=engine,
+            midi_bytes=midi_bytes,
+            raw_notes=admission_filtered_notes,
+            debug_info=debug_info,
+        )
 
 
 def _conservative_basicpitch_octave_stabilization(
@@ -309,19 +348,23 @@ def _merge_fragmented_same_pitch_notes(
     return merged, merge_count
 
 
-def _stabilize_basicpitch_notes(
+def _trace_basicpitch_stages(
     notes: list[RawNoteEvent],
     config: PitchStabilityConfig,
-) -> tuple[list[RawNoteEvent], dict[str, int]]:
+) -> BasicPitchStageTrace:
     ordered = sorted(notes, key=lambda event: (event.start_sec, event.end_sec, event.pitch_midi))
     if not config.pitch_stability_enable:
         corrected, corrections = _conservative_basicpitch_octave_stabilization(ordered)
-        return corrected, {
-            "octave_corrections_applied": int(corrections),
-            "suppressed_short_intrusions": 0,
-            "merged_fragments": 0,
-            "rejected_notes": 0,
-        }
+        return BasicPitchStageTrace(
+            pitch_stabilized_notes=corrected,
+            admission_filtered_notes=corrected,
+            stats={
+                "octave_corrections_applied": int(corrections),
+                "suppressed_short_intrusions": 0,
+                "merged_fragments": 0,
+                "rejected_notes": 0,
+            },
+        )
 
     min_duration_sec = max(config.note_min_duration_ms / 1000.0, 0.04)
     merge_gap_sec = max(config.note_merge_gap_ms / 1000.0, 0.0)
@@ -357,17 +400,22 @@ def _stabilize_basicpitch_notes(
     corrected, octave_corrections = _conservative_basicpitch_octave_stabilization(working)
     if len(corrected) < 2:
         rejected_notes = 0
+        admission_filtered_notes = corrected
         if config.note_admission_enable and corrected:
             note = corrected[0]
             if _note_duration_sec(note) <= min_duration_sec and note.confidence <= config.note_low_confidence_threshold:
-                corrected = []
+                admission_filtered_notes = []
                 rejected_notes = 1
-        return corrected, {
-            "octave_corrections_applied": int(octave_corrections),
-            "suppressed_short_intrusions": int(suppressed_short_intrusions),
-            "merged_fragments": 0,
-            "rejected_notes": int(rejected_notes),
-        }
+        return BasicPitchStageTrace(
+            pitch_stabilized_notes=corrected,
+            admission_filtered_notes=admission_filtered_notes,
+            stats={
+                "octave_corrections_applied": int(octave_corrections),
+                "suppressed_short_intrusions": int(suppressed_short_intrusions),
+                "merged_fragments": 0,
+                "rejected_notes": int(rejected_notes),
+            },
+        )
 
     if config.note_admission_enable:
         filtered: list[RawNoteEvent] = []
@@ -391,9 +439,13 @@ def _stabilize_basicpitch_notes(
         rejected_notes = 0
 
     merged, merged_fragments = _merge_fragmented_same_pitch_notes(filtered, merge_gap_sec=merge_gap_sec)
-    return merged, {
-        "octave_corrections_applied": int(octave_corrections),
-        "suppressed_short_intrusions": int(suppressed_short_intrusions),
-        "merged_fragments": int(merged_fragments),
-        "rejected_notes": int(rejected_notes),
-    }
+    return BasicPitchStageTrace(
+        pitch_stabilized_notes=corrected,
+        admission_filtered_notes=merged,
+        stats={
+            "octave_corrections_applied": int(octave_corrections),
+            "suppressed_short_intrusions": int(suppressed_short_intrusions),
+            "merged_fragments": int(merged_fragments),
+            "rejected_notes": int(rejected_notes),
+        },
+    )

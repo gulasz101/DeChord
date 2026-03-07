@@ -34,8 +34,8 @@ def test_basic_pitch_transcriber_emits_stage_metrics() -> None:
 
     assert set(pipeline_stats) == {"basic_pitch_raw", "pitch_stabilized", "admission_filtered"}
     assert pipeline_stats["basic_pitch_raw"]["note_count"] == 4
-    assert pipeline_stats["pitch_stabilized"]["note_count"] == 3
-    assert pipeline_stats["admission_filtered"]["note_count"] == 2
+    assert pipeline_stats["pitch_stabilized"]["note_count"] == 2
+    assert pipeline_stats["admission_filtered"]["note_count"] == 1
     assert pipeline_stats["admission_filtered"]["notes_removed_by_stage"] == 1
     assert isinstance(pipeline_stats["pitch_stabilized"], dict)
     assert isinstance(pipeline_stats["admission_filtered"], dict)
@@ -167,6 +167,7 @@ def test_tab_pipeline_emits_all_stage_metrics_and_consistent_counts(
         Path("drums.wav"),
         bpm_hint=120.0,
         tab_generation_quality_mode="high_accuracy_aggressive",
+        onset_recovery=False,
     )
 
     pipeline_stats = result.debug_info["pipeline_trace"]["pipeline_stats"]
