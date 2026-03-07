@@ -41,6 +41,13 @@ DEFAULT_NOTE_MERGE_GAP_MS = 45
 DEFAULT_NOTE_DENSE_CANDIDATE_MIN_DURATION_MS = 55
 DEFAULT_NOTE_DENSE_UNSTABLE_CONTEXT_PENALTY = 0.20
 DEFAULT_NOTE_DENSE_OCTAVE_NEIGHBOR_PENALTY = 0.25
+DEFAULT_RAW_NOTE_RECALL_ENABLE = False
+DEFAULT_RAW_NOTE_MIN_CONFIDENCE = 0.15
+DEFAULT_RAW_NOTE_MIN_DURATION_MS = 35
+DEFAULT_RAW_NOTE_ALLOW_WEAK_BASS_CANDIDATES = False
+DEFAULT_RAW_NOTE_SPARSE_REGION_BOOST_ENABLE = False
+DEFAULT_DENSE_CANDIDATE_SPARSE_REGION_THRESHOLD_MS = 180
+DEFAULT_DENSE_CANDIDATE_SUPPORT_RELAXATION = 0.20
 
 
 @dataclass(frozen=True)
@@ -62,6 +69,13 @@ class PitchStabilityConfig:
     note_dense_candidate_min_duration_ms: int = DEFAULT_NOTE_DENSE_CANDIDATE_MIN_DURATION_MS
     note_dense_unstable_context_penalty: float = DEFAULT_NOTE_DENSE_UNSTABLE_CONTEXT_PENALTY
     note_dense_octave_neighbor_penalty: float = DEFAULT_NOTE_DENSE_OCTAVE_NEIGHBOR_PENALTY
+    raw_note_recall_enable: bool = DEFAULT_RAW_NOTE_RECALL_ENABLE
+    raw_note_min_confidence: float = DEFAULT_RAW_NOTE_MIN_CONFIDENCE
+    raw_note_min_duration_ms: int = DEFAULT_RAW_NOTE_MIN_DURATION_MS
+    raw_note_allow_weak_bass_candidates: bool = DEFAULT_RAW_NOTE_ALLOW_WEAK_BASS_CANDIDATES
+    raw_note_sparse_region_boost_enable: bool = DEFAULT_RAW_NOTE_SPARSE_REGION_BOOST_ENABLE
+    dense_candidate_sparse_region_threshold_ms: int = DEFAULT_DENSE_CANDIDATE_SPARSE_REGION_THRESHOLD_MS
+    dense_candidate_support_relaxation: float = DEFAULT_DENSE_CANDIDATE_SUPPORT_RELAXATION
 
 
 def _get_pitch_stability_config() -> PitchStabilityConfig:
@@ -129,6 +143,18 @@ def _get_pitch_stability_config() -> PitchStabilityConfig:
     )
     if note_dense_candidate_min_duration_ms is None or note_dense_candidate_min_duration_ms < 1:
         note_dense_candidate_min_duration_ms = DEFAULT_NOTE_DENSE_CANDIDATE_MIN_DURATION_MS
+    raw_note_min_duration_ms = _parse_int_env(
+        "DECHORD_RAW_NOTE_MIN_DURATION_MS",
+        DEFAULT_RAW_NOTE_MIN_DURATION_MS,
+    )
+    if raw_note_min_duration_ms is None or raw_note_min_duration_ms < 1:
+        raw_note_min_duration_ms = DEFAULT_RAW_NOTE_MIN_DURATION_MS
+    dense_candidate_sparse_region_threshold_ms = _parse_int_env(
+        "DECHORD_DENSE_CANDIDATE_SPARSE_REGION_THRESHOLD_MS",
+        DEFAULT_DENSE_CANDIDATE_SPARSE_REGION_THRESHOLD_MS,
+    )
+    if dense_candidate_sparse_region_threshold_ms is None or dense_candidate_sparse_region_threshold_ms < 1:
+        dense_candidate_sparse_region_threshold_ms = DEFAULT_DENSE_CANDIDATE_SPARSE_REGION_THRESHOLD_MS
     return PitchStabilityConfig(
         pitch_stability_enable=_parse_bool_env(
             "DECHORD_PITCH_STABILITY_ENABLE",
@@ -171,10 +197,100 @@ def _get_pitch_stability_config() -> PitchStabilityConfig:
             minimum=0.0,
             maximum=1.0,
         ),
+        raw_note_recall_enable=_parse_bool_env(
+            "DECHORD_RAW_NOTE_RECALL_ENABLE",
+            DEFAULT_RAW_NOTE_RECALL_ENABLE,
+        ),
+        raw_note_min_confidence=_parse_float_env_bounded(
+            "DECHORD_RAW_NOTE_MIN_CONFIDENCE",
+            DEFAULT_RAW_NOTE_MIN_CONFIDENCE,
+            minimum=0.0,
+            maximum=1.0,
+        ),
+        raw_note_min_duration_ms=raw_note_min_duration_ms,
+        raw_note_allow_weak_bass_candidates=_parse_bool_env(
+            "DECHORD_RAW_NOTE_ALLOW_WEAK_BASS_CANDIDATES",
+            DEFAULT_RAW_NOTE_ALLOW_WEAK_BASS_CANDIDATES,
+        ),
+        raw_note_sparse_region_boost_enable=_parse_bool_env(
+            "DECHORD_RAW_NOTE_SPARSE_REGION_BOOST_ENABLE",
+            DEFAULT_RAW_NOTE_SPARSE_REGION_BOOST_ENABLE,
+        ),
+        dense_candidate_sparse_region_threshold_ms=dense_candidate_sparse_region_threshold_ms,
+        dense_candidate_support_relaxation=_parse_float_env_bounded(
+            "DECHORD_DENSE_CANDIDATE_SUPPORT_RELAXATION",
+            DEFAULT_DENSE_CANDIDATE_SUPPORT_RELAXATION,
+            minimum=0.0,
+            maximum=1.0,
+        ),
     )
 
 
-def _transcribe_with_basic_pitch(input_path: Path, output_path: Path) -> None:
+def _serialize_basic_pitch_note_events(note_events: object) -> list[dict[str, float | int]]:
+    serialized: list[dict[str, float | int]] = []
+    if not isinstance(note_events, list):
+        return serialized
+    for event in note_events:
+        start_sec: float | None = None
+        end_sec: float | None = None
+        pitch_midi: int | None = None
+        confidence: float | None = None
+        if isinstance(event, dict):
+            start_value = event.get("start_time") if "start_time" in event else event.get("start_sec")
+            end_value = event.get("end_time") if "end_time" in event else event.get("end_sec")
+            pitch_value = event.get("pitch_midi") if "pitch_midi" in event else event.get("pitch")
+            confidence_value = event.get("confidence") if "confidence" in event else event.get("amplitude")
+            if isinstance(start_value, int | float) and isinstance(end_value, int | float) and isinstance(pitch_value, int | float):
+                start_sec = float(start_value)
+                end_sec = float(end_value)
+                pitch_midi = int(round(float(pitch_value)))
+                if isinstance(confidence_value, int | float):
+                    confidence = float(confidence_value)
+        elif isinstance(event, tuple | list) and len(event) >= 3:
+            start_value, end_value, pitch_value = event[0], event[1], event[2]
+            confidence_value = event[3] if len(event) >= 4 else 0.0
+            if isinstance(start_value, int | float) and isinstance(end_value, int | float) and isinstance(pitch_value, int | float):
+                start_sec = float(start_value)
+                end_sec = float(end_value)
+                pitch_midi = int(round(float(pitch_value)))
+                if isinstance(confidence_value, int | float):
+                    confidence = float(confidence_value)
+        if start_sec is None or end_sec is None or pitch_midi is None:
+            continue
+        serialized.append(
+            {
+                "start_sec": start_sec,
+                "end_sec": end_sec,
+                "pitch_midi": int(pitch_midi),
+                "confidence": float(confidence if confidence is not None else 0.0),
+            }
+        )
+    return serialized
+
+
+def _preprocess_bass_for_basic_pitch_transcription(input_path: Path, output_path: Path) -> None:
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        str(input_path),
+        "-vn",
+        "-ac",
+        "1",
+        "-ar",
+        "22050",
+        "-af",
+        "highpass=f=30,lowpass=f=650",
+        "-f",
+        "wav",
+        str(output_path),
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"ffmpeg preprocessing failed: {result.stderr.strip()}")
+
+
+def _transcribe_with_basic_pitch(input_path: Path, output_path: Path) -> dict[str, object] | None:
     try:
         from basic_pitch.inference import predict  # type: ignore
     except ModuleNotFoundError as exc:  # pragma: no cover - depends on optional runtime dep
@@ -182,8 +298,23 @@ def _transcribe_with_basic_pitch(input_path: Path, output_path: Path) -> None:
             f"Stem runtime dependency missing: {exc}. Run `cd backend && uv sync`."
         ) from exc
 
-    _model_output, midi_data, _note_events = predict(str(input_path))
+    prepared_input = input_path
+    preprocessing_applied = False
+    with TemporaryDirectory(prefix="dechord-basic-pitch-") as tmp_dir:
+        preprocessed_path = Path(tmp_dir) / "basic_pitch_bass.wav"
+        try:
+            _preprocess_bass_for_basic_pitch_transcription(input_path, preprocessed_path)
+            prepared_input = preprocessed_path
+            preprocessing_applied = True
+        except Exception:
+            prepared_input = input_path
+            preprocessing_applied = False
+        _model_output, midi_data, note_events = predict(str(prepared_input))
     midi_data.write(str(output_path))
+    return {
+        "basic_pitch_note_events": _serialize_basic_pitch_note_events(note_events),
+        "basic_pitch_preprocessed_input": int(preprocessing_applied),
+    }
 
 
 def _midi_to_hz(midi_note: int) -> float:
@@ -899,7 +1030,9 @@ def transcribe_bass_stem_to_midi_detailed(
         with TemporaryDirectory(prefix="dechord-midi-") as tmp_dir:
             output_path = Path(tmp_dir) / "bass.mid"
             try:
-                runner(input_wav, output_path)
+                primary_result = runner(input_wav, output_path)
+                if isinstance(primary_result, dict):
+                    diagnostics.update(primary_result)
             except Exception as primary_exc:
                 missing_dep = isinstance(primary_exc, ModuleNotFoundError) or (
                     isinstance(primary_exc, RuntimeError)

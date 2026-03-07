@@ -4,12 +4,12 @@
 - [x] Inspect Basic Pitch integration and dense-note recovery wiring
 - [x] Add RED tests for raw-note recall improvement
 - [x] Add RED tests for dense-note recovery contribution
-- [ ] Add typed config for upstream raw-recall tuning
-- [ ] Implement bass-focused raw note recall improvements
-- [ ] Implement dense-note recovery activation/fix
-- [ ] Extend trace metrics for upstream candidate generation
-- [ ] Integrate changes into the real transcription path
-- [ ] Run targeted tests
+- [x] Add typed config for upstream raw-recall tuning
+- [x] Implement bass-focused raw note recall improvements
+- [x] Implement dense-note recovery activation/fix
+- [x] Extend trace metrics for upstream candidate generation
+- [x] Integrate changes into the real transcription path
+- [x] Run targeted tests
 - [ ] Run benchmark songs with tracing
 - [ ] Write benchmark report
 - [ ] Run broader backend tests

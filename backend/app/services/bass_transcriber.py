@@ -10,7 +10,7 @@ import mido
 
 from app.midi import MidiTranscriptionResult
 from app.midi import PitchStabilityConfig, _get_pitch_stability_config
-from app.midi import transcribe_bass_stem_to_midi
+from app.midi import transcribe_bass_stem_to_midi_detailed
 from app.services.pipeline_trace import build_stage_metrics
 
 MidiTranscribeFn = Callable[[Path], bytes | MidiTranscriptionResult]
@@ -79,6 +79,125 @@ def parse_midi_to_raw_notes(midi_bytes: bytes) -> list[RawNoteEvent]:
     return events
 
 
+def _parse_basic_pitch_note_events(raw_events: object) -> list[RawNoteEvent]:
+    if not isinstance(raw_events, list):
+        return []
+    parsed: list[RawNoteEvent] = []
+    for event in raw_events:
+        if isinstance(event, dict):
+            start_value = event.get("start_sec")
+            end_value = event.get("end_sec")
+            pitch_value = event.get("pitch_midi")
+            confidence_value = event.get("confidence", 0.0)
+        elif isinstance(event, tuple | list) and len(event) >= 3:
+            start_value, end_value, pitch_value = event[0], event[1], event[2]
+            confidence_value = event[3] if len(event) >= 4 else 0.0
+        else:
+            continue
+        if not isinstance(start_value, int | float) or not isinstance(end_value, int | float) or not isinstance(pitch_value, int | float):
+            continue
+        if not isinstance(confidence_value, int | float):
+            confidence_value = 0.0
+        parsed.append(
+            RawNoteEvent(
+                pitch_midi=int(round(float(pitch_value))),
+                start_sec=float(start_value),
+                end_sec=float(end_value),
+                confidence=max(0.0, min(1.0, float(confidence_value))),
+            )
+        )
+    parsed.sort(key=lambda event: (event.start_sec, event.end_sec, event.pitch_midi))
+    return parsed
+
+
+def _dedupe_raw_candidates(notes: list[RawNoteEvent]) -> list[RawNoteEvent]:
+    deduped: list[RawNoteEvent] = []
+    for note in sorted(notes, key=lambda event: (event.start_sec, event.end_sec, event.pitch_midi, -event.confidence)):
+        duplicate_idx: int | None = None
+        for idx, existing in enumerate(deduped):
+            if (
+                existing.pitch_midi == note.pitch_midi
+                and abs(existing.start_sec - note.start_sec) <= 0.015
+                and abs(existing.end_sec - note.end_sec) <= 0.03
+            ):
+                duplicate_idx = idx
+                break
+        if duplicate_idx is None:
+            deduped.append(note)
+            continue
+        existing = deduped[duplicate_idx]
+        deduped[duplicate_idx] = RawNoteEvent(
+            pitch_midi=existing.pitch_midi,
+            start_sec=min(existing.start_sec, note.start_sec),
+            end_sec=max(existing.end_sec, note.end_sec),
+            confidence=max(existing.confidence, note.confidence),
+        )
+    return deduped
+
+
+def _has_weak_bass_support(
+    notes: list[RawNoteEvent],
+    idx: int,
+    *,
+    merge_gap_sec: float,
+) -> bool:
+    note = notes[idx]
+    for neighbor_idx in (idx - 1, idx + 1):
+        if neighbor_idx < 0 or neighbor_idx >= len(notes):
+            continue
+        neighbor = notes[neighbor_idx]
+        gap = min(
+            abs(float(note.start_sec) - float(neighbor.end_sec)),
+            abs(float(neighbor.start_sec) - float(note.end_sec)),
+        )
+        if gap <= max(merge_gap_sec, 0.2) and abs(int(neighbor.pitch_midi) - int(note.pitch_midi)) <= 2:
+            return True
+    return False
+
+
+def _filter_raw_bass_candidates(
+    notes: list[RawNoteEvent],
+    config: PitchStabilityConfig,
+) -> tuple[list[RawNoteEvent], dict[str, int]]:
+    if not notes:
+        return [], {}
+    ordered = sorted(notes, key=lambda event: (event.start_sec, event.end_sec, event.pitch_midi))
+    min_duration_sec = max(float(config.raw_note_min_duration_ms) / 1000.0, 0.0)
+    merge_gap_sec = max(float(config.note_merge_gap_ms) / 1000.0, 0.0)
+    filtered: list[RawNoteEvent] = []
+    rejection_histogram: dict[str, int] = {}
+
+    for idx, note in enumerate(ordered):
+        reason: str | None = None
+        duration_sec = _note_duration_sec(note)
+        if not (28 <= int(note.pitch_midi) <= 64):
+            reason = "out_of_register"
+        elif note.confidence < config.raw_note_min_confidence:
+            weak_support = config.raw_note_allow_weak_bass_candidates and _has_weak_bass_support(
+                ordered,
+                idx,
+                merge_gap_sec=merge_gap_sec,
+            )
+            weak_floor = max(0.05, config.raw_note_min_confidence * 0.6)
+            if not weak_support or note.confidence < weak_floor:
+                reason = "below_confidence_floor"
+        elif duration_sec < min_duration_sec:
+            weak_support = config.raw_note_allow_weak_bass_candidates and _has_weak_bass_support(
+                ordered,
+                idx,
+                merge_gap_sec=merge_gap_sec,
+            )
+            weak_duration_floor = max(0.03, min_duration_sec * 0.65)
+            if not weak_support or duration_sec < weak_duration_floor:
+                reason = "below_duration_floor"
+
+        if reason is not None:
+            rejection_histogram[reason] = rejection_histogram.get(reason, 0) + 1
+            continue
+        filtered.append(note)
+    return filtered, rejection_histogram
+
+
 class BasicPitchTranscriber:
     def __init__(
         self,
@@ -86,7 +205,7 @@ class BasicPitchTranscriber:
         midi_transcribe_fn: MidiTranscribeFn | None = None,
         parse_notes_fn: ParseNotesFn | None = None,
     ) -> None:
-        self._midi_transcribe_fn = midi_transcribe_fn or transcribe_bass_stem_to_midi
+        self._midi_transcribe_fn = midi_transcribe_fn or transcribe_bass_stem_to_midi_detailed
         self._parse_notes_fn = parse_notes_fn or parse_midi_to_raw_notes
 
     def transcribe(self, bass_wav: Path, **kwargs) -> BassTranscriptionResult:
@@ -104,15 +223,27 @@ class BasicPitchTranscriber:
             raise RuntimeError("Bass MIDI transcription failed: generated MIDI is empty")
 
         parsed_notes = self._parse_notes_fn(midi_bytes)
+        pitch_config = _get_pitch_stability_config()
+        model_note_events = _parse_basic_pitch_note_events(debug_info.get("basic_pitch_note_events"))
+        raw_candidates = list(parsed_notes)
+        if engine == "basic_pitch" and pitch_config.raw_note_recall_enable and model_note_events:
+            raw_candidates = _dedupe_raw_candidates(parsed_notes + model_note_events)
+            raw_candidates, raw_rejection_histogram = _filter_raw_bass_candidates(raw_candidates, pitch_config)
+        else:
+            raw_candidates = _dedupe_raw_candidates(parsed_notes)
+            raw_rejection_histogram = {}
+        raw_notes_before_local_filter = len(_dedupe_raw_candidates(parsed_notes + model_note_events)) if (
+            engine == "basic_pitch" and pitch_config.raw_note_recall_enable and model_note_events
+        ) else len(raw_candidates)
+        raw_notes_after_local_filter = len(raw_candidates)
         corrections = 0
         intrusion_suppressions = 0
         merged_fragments = 0
         rejected_notes = 0
-        pitch_stabilized_notes = list(parsed_notes)
-        admission_filtered_notes = list(parsed_notes)
-        if engine == "basic_pitch" and parsed_notes:
-            pitch_config = _get_pitch_stability_config()
-            stage_trace = _trace_basicpitch_stages(parsed_notes, pitch_config)
+        pitch_stabilized_notes = list(raw_candidates)
+        admission_filtered_notes = list(raw_candidates)
+        if engine == "basic_pitch" and raw_candidates:
+            stage_trace = _trace_basicpitch_stages(raw_candidates, pitch_config)
             pitch_stabilized_notes = list(stage_trace.pitch_stabilized_notes)
             admission_filtered_notes = list(stage_trace.admission_filtered_notes)
             stability_stats = stage_trace.stats
@@ -120,21 +251,30 @@ class BasicPitchTranscriber:
             intrusion_suppressions = int(stability_stats["suppressed_short_intrusions"])
             merged_fragments = int(stability_stats["merged_fragments"])
             rejected_notes = int(stability_stats["rejected_notes"])
-        else:
-            pitch_config = _get_pitch_stability_config()
         debug_info["basicpitch_octave_corrections_applied"] = int(corrections)
         debug_info["basicpitch_short_intrusions_suppressed"] = int(intrusion_suppressions)
         debug_info["basicpitch_fragments_merged"] = int(merged_fragments)
         debug_info["basicpitch_rejected_notes"] = int(rejected_notes)
+        debug_info["basicpitch_raw_notes_before_local_filter"] = int(raw_notes_before_local_filter)
+        debug_info["basicpitch_raw_notes_after_local_filter"] = int(raw_notes_after_local_filter)
+        debug_info["basicpitch_raw_notes_removed_by_local_filter"] = int(
+            max(0, raw_notes_before_local_filter - raw_notes_after_local_filter)
+        )
         debug_info["pipeline_trace"] = {
             "pipeline_stats": {
                 "basic_pitch_raw": build_stage_metrics(
-                    parsed_notes,
+                    raw_candidates,
                     short_note_threshold_ms=pitch_config.note_min_duration_ms,
+                    candidate_flow={
+                        "pre_filter_note_count": int(raw_notes_before_local_filter),
+                        "post_filter_note_count": int(raw_notes_after_local_filter),
+                        "filtered_out_note_count": int(max(0, raw_notes_before_local_filter - raw_notes_after_local_filter)),
+                        "filter_rejection_histogram": dict(sorted(raw_rejection_histogram.items())),
+                    },
                 ),
                 "pitch_stabilized": build_stage_metrics(
                     pitch_stabilized_notes,
-                    previous_notes=parsed_notes,
+                    previous_notes=raw_candidates,
                     short_note_threshold_ms=pitch_config.note_min_duration_ms,
                 ),
                 "admission_filtered": build_stage_metrics(

@@ -75,6 +75,12 @@ class DenseNoteGenerator:
             return []
 
         repeated_note_mode, anchor_pitch, anchor_strength = _repeated_note_anchor(context_notes, onset_count=len(window_onsets))
+        sparse_region_mode = (
+            self._config.raw_note_sparse_region_boost_enable
+            and len(window_onsets) <= 2
+            and not base_notes
+            and anchor_pitch is not None
+        )
         audio, sr = self._audio_loader(bass_wav)
         candidates: list[DenseNoteCandidate] = []
         collision_pool = list(base_notes)
@@ -99,6 +105,7 @@ class DenseNoteGenerator:
                 raw_confidence=raw_confidence,
                 repeated_note_mode=repeated_note_mode,
                 anchor_strength=anchor_strength,
+                sparse_region_mode=sparse_region_mode,
             ):
                 continue
 
@@ -153,17 +160,25 @@ class DenseNoteGenerator:
         raw_confidence: float,
         repeated_note_mode: bool,
         anchor_strength: float,
+        sparse_region_mode: bool,
     ) -> bool:
         min_duration_sec = max(self._config.note_dense_candidate_min_duration_ms / 1000.0, 0.0)
         if duration_sec >= min_duration_sec:
             if duration_sec >= 0.09:
                 return True
             return raw_confidence >= 0.75 or (repeated_note_mode and anchor_strength >= 0.7)
+        if sparse_region_mode:
+            relaxed_min_duration_sec = max(
+                self._config.raw_note_min_duration_ms / 1000.0,
+                min_duration_sec * max(0.0, 1.0 - self._config.dense_candidate_support_relaxation),
+            )
+            if duration_sec >= relaxed_min_duration_sec and anchor_strength >= 0.8 and raw_confidence >= 0.6:
+                return True
         return raw_confidence >= 0.85 and repeated_note_mode and anchor_strength >= 0.7
 
 
 def _repeated_note_anchor(context_notes: list[RawNoteEvent], *, onset_count: int) -> tuple[bool, int | None, float]:
-    if onset_count < 3 or not context_notes:
+    if not context_notes:
         return False, None, 0.0
     local_counts = Counter(int(note.pitch_midi) for note in context_notes if 28 <= int(note.pitch_midi) <= 64)
     if not local_counts:

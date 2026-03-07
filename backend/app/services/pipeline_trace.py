@@ -16,6 +16,7 @@ def build_stage_metrics(
     added_override: int | None = None,
     removed_override: int | None = None,
     altered_override: int | None = None,
+    candidate_flow: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     durations_ms = [_duration_ms(note) for note in notes]
     confidence_values = [value for value in (_confidence(note) for note in notes) if value is not None]
@@ -47,7 +48,7 @@ def build_stage_metrics(
     else:
         confidence_stats = {"mean": None, "min": None, "max": None}
 
-    return {
+    metrics = {
         "note_count": len(notes),
         "average_duration_ms": float(sum(durations_ms) / len(durations_ms)) if durations_ms else 0.0,
         "median_duration_ms": float(median(durations_ms)) if durations_ms else 0.0,
@@ -60,6 +61,9 @@ def build_stage_metrics(
         "notes_merged_by_stage": int(max(0, merged_count)),
         "notes_altered_by_stage": int(altered_count),
     }
+    if candidate_flow is not None:
+        metrics["candidate_flow"] = candidate_flow
+    return metrics
 
 
 def build_pipeline_trace_report(

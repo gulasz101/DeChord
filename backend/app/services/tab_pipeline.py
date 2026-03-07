@@ -131,6 +131,7 @@ class TabPipeline:
         transcription = self._transcriber.transcribe(bass_wav)
         note_config = _get_pitch_stability_config()
         quality_mode_suspect_silence = tab_generation_quality_mode in {"high_accuracy", "high_accuracy_aggressive"}
+        sparse_region_boost_enabled = note_config.raw_note_recall_enable and note_config.raw_note_sparse_region_boost_enable
         should_onset_recovery = (
             onset_recovery
             if onset_recovery is not None
@@ -145,7 +146,12 @@ class TabPipeline:
         onset_split_count = 0
         all_dense_candidates: list[DenseNoteCandidate] = []
         accepted_dense_candidates: list[DenseNoteCandidate] = []
-        if (should_onset_recovery and pre_cleanup_notes) or quality_mode_suspect_silence:
+        dense_note_fusion_candidates: list[dict[str, object]] = []
+        dense_bar_fusion_candidates: list[dict[str, object]] = []
+        sparse_region_rows: list[dict[str, object]] = []
+        if (should_onset_recovery and pre_cleanup_notes) or quality_mode_suspect_silence or (
+            sparse_region_boost_enabled and pre_cleanup_notes
+        ):
             analysis_onset_times = self._onset_detect_fn(bass_wav)
         if should_onset_recovery and pre_cleanup_notes:
             onset_times = analysis_onset_times
@@ -157,6 +163,23 @@ class TabPipeline:
                     **onset_kwargs,
                 )
                 onset_recovery_applied = True
+        if sparse_region_boost_enabled and pre_cleanup_notes and analysis_onset_times:
+            (
+                pre_cleanup_notes,
+                sparse_proposed_candidates,
+                sparse_accepted_candidates,
+                sparse_candidate_rows,
+                sparse_region_rows,
+            ) = self._recover_sparse_region_dense_candidates(
+                bass_wav=bass_wav,
+                bars=bars,
+                pre_cleanup_notes=pre_cleanup_notes,
+                onset_times=analysis_onset_times,
+                audio_duration_sec=audio_duration_sec,
+            )
+            all_dense_candidates.extend(sparse_proposed_candidates)
+            accepted_dense_candidates.extend(sparse_accepted_candidates)
+            dense_note_fusion_candidates.extend(sparse_candidate_rows)
 
         cleanup_kwargs = cleanup_params_for_bpm(tempo_used)
         cleanup_stats_pass1: dict[str, int] = {}
@@ -171,10 +194,12 @@ class TabPipeline:
         quantized_notes = self._quantize_fn(cleaned_notes, BarGrid(bars=bars), subdivision=subdivision)
         quality_diagnostics: dict[str, object] = {
             "QUALITY_MODE_SUSPECT_SILENCE": quality_mode_suspect_silence,
+            "raw_note_sparse_region_boost_enable": sparse_region_boost_enabled,
+            "raw_note_sparse_regions": sparse_region_rows,
         }
         raw_note_source_rows = self._build_raw_note_source_rows(
             pre_cleanup_notes,
-            dense_candidates=[],
+            dense_candidates=accepted_dense_candidates,
             cleaned_notes=cleaned_notes,
         )
 
@@ -183,8 +208,6 @@ class TabPipeline:
             bar_rms = self._bar_rms_values(bass_wav, bars)
             onset_peaks = self._bar_onset_peaks(bass_wav, bars)
             suspect_rows: list[dict[str, object]] = []
-            dense_bar_fusion_candidates: list[dict[str, object]] = []
-            dense_note_fusion_candidates: list[dict[str, object]] = []
 
             if tab_generation_quality_mode == "high_accuracy":
                 median_bar_rms = self._median(bar_rms)
@@ -411,6 +434,9 @@ class TabPipeline:
                     added_override=len(all_dense_candidates),
                     removed_override=0,
                     altered_override=0,
+                    candidate_flow={
+                        "proposed_note_count": int(len(all_dense_candidates)),
+                    },
                 ),
                 "dense_accepted": build_stage_metrics(
                     [candidate.to_raw_note() for candidate in accepted_dense_candidates],
@@ -418,6 +444,20 @@ class TabPipeline:
                     added_override=len(accepted_dense_candidates),
                     removed_override=max(0, len(all_dense_candidates) - len(accepted_dense_candidates)),
                     altered_override=0,
+                    candidate_flow={
+                        "proposed_note_count": int(len(all_dense_candidates)),
+                        "accepted_note_count": int(len(accepted_dense_candidates)),
+                        "rejected_note_count": int(max(0, len(all_dense_candidates) - len(accepted_dense_candidates))),
+                        "rejection_histogram": dict(
+                            sorted(
+                                Counter(
+                                    str(row.get("rejection_reason"))
+                                    for row in dense_note_fusion_candidates
+                                    if row.get("accepted") is False and row.get("rejection_reason")
+                                ).items()
+                            )
+                        ),
+                    },
                 ),
                 "final_notes": build_stage_metrics(
                     list(quantized_notes),
@@ -738,6 +778,117 @@ class TabPipeline:
         except TypeError:
             return self._transcriber.transcribe(bass_wav)
 
+    def _recover_sparse_region_dense_candidates(
+        self,
+        *,
+        bass_wav: Path,
+        bars: list[Bar],
+        pre_cleanup_notes: list,
+        onset_times: list[float],
+        audio_duration_sec: float,
+    ) -> tuple[list, list[DenseNoteCandidate], list[DenseNoteCandidate], list[dict[str, object]], list[dict[str, object]]]:
+        note_config = _get_pitch_stability_config()
+        threshold_sec = max(note_config.dense_candidate_sparse_region_threshold_ms / 1000.0, 0.0)
+        if threshold_sec <= 0.0:
+            return list(pre_cleanup_notes), [], [], [], []
+
+        proposed_candidates: list[DenseNoteCandidate] = []
+        accepted_candidates: list[DenseNoteCandidate] = []
+        candidate_rows: list[dict[str, object]] = []
+        sparse_region_rows: list[dict[str, object]] = []
+        working_notes = list(pre_cleanup_notes)
+
+        for window_start, window_end in self._find_sparse_region_windows(
+            pre_cleanup_notes,
+            onset_times=onset_times,
+            audio_duration_sec=audio_duration_sec,
+            threshold_sec=threshold_sec,
+        ):
+            local_onsets = [float(onset) for onset in onset_times if window_start <= float(onset) < window_end]
+            if not local_onsets:
+                continue
+            context_notes = [
+                note
+                for note in pre_cleanup_notes
+                if max(0.0, window_start - threshold_sec)
+                <= float(note.start_sec)
+                < (
+                    min(audio_duration_sec, window_end + threshold_sec)
+                    if audio_duration_sec > 0.0
+                    else (window_end + threshold_sec)
+                )
+            ]
+            generated = self._dense_note_generator.generate(
+                bass_wav=bass_wav,
+                window_start=window_start,
+                window_end=window_end,
+                onset_times=local_onsets,
+                base_notes=[],
+                context_notes=context_notes,
+            )
+            proposed_candidates.extend(generated)
+            bar_index = self._bar_index_for_time(bars, window_start)
+            accepted_window_candidates, dense_rows = self._confidence_gate_dense_note_candidates(
+                generated,
+                reference_notes=context_notes,
+                base_notes=working_notes + [candidate.to_raw_note() for candidate in accepted_candidates],
+                bar_index=bar_index,
+                onset_peak_count=len(local_onsets),
+                window_start=window_start,
+                window_end=window_end,
+            )
+            accepted_candidates.extend(accepted_window_candidates)
+            candidate_rows.extend(dense_rows)
+            if accepted_window_candidates:
+                working_notes = self._merge_raw_notes(
+                    working_notes,
+                    [candidate.to_raw_note() for candidate in accepted_window_candidates],
+                )
+            sparse_region_rows.append(
+                {
+                    "window_start": float(window_start),
+                    "window_end": float(window_end),
+                    "onset_count": int(len(local_onsets)),
+                    "proposed_candidates": int(len(generated)),
+                    "accepted_candidates": int(len(accepted_window_candidates)),
+                }
+            )
+
+        return working_notes, proposed_candidates, accepted_candidates, candidate_rows, sparse_region_rows
+
+    @staticmethod
+    def _find_sparse_region_windows(
+        notes: list,
+        *,
+        onset_times: list[float],
+        audio_duration_sec: float,
+        threshold_sec: float,
+    ) -> list[tuple[float, float]]:
+        if threshold_sec <= 0.0:
+            return []
+        ordered = sorted(notes, key=lambda note: (float(note.start_sec), float(note.end_sec), int(note.pitch_midi)))
+        if len(ordered) < 2:
+            return []
+        windows: list[tuple[float, float]] = []
+        for left_note, right_note in zip(ordered, ordered[1:]):
+            window_start = float(left_note.end_sec)
+            window_end = float(right_note.start_sec)
+            if audio_duration_sec > 0.0:
+                window_end = min(window_end, audio_duration_sec)
+            if (window_end - window_start) < threshold_sec:
+                continue
+            if not any(window_start <= float(onset) < window_end for onset in onset_times):
+                continue
+            windows.append((window_start, window_end))
+        return windows
+
+    @staticmethod
+    def _bar_index_for_time(bars: list[Bar], timestamp: float) -> int:
+        for bar in bars:
+            if float(bar.start_sec) <= float(timestamp) < float(bar.end_sec):
+                return int(bar.index)
+        return int(bars[-1].index) if bars else 0
+
     @staticmethod
     def _merge_raw_notes(base_notes: list, additional_notes: list) -> list:
         merged = list(base_notes)
@@ -970,6 +1121,15 @@ class TabPipeline:
     ) -> tuple[list[DenseNoteCandidate], list[dict[str, object]]]:
         note_config = _get_pitch_stability_config()
         local_reference = [note for note in reference_notes if window_start <= note.start_sec < window_end]
+        sparse_context_mode = False
+        if not local_reference and note_config.raw_note_sparse_region_boost_enable:
+            context_radius_sec = max(note_config.dense_candidate_sparse_region_threshold_ms / 1000.0, 0.0)
+            local_reference = [
+                note
+                for note in reference_notes
+                if (window_start - context_radius_sec) <= float(note.start_sec) < (window_end + context_radius_sec)
+            ]
+            sparse_context_mode = bool(local_reference)
         if not local_reference:
             rejected = [
                 {
@@ -1020,6 +1180,7 @@ class TabPipeline:
             repeated_mode_score = 1.0 if repeated_note_mode and adjusted_pitch == dominant_pitch else 0.0
             register_score = 1.0 if 28 <= adjusted_pitch <= 64 else 0.0
             duration_score = min(1.0, candidate_duration_sec / max(note_config.note_dense_candidate_min_duration_ms / 1000.0, 0.001))
+            relaxation = note_config.dense_candidate_support_relaxation if sparse_context_mode else 0.0
             total_score = (
                 (0.4 * float(candidate.confidence))
                 + (0.2 * onset_support_score)
@@ -1043,16 +1204,16 @@ class TabPipeline:
             elif octave_neighbor_conflict:
                 accepted = False
                 rejection_reason = "octave_neighbor_conflict"
-            elif candidate_duration_sec < (note_config.note_dense_candidate_min_duration_ms / 1000.0) and total_score < 0.85:
+            elif candidate_duration_sec < (note_config.note_dense_candidate_min_duration_ms / 1000.0) and total_score < (0.85 - relaxation):
                 accepted = False
                 rejection_reason = "candidate_too_short"
-            elif unstable_context and total_score < 0.55:
+            elif unstable_context and total_score < (0.55 - (relaxation * 0.5)):
                 accepted = False
                 rejection_reason = "unstable_local_context"
             elif anchor_distance > 18 and local_support_ratio < 0.2:
                 accepted = False
                 rejection_reason = "pitch_far_from_anchor"
-            elif total_score < 0.4:
+            elif total_score < (0.4 - relaxation):
                 accepted = False
                 rejection_reason = "weak_local_support"
 
@@ -1081,6 +1242,7 @@ class TabPipeline:
                         "total_score": float(total_score),
                         "anchor_distance_semitones": int(anchor_distance),
                         "repeated_note_mode": bool(repeated_note_mode),
+                        "sparse_context_mode": bool(sparse_context_mode),
                     },
                 }
             )
