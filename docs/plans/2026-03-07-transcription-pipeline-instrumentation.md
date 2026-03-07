@@ -3,7 +3,7 @@
 [x] add RED tests for pipeline metrics
 [x] implement instrumentation hooks
 [x] extend evaluation script
-[ ] run instrumentation benchmark
-[ ] generate pipeline trace reports
+[x] run instrumentation benchmark
+[x] generate pipeline trace reports
 [ ] run full backend tests
 [ ] run make reset
