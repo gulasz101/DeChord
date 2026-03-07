@@ -260,6 +260,26 @@ def test_pitch_stability_config_parses_raw_recall_settings(monkeypatch: pytest.M
     assert config.dense_candidate_support_relaxation == pytest.approx(0.2)
 
 
+def test_pitch_stability_config_parses_onset_note_generator_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DECHORD_ONSET_NOTE_GENERATOR_ENABLE", "1")
+    monkeypatch.setenv("DECHORD_ONSET_NOTE_GENERATOR_MODE", "fallback")
+    monkeypatch.setenv("DECHORD_ONSET_MIN_SPACING_MS", "70")
+    monkeypatch.setenv("DECHORD_ONSET_STRENGTH_THRESHOLD", "0.35")
+    monkeypatch.setenv("DECHORD_ONSET_REGION_MAX_DURATION_MS", "220")
+    monkeypatch.setenv("DECHORD_ONSET_REGION_MIN_DURATION_MS", "40")
+    monkeypatch.setenv("DECHORD_ONSET_DENSITY_NOTES_PER_SEC_THRESHOLD", "4.5")
+
+    config = _get_pitch_stability_config()
+
+    assert config.onset_note_generator_enable is True
+    assert config.onset_note_generator_mode == "fallback"
+    assert config.onset_min_spacing_ms == 70
+    assert config.onset_strength_threshold == pytest.approx(0.35)
+    assert config.onset_region_max_duration_ms == 220
+    assert config.onset_region_min_duration_ms == 40
+    assert config.onset_density_notes_per_sec_threshold == pytest.approx(4.5)
+
+
 def test_pitch_stability_config_falls_back_for_invalid_raw_recall_settings(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -111,6 +111,28 @@ def test_tab_pipeline_emits_all_stage_metrics_and_consistent_counts(
                                 "notes_merged_by_stage": 0,
                                 "notes_altered_by_stage": 0,
                             },
+                            "onset_candidates": {
+                                "note_count": 0,
+                                "average_duration_ms": 0.0,
+                                "median_duration_ms": 0.0,
+                                "short_note_threshold_ms": 40,
+                                "short_note_count": 0,
+                                "octave_jump_count": 0,
+                                "pitch_range": {"min": None, "max": None},
+                                "confidence_stats": {"mean": None, "min": None, "max": None},
+                                "notes_added_by_stage": 0,
+                                "notes_removed_by_stage": 0,
+                                "notes_merged_by_stage": 0,
+                                "notes_altered_by_stage": 0,
+                                "candidate_flow": {
+                                    "generator_enabled": True,
+                                    "generator_mode": "merged",
+                                    "proposed_note_count": 0,
+                                    "accepted_note_count": 0,
+                                    "rejected_note_count": 0,
+                                    "materially_changed_final_note_count": False,
+                                },
+                            },
                         }
                     }
                 },
@@ -193,9 +215,18 @@ def test_tab_pipeline_emits_all_stage_metrics_and_consistent_counts(
         "basic_pitch_raw",
         "pitch_stabilized",
         "admission_filtered",
+        "onset_candidates",
         "dense_candidates",
         "dense_accepted",
         "final_notes",
+    }
+    assert pipeline_stats["onset_candidates"]["candidate_flow"] == {
+        "generator_enabled": True,
+        "generator_mode": "merged",
+        "proposed_note_count": 0,
+        "accepted_note_count": 0,
+        "rejected_note_count": 0,
+        "materially_changed_final_note_count": False,
     }
     assert pipeline_stats["dense_candidates"]["note_count"] == 2
     assert pipeline_stats["dense_candidates"]["candidate_flow"] == {

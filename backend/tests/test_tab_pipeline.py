@@ -11,6 +11,7 @@ from app.services.bass_transcriber import BassTranscriptionResult, RawNoteEvent
 from app.services.dense_note_generator import DenseNoteCandidate
 from app.services.fingering import FingeredNote
 from app.services.note_cleanup import cleanup_params_for_bpm
+from app.services.onset_note_generator import OnsetNoteCandidate
 from app.services.quantization import QuantizedNote
 from app.services.rhythm_grid import Bar
 from app.services.tab_pipeline import FingeringCollapseError, TabPipeline
@@ -1428,3 +1429,139 @@ def test_standard_mode_activates_dense_recovery_for_sparse_regions_when_enabled(
     assert [round(note.start_sec, 2) for note in quantize_inputs] == [0.0, 0.2, 0.42]
     assert result.debug_info["pipeline_trace"]["pipeline_stats"]["dense_candidates"]["note_count"] == 1
     assert result.debug_info["pipeline_trace"]["pipeline_stats"]["dense_accepted"]["note_count"] == 1
+
+
+def test_tab_pipeline_uses_onset_candidates_when_basic_pitch_is_sparse(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DECHORD_ONSET_NOTE_GENERATOR_ENABLE", "1")
+    monkeypatch.setenv("DECHORD_ONSET_NOTE_GENERATOR_MODE", "fallback")
+    monkeypatch.setenv("DECHORD_ONSET_DENSITY_NOTES_PER_SEC_THRESHOLD", "3.0")
+
+    class FakeTranscriber:
+        def transcribe(self, _bass_wav: Path) -> BassTranscriptionResult:
+            return BassTranscriptionResult(
+                engine="basic_pitch",
+                midi_bytes=b"MThd",
+                raw_notes=[],
+                debug_info={
+                    "pipeline_trace": {
+                        "pipeline_stats": {
+                            "basic_pitch_raw": {
+                                "note_count": 0,
+                                "average_duration_ms": 0.0,
+                                "median_duration_ms": 0.0,
+                                "short_note_threshold_ms": 60,
+                                "short_note_count": 0,
+                                "octave_jump_count": 0,
+                                "pitch_range": {"min": None, "max": None},
+                                "confidence_stats": {"mean": None, "min": None, "max": None},
+                                "notes_added_by_stage": 0,
+                                "notes_removed_by_stage": 0,
+                                "notes_merged_by_stage": 0,
+                                "notes_altered_by_stage": 0,
+                            },
+                            "pitch_stabilized": {
+                                "note_count": 0,
+                                "average_duration_ms": 0.0,
+                                "median_duration_ms": 0.0,
+                                "short_note_threshold_ms": 60,
+                                "short_note_count": 0,
+                                "octave_jump_count": 0,
+                                "pitch_range": {"min": None, "max": None},
+                                "confidence_stats": {"mean": None, "min": None, "max": None},
+                                "notes_added_by_stage": 0,
+                                "notes_removed_by_stage": 0,
+                                "notes_merged_by_stage": 0,
+                                "notes_altered_by_stage": 0,
+                            },
+                            "admission_filtered": {
+                                "note_count": 0,
+                                "average_duration_ms": 0.0,
+                                "median_duration_ms": 0.0,
+                                "short_note_threshold_ms": 60,
+                                "short_note_count": 0,
+                                "octave_jump_count": 0,
+                                "pitch_range": {"min": None, "max": None},
+                                "confidence_stats": {"mean": None, "min": None, "max": None},
+                                "notes_added_by_stage": 0,
+                                "notes_removed_by_stage": 0,
+                                "notes_merged_by_stage": 0,
+                                "notes_altered_by_stage": 0,
+                            },
+                        }
+                    }
+                },
+            )
+
+    bars = [Bar(index=0, start_sec=0.0, end_sec=1.0, beats_sec=[0.0, 0.25, 0.5, 0.75])]
+    quantized_inputs: list[RawNoteEvent] = []
+
+    def fake_quantize(events, _grid, **_kwargs):
+        quantized_inputs[:] = list(events)
+        return [
+            QuantizedNote(
+                bar_index=0,
+                beat_position=float(index) * 0.5,
+                duration_beats=0.5,
+                pitch_midi=note.pitch_midi,
+                start_sec=note.start_sec,
+                end_sec=note.end_sec,
+            )
+            for index, note in enumerate(events)
+        ]
+
+    pipeline = TabPipeline(
+        transcriber=FakeTranscriber(),
+        rhythm_extract_fn=lambda _drums, **_kwargs: ([0.0, 0.25, 0.5, 0.75], [0.0], "madmom"),
+        bar_builder_fn=lambda _beats, _downbeats, **_kwargs: bars,
+        onset_detect_fn=lambda _bass: [0.10, 0.34],
+        cleanup_fn=lambda events, **_kwargs: list(events),
+        quantize_fn=fake_quantize,
+        fingering_fn=lambda notes, **_kwargs: [
+            FingeredNote(
+                bar_index=note.bar_index,
+                beat_position=note.beat_position,
+                duration_beats=note.duration_beats,
+                pitch_midi=note.pitch_midi,
+                start_sec=note.start_sec,
+                end_sec=note.end_sec,
+                string=4,
+                fret=max(0, note.pitch_midi - 28),
+            )
+            for note in notes
+        ],
+        export_fn=lambda _notes, _bars, **_kwargs: ("\\tempo 120", [SyncPoint(bar_index=0, millisecond_offset=0)]),
+        onset_note_generator=type(
+            "FakeOnsetGenerator",
+            (),
+            {
+                "generate": lambda self, _bass_wav: [
+                    OnsetNoteCandidate(
+                        pitch_midi=33,
+                        start_sec=0.10,
+                        end_sec=0.24,
+                        confidence=0.72,
+                    ),
+                    OnsetNoteCandidate(
+                        pitch_midi=36,
+                        start_sec=0.34,
+                        end_sec=0.48,
+                        confidence=0.68,
+                    ),
+                ],
+            },
+        )(),
+    )
+
+    result = pipeline.run(Path("bass.wav"), Path("drums.wav"), bpm_hint=120.0, onset_recovery=False)
+
+    assert [(round(note.start_sec, 2), note.pitch_midi) for note in quantized_inputs] == [(0.10, 33), (0.34, 36)]
+    assert result.debug_info["raw_note_source_summary"]["onset_note_generator"] == 2
+    assert result.debug_info["pipeline_trace"]["pipeline_stats"]["onset_candidates"]["note_count"] == 2
+    assert result.debug_info["pipeline_trace"]["pipeline_stats"]["onset_candidates"]["candidate_flow"] == {
+        "generator_enabled": True,
+        "generator_mode": "fallback",
+        "proposed_note_count": 2,
+        "accepted_note_count": 2,
+        "rejected_note_count": 0,
+        "materially_changed_final_note_count": True,
+    }
