@@ -12,5 +12,5 @@
 - [x] Run benchmark songs with updated logic
 - [x] Write benchmark report
 - [x] Run broader backend tests
-- [ ] Run `make reset`
-- [ ] Mark plan complete
+- [x] Run `make reset`
+- [x] Mark plan complete
