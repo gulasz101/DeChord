@@ -65,6 +65,20 @@ def test_parse_cli_args_accepts_optional_phase_suffix() -> None:
     assert args.phase == "phase4_hysteria_final"
 
 
+def test_parse_cli_args_accepts_trace_pipeline_flag() -> None:
+    args = parse_cli_args(
+        [
+            "--mp3",
+            "../test songs/Muse - Hysteria.mp3",
+            "--gp5",
+            "../test songs/Muse - Hysteria.gp5",
+            "--trace-pipeline",
+        ]
+    )
+
+    assert args.trace_pipeline is True
+
+
 def test_parse_cli_args_accepts_benchmark_config_and_candidate_models() -> None:
     args = parse_cli_args(
         [
@@ -292,6 +306,24 @@ def test_evaluate_inputs_runs_full_pipeline_and_writes_deterministic_reports(
                 debug_info={
                     "derived_bpm": 120.0,
                     "rhythm_source": "librosa",
+                    "pipeline_trace": {
+                        "song": "Muse - Hysteria",
+                        "pipeline_stats": {
+                            "final_notes": {
+                                "note_count": 1,
+                                "average_duration_ms": 500.0,
+                                "median_duration_ms": 500.0,
+                                "short_note_threshold_ms": 80,
+                                "short_note_count": 0,
+                                "octave_jump_count": 0,
+                                "confidence_stats": {"mean": None, "min": None, "max": None},
+                                "notes_added_by_stage": 0,
+                                "notes_removed_by_stage": 0,
+                                "notes_merged_by_stage": 0,
+                                "notes_altered_by_stage": 0,
+                            }
+                        },
+                    },
                     "raw_note_source_rows": [
                         {
                             "source": "basic_pitch",
@@ -351,6 +383,7 @@ def test_evaluate_inputs_runs_full_pipeline_and_writes_deterministic_reports(
         ResolvedInputs(song_name="Muse - Hysteria", mp3_path=mp3, gp5_path=gp5),
         quality="high_accuracy_aggressive",
         config_name="full",
+        trace_pipeline=True,
     )
 
     assert run_called["called"] is True
@@ -361,6 +394,7 @@ def test_evaluate_inputs_runs_full_pipeline_and_writes_deterministic_reports(
     assert output["alphatex_path"].endswith("muse__hysteria_output.alphatex")
     assert output["transcription_audit_path"].endswith("muse__hysteria_transcription_audit.json")
     assert output["transcription_sources_path"].endswith("muse__hysteria_transcription_sources.json")
+    assert output["pipeline_trace_path"].endswith("muse__hysteria_pipeline_trace.json")
 
     audit = json.loads(Path(output["transcription_audit_path"]).read_text())
     assert audit["transcription_engine_used"] == "basic_pitch"
@@ -370,6 +404,9 @@ def test_evaluate_inputs_runs_full_pipeline_and_writes_deterministic_reports(
     source_audit = json.loads(Path(output["transcription_sources_path"]).read_text())
     assert source_audit["source_counts"] == {"basic_pitch": 1}
     assert source_audit["accepted_dense_candidates"] == 0
+    pipeline_trace = json.loads(Path(output["pipeline_trace_path"]).read_text())
+    assert pipeline_trace["song"] == "Muse - Hysteria"
+    assert pipeline_trace["pipeline_stats"]["final_notes"]["note_count"] == 1
     metrics = json.loads(Path(output["metrics_path"]).read_text())
     assert metrics["benchmark_config"] == "full"
     assert metrics["runtime_seconds"]["total"] == 0.0

@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.services.bass_transcriber import BasicPitchTranscriber, RawNoteEvent
 from app.services.gp5_reference import ReferenceNote, ReferenceTab, parse_gp5_bass_track
+from app.services.pipeline_trace import build_pipeline_trace_report
 from app.services.tab_comparator import compare_tabs
 from app.services.tab_pipeline import TabPipeline
 from app.stems import build_bass_analysis_stem, split_to_stems
@@ -136,6 +137,7 @@ def parse_cli_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--config", choices=BENCHMARK_CONFIG_CHOICES, default="baseline")
     parser.add_argument("--candidate-models")
     parser.add_argument("--phase")
+    parser.add_argument("--trace-pipeline", action="store_true")
     args = parser.parse_args(argv)
 
     has_mp3 = bool(args.mp3)
@@ -466,6 +468,7 @@ def evaluate_inputs(
     config_name: str = "baseline",
     candidate_models_override: str | None = None,
     phase: str | None = None,
+    trace_pipeline: bool = False,
 ) -> dict[str, object]:
     reference, _duration_seconds = validate_inputs(resolved.mp3_path, resolved.gp5_path)
     song_name = resolved.song_name
@@ -553,6 +556,7 @@ def evaluate_inputs(
     transcription_audit_path = REPORTS_DIR / f"{filename_prefix}_transcription_audit.json"
     transcription_sources_path = REPORTS_DIR / f"{filename_prefix}_transcription_sources.json"
     alphatex_path = REPORTS_DIR / f"{filename_prefix}_output.alphatex"
+    pipeline_trace_path = REPORTS_DIR / f"{filename_prefix}_pipeline_trace.json"
 
     metrics = {
         "song": song_name,
@@ -631,14 +635,19 @@ def evaluate_inputs(
             "notes": len(generated),
         },
     }
+    pipeline_trace = result.debug_info.get("pipeline_trace")
+    if not isinstance(pipeline_trace, dict):
+        pipeline_trace = build_pipeline_trace_report(song_name=song_name, pipeline_stats={})
 
     metrics_path.write_text(json.dumps(metrics, indent=2, sort_keys=True))
     debug_path.write_text(json.dumps(debug_info, indent=2, sort_keys=True))
     transcription_audit_path.write_text(json.dumps(transcription_audit, indent=2, sort_keys=True))
     transcription_sources_path.write_text(json.dumps(debug_info["transcription_source_audit"], indent=2, sort_keys=True))
     alphatex_path.write_text(result.alphatex)
+    if trace_pipeline:
+        pipeline_trace_path.write_text(json.dumps(pipeline_trace, indent=2, sort_keys=True))
 
-    return {
+    output = {
         "metrics_path": str(metrics_path),
         "debug_path": str(debug_path),
         "transcription_audit_path": str(transcription_audit_path),
@@ -646,6 +655,9 @@ def evaluate_inputs(
         "alphatex_path": str(alphatex_path),
         "metrics": metrics,
     }
+    if trace_pipeline:
+        output["pipeline_trace_path"] = str(pipeline_trace_path)
+    return output
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -657,6 +669,7 @@ def main(argv: list[str] | None = None) -> int:
         config_name=args.config,
         candidate_models_override=args.candidate_models,
         phase=args.phase,
+        trace_pipeline=args.trace_pipeline,
     )
     print(json.dumps(output["metrics"], indent=2, sort_keys=True))
     print(f"metrics: {output['metrics_path']}")
@@ -664,6 +677,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"transcription_audit: {output['transcription_audit_path']}")
     print(f"transcription_sources: {output['transcription_sources_path']}")
     print(f"alphatex: {output['alphatex_path']}")
+    if "pipeline_trace_path" in output:
+        print(f"pipeline_trace: {output['pipeline_trace_path']}")
     return 0
 
 
