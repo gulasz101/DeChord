@@ -26,6 +26,9 @@
 
 - After finishing any job that has a final handoff summary, send a Telegram summary notification by default.
 - Skip the Telegram notification only when the user explicitly says `skip telegram`.
+- Prepare the final handoff summary in a subagent whenever the environment supports subagents, to keep the main agent context lean.
+- Run Telegram notification work in a subagent whenever the environment supports subagents. This includes summary formatting, SOPS decryption, and the actual send step.
+- If the environment does not support subagents, the main agent MAY perform the summary and Telegram work directly as a fallback.
 - The Telegram notification MUST be sent after the required verification flow for that job is complete.
 - Use `ops/scripts/send-telegram-summary.sh` to deliver the message.
 - Telegram credentials MUST be loaded from the SOPS-encrypted file `ops/secrets/telegram.sops.yaml` and decrypted only at send time.
