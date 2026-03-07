@@ -2,7 +2,7 @@
 
 - [x] Inspect benchmark history and identify best-known configurations
 - [x] Define minimal preset strategy
-- [ ] Add RED tests for preset parsing / mapping
+- [x] Add RED tests for preset parsing / mapping
 - [ ] Implement preset resolver over existing config surface
 - [ ] Update docs / README / report scripts if needed
 - [ ] Run focused verification reruns with resource guardrails
