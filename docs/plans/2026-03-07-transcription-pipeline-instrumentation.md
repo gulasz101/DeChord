@@ -5,5 +5,5 @@
 [x] extend evaluation script
 [x] run instrumentation benchmark
 [x] generate pipeline trace reports
-[ ] run full backend tests
+[x] run full backend tests
 [ ] run make reset
