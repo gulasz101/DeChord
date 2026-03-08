@@ -9,6 +9,7 @@
   --panel: #fffdfa;
   --panel-alt: #efe6d9;
   --line: #d8cbbc;
+  --line-strong: #bba994;
   --text: #241c18;
   --text-soft: #5d4f46;
   --muted: #89776a;
@@ -20,7 +21,32 @@
   --warning-soft: rgba(176, 106, 36, 0.14);
   --danger: #b12d2b;
   --danger-soft: rgba(177, 45, 43, 0.12);
-  --shadow: 0 20px 50px rgba(56, 35, 18, 0.09);
+  --shadow-soft: 0 20px 50px rgba(56, 35, 18, 0.09);
+  --shadow-strong: 0 34px 78px rgba(56, 35, 18, 0.14);
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 2rem;
+  --transport-bg: rgba(251, 248, 243, 0.96);
+  --lane-bg: rgba(157, 61, 47, 0.08);
+  --marker-bg: #d08d48;
+  --marker-border: #f5dfc3;
+  --loop-bg: #ebdfd0;
+  --loop-text: #7a4830;
+  --track-grid: #a48e7b;
+  --next-bg: #8b6a44;
+  --next-border: #ead7b6;
+  --next-text: #fff7ea;
+  --overlap: #7b5ac8;
+  --current-chord: #9d3d2f;
+  --current-progress: rgba(255, 255, 255, 0.26);
+  --next-chord: #d7c1a6;
+  --next-chord-text: #533f2f;
+  --loop-chord: #efe3d3;
+  --loop-chord-text: #7a4830;
+  --chord-bg: #ede2d5;
+  --chord-hover: #e4d7c8;
+  --loop-start: #2c7a54;
+  --loop-end: #b12d2b;
 }
 
 * {
@@ -82,7 +108,7 @@ input {
   background: var(--panel);
   padding: 0.9rem 1rem;
   opacity: 0;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-soft);
   transition: 160ms ease;
 }
 
