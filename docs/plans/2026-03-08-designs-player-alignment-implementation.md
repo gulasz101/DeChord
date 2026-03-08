@@ -14,7 +14,7 @@
 
 - [ ] Add the player-alignment redesign plan and execution checklist.
 - [x] Rebuild prototype `designs/1` around a realistic signed-out-to-player journey and aligned playback components.
-- [ ] Re-theme prototype `designs/2` with the new journey and aligned playback components.
+- [x] Re-theme prototype `designs/2` with the new journey and aligned playback components.
 - [ ] Re-theme prototype `designs/3` with the new journey and aligned playback components.
 - [ ] Re-theme prototype `designs/4` with the new journey and aligned playback components.
 - [ ] Re-theme prototype `designs/5` with the new journey and aligned playback components.
