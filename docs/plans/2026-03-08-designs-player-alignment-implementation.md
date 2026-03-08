@@ -12,15 +12,15 @@
 
 ## Task Checklist
 
-- [ ] Add the player-alignment redesign plan and execution checklist.
+- [x] Add the player-alignment redesign plan and execution checklist.
 - [x] Rebuild prototype `designs/1` around a realistic signed-out-to-player journey and aligned playback components.
 - [x] Re-theme prototype `designs/2` with the new journey and aligned playback components.
 - [x] Re-theme prototype `designs/3` with the new journey and aligned playback components.
 - [x] Re-theme prototype `designs/4` with the new journey and aligned playback components.
 - [x] Re-theme prototype `designs/5` with the new journey and aligned playback components.
-- [ ] Verify all five rebuilt prototypes build and boot independently on port `3001`.
-- [ ] Run `make reset` before final handoff.
-- [ ] Send the Telegram summary after verification.
+- [x] Verify all five rebuilt prototypes build and boot independently on port `3001`.
+- [x] Run `make reset` before final handoff.
+- [x] Send the Telegram summary after verification.
 
 ## Prototype Exception Notes
 
