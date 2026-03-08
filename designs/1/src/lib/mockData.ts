@@ -5,14 +5,26 @@ function chord(start: number, end: number, label: string): Chord {
 }
 
 const MOCK_CHORDS: Chord[] = [
-  chord(0, 2.4, "Em"), chord(2.4, 4.8, "G"), chord(4.8, 7.2, "D"),
-  chord(7.2, 9.6, "A"), chord(9.6, 12.0, "Em"), chord(12.0, 14.4, "C"),
-  chord(14.4, 16.8, "G"), chord(16.8, 19.2, "D"), chord(19.2, 21.6, "Am"),
-  chord(21.6, 24.0, "Em"), chord(24.0, 26.4, "B7"), chord(26.4, 28.8, "Em"),
-  chord(28.8, 31.2, "C"), chord(31.2, 33.6, "G"), chord(33.6, 36.0, "D"),
-  chord(36.0, 38.4, "Am"), chord(38.4, 40.8, "Em"), chord(40.8, 43.2, "G"),
-  chord(43.2, 45.6, "C"), chord(45.6, 48.0, "D"),
+  // Intro (0-3)
+  chord(0, 2.4, "Em"), chord(2.4, 4.8, "G"), chord(4.8, 7.2, "D"), chord(7.2, 9.6, "A"),
+  // Verse 1 (4-7)
+  chord(9.6, 12.0, "Em"), chord(12.0, 14.4, "C"), chord(14.4, 16.8, "G"), chord(16.8, 19.2, "D"),
+  // Chorus (8-11)
+  chord(19.2, 21.6, "Am"), chord(21.6, 24.0, "Em"), chord(24.0, 26.4, "B7"), chord(26.4, 28.8, "Em"),
+  // Verse 2 (12-15)
+  chord(28.8, 31.2, "C"), chord(31.2, 33.6, "G"), chord(33.6, 36.0, "D"), chord(36.0, 38.4, "Am"),
+  // Outro (16-19)
+  chord(38.4, 40.8, "Em"), chord(40.8, 43.2, "G"), chord(43.2, 45.6, "C"), chord(45.6, 48.0, "D"),
 ];
+
+// Assign sections
+MOCK_CHORDS.forEach((c, i) => {
+  if (i <= 3) c.section = "Intro";
+  else if (i <= 7) c.section = "Verse 1";
+  else if (i <= 11) c.section = "Chorus";
+  else if (i <= 15) c.section = "Verse 2";
+  else c.section = "Outro";
+});
 
 function stem(id: string, key: string, label: string, uploader: string, src: "System" | "User", desc: string, ver: number, archived = false): StemInfo {
   return { id, stemKey: key, label, uploaderName: uploader, sourceType: src, description: desc, version: ver, isArchived: archived, createdAt: "2026-03-01T10:00:00Z" };

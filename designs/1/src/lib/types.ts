@@ -2,6 +2,13 @@ export interface Chord {
   start: number;
   end: number;
   label: string;
+  section?: string;
+}
+
+export interface ChordSection {
+  name: string;
+  startIndex: number;
+  endIndex: number;
 }
 
 export interface StemInfo {
