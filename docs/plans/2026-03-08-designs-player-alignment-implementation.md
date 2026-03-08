@@ -17,7 +17,7 @@
 - [x] Re-theme prototype `designs/2` with the new journey and aligned playback components.
 - [x] Re-theme prototype `designs/3` with the new journey and aligned playback components.
 - [x] Re-theme prototype `designs/4` with the new journey and aligned playback components.
-- [ ] Re-theme prototype `designs/5` with the new journey and aligned playback components.
+- [x] Re-theme prototype `designs/5` with the new journey and aligned playback components.
 - [ ] Verify all five rebuilt prototypes build and boot independently on port `3001`.
 - [ ] Run `make reset` before final handoff.
 - [ ] Send the Telegram summary after verification.
