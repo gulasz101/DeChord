@@ -1,0 +1,93 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Oxanium:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  font-family: var(--font-body), sans-serif;
+  --page: #0a0d11;
+  --page-strong: #121822;
+  --panel: #171d28;
+  --panel-alt: #1e2633;
+  --line: #2f3949;
+  --text: #e8edf4;
+  --text-soft: #aeb7c4;
+  --muted: #708196;
+  --accent: #ff7a1a;
+  --accent-soft: rgba(255, 122, 26, 0.14);
+  --success: #62d68b;
+  --success-soft: rgba(98, 214, 139, 0.14);
+  --warning: #ffd166;
+  --warning-soft: rgba(255, 209, 102, 0.14);
+  --danger: #ff6b6b;
+  --danger-soft: rgba(255, 107, 107, 0.14);
+  --shadow: 0 26px 60px rgba(0, 0, 0, 0.32);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(255, 122, 26, 0.18), transparent 28%),
+    linear-gradient(180deg, #0d1218, #07090d 62%);
+  color: var(--text);
+  font-family: var(--font-body), sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.timeline-pin {
+  position: absolute;
+  top: 0.25rem;
+  transform: translateX(-50%);
+}
+
+.timeline-dot {
+  border: 2px solid #0a0d11;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 12px 22px rgba(10, 24, 39, 0.18);
+}
+
+.timeline-dot::after {
+  position: absolute;
+  top: 2.2rem;
+  left: 50%;
+  height: 1.75rem;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--accent);
+  content: "";
+}
+
+.timeline-tooltip {
+  pointer-events: none;
+  position: absolute;
+  left: 50%;
+  top: 4.25rem;
+  width: 18rem;
+  transform: translateX(-50%) translateY(6px);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: 0.9rem 1rem;
+  opacity: 0;
+  box-shadow: var(--shadow);
+  transition: 160ms ease;
+}
+
+.timeline-pin:hover .timeline-tooltip,
+.timeline-pin:focus-within .timeline-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
