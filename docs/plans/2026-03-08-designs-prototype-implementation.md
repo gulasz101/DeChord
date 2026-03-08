@@ -12,9 +12,9 @@
 
 ## Task Checklist
 
-- [ ] Create the `designs/` directory structure and decide the standalone app template shape.
-- [ ] Scaffold prototype `designs/1` with Bun, Vite, React, TypeScript, and Tailwind.
-- [ ] Build prototype `designs/1` screens and styling around the IBM-inspired design language.
+- [x] Create the `designs/` directory structure and decide the standalone app template shape.
+- [x] Scaffold prototype `designs/1` with Bun, Vite, React, TypeScript, and Tailwind.
+- [x] Build prototype `designs/1` screens and styling around the IBM-inspired design language.
 - [ ] Scaffold prototype `designs/2` and adapt it to the DAW-inspired design language.
 - [ ] Scaffold prototype `designs/3` and adapt it to the editorial modern design language.
 - [ ] Scaffold prototype `designs/4` and adapt it to the Scandinavian instrument-lab design language.
