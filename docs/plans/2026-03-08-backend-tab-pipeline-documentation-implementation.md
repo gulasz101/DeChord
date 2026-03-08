@@ -34,11 +34,11 @@
 - Reference: `backend/app/midi.py`
 - Reference: `backend/app/tabs.py`
 
-- [ ] Add a dedicated `Backend Tab Generation Pipeline` section in the backend README area.
-- [ ] Document both backend entrypoints and their orchestration boundaries.
-- [ ] Add a Mermaid flowchart showing data flow, key parameters, and module dependencies.
-- [ ] Add parameter, dependency, artifact, and extraction-seam documentation.
-- [ ] Commit the README update with the plan path in the message.
+- [x] Add a dedicated `Backend Tab Generation Pipeline` section in the backend README area.
+- [x] Document both backend entrypoints and their orchestration boundaries.
+- [x] Add a Mermaid flowchart showing data flow, key parameters, and module dependencies.
+- [x] Add parameter, dependency, artifact, and extraction-seam documentation.
+- [x] Commit the README update with the plan path in the message.
 
 ### Task 3: Verify, reset, and hand off
 

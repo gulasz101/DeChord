@@ -381,6 +381,324 @@ DECHORD_STEM_FALLBACK_ON_ERROR=0
 4. If stems are generated, use the Stem Mixer panel to mute/unmute stems during playback.
 5. If bass/drums stem extraction succeeds, the Tab Viewer panel loads generated AlphaTex tabs and syncs with player time.
 
+### Backend Tab Generation Pipeline
+
+This section documents only the web backend path that generates bass tabs. The legacy desktop app at the repo root is not part of this pipeline.
+
+#### What the backend actually does
+
+The current tab-generation flow is orchestrated in `backend/app/main.py` and split across three main reusable layers:
+
+- `app.stems`: gets raw stems and builds the transcription-focused `bass_analysis.wav`
+- `app.services.tab_pipeline`: turns `bass_analysis.wav` + `drums.wav` into quantized, fingered, bar-aligned AlphaTex plus diagnostics
+- `app.db`: persists stems, MIDI, and tab artifacts so the frontend can load `/api/songs/{song_id}/tabs` and `/api/songs/{song_id}/tabs/file`
+
+There are two backend entrypoints:
+
+| Entrypoint | Use case | Inputs | Output shape |
+| --- | --- | --- | --- |
+| `POST /api/analyze` | Main web-app upload flow | source mix, `process_mode`, `tabGenerationQuality`, optional `onset_recovery` | async job; tab artifacts persisted when `process_mode=analysis_and_stems` |
+| `POST /api/tab/from-demucs-stems` | direct stems-to-tab flow | `bass`, `drums`, optional `other`, optional `guitar`, optional `song_id`, `bpm`, `time_signature`, `subdivision`, `max_fret`, `sync_every_bars`, `tabGenerationQuality`, `onset_recovery` | immediate JSON response with `alphatex`, `bars`, `sync_points`, `debug_info`; MIDI/tab also persisted |
+
+#### End-to-end flowchart
+
+```mermaid
+flowchart TD
+    A["Source audio upload<br/>Endpoint: POST /api/analyze<br/>Params: process_mode, tabGenerationQuality, onset_recovery<br/>Module: backend/app/main.py"] --> B{"process_mode == analysis_and_stems?"}
+    B -- "no" --> C["Chord/key analysis only<br/>analyze_audio(audio_path)<br/>Tab pipeline not entered"]
+    B -- "yes" --> D["Stem separation<br/>split_to_stems(audio_path, output_dir)<br/>Module: app.stems<br/>Depends on: Demucs or fallback splitter, ffmpeg, torch, lameenc<br/>Config: DECHORD_STEM_ENGINE, DECHORD_STEM_FALLBACK_ON_ERROR, DECHORD_STEM_DEVICE, DECHORD_STEM_SEGMENT, DECHORD_STEM_OVERLAP, DECHORD_STEM_SHIFTS, DECHORD_STEM_INPUT_GAIN_DB, DECHORD_STEM_OUTPUT_GAIN_DB, DECHORD_STEM_JOBS, DECHORD_DEMUCS_MODEL, DECHORD_DEMUCS_FALLBACK_MODEL"]
+    E["Uploaded stems<br/>Endpoint: POST /api/tab/from-demucs-stems<br/>Params: bass, drums, other?, guitar?, song_id?, bpm?, time_signature, subdivision, max_fret, sync_every_bars, tabGenerationQuality, onset_recovery<br/>Module: backend/app/main.py"] --> F["Persist temp stem files<br/>bass.wav, drums.wav, other.wav?, guitar.wav?"]
+    D --> G["Build analysis stem<br/>build_bass_analysis_stem(stems, output_dir, analysis_config, source_audio_path)<br/>Module: app.stems<br/>Output: bass_analysis.wav + diagnostics"]
+    F --> G2["Build analysis stem for uploaded stems<br/>build_bass_analysis_stem(..., source_audio_path=None)<br/>Ensemble reseparation disabled; falls back to uploaded bass on failure"]
+    G --> H["TabPipeline.run(bass_analysis.wav, drums.wav)<br/>Module: app.services.tab_pipeline<br/>Args: tab_generation_quality_mode, bpm_hint, time_signature, subdivision, max_fret, sync_every_bars, onset_recovery"]
+    G2 --> H
+    H --> I["Rhythm extraction from drums<br/>extract_beats_and_downbeats()<br/>Modules: app.services.rhythm_grid + madmom/librosa<br/>Uses: time_signature numerator"]
+    H --> J["Bass transcription from analysis stem<br/>BasicPitchTranscriber.transcribe()<br/>Modules: app.services.bass_transcriber + app.midi<br/>Depends on: Basic Pitch-style MIDI transcription and DECHORD_PITCH_*, DECHORD_NOTE_*, DECHORD_RAW_NOTE_*, DECHORD_DENSE_*, DECHORD_ONSET_* env flags"]
+    I --> K["Bar grid + tempo reconciliation<br/>build_bars_from_beats_downbeats(), compute_derived_bpm(), reconcile_tempo()"]
+    J --> L["Raw note recovery and cleanup<br/>optional onset-note generation, onset recovery, dense sparse-region recovery, cleanup_note_events()"]
+    K --> M["Quantization<br/>quantize_note_events(cleaned_notes, BarGrid, subdivision)"]
+    L --> M
+    M --> N["Fingering<br/>optimize_fingering_with_debug(quantized_notes, max_fret)<br/>Guard: candidate_sanity_probe()"]
+    N --> O["AlphaTex export<br/>export_alphatex(fingered_notes, bars, tempo_used, time_signature, sync_every_bars)<br/>Output: alphatex + sync points"]
+    J --> P["MIDI bytes retained from transcription"]
+    P --> Q["Persist MIDI<br/>song_midis.source_stem_key=bass"]
+    O --> R["Persist tab<br/>song_tabs.tab_format=alphatex<br/>generator_version=v2-rhythm-grid"]
+    O --> S["Runtime/debug outputs<br/>bars, sync_points, debug_info, pipeline_trace, analysis_stem_diagnostics"]
+    Q --> T["Frontend/API consumers<br/>GET /api/songs/{song_id}/tabs<br/>GET /api/songs/{song_id}/tabs/file<br/>GET /api/songs/{song_id}/tabs/download"]
+    R --> T
+```
+
+#### Orchestration boundary in `backend/app/main.py`
+
+`backend/app/main.py` is the current composition root. It does not generate tabs itself; it coordinates the pipeline and persistence.
+
+For `POST /api/analyze`:
+
+1. Create a song row and queue an in-memory job.
+2. Run `analyze_audio(audio_path)` for key/chord analysis.
+3. If `process_mode=analysis_and_stems`, call `split_to_stems(...)`.
+4. Require at least a `bass` stem for MIDI and a `drums` stem for rhythm-grid tab generation.
+5. Build `stems/<song_id>/analysis/bass_analysis.wav` using `build_bass_analysis_stem(...)`.
+6. Call `tab_pipeline.run(...)` with:
+   - `bass_wav=analysis_stem_result.path`
+   - `drums_wav=Path(drums_stem.relative_path)`
+   - `bpm_hint=float(result.tempo)` when chord analysis produced tempo
+   - fixed defaults today: `time_signature=(4, 4)`, `subdivision=16`, `max_fret=24`, `sync_every_bars=8`
+   - runtime flags: `tab_generation_quality_mode`, optional `onset_recovery`
+7. Persist:
+   - stems into `song_stems`
+   - transcription MIDI into `song_midis`
+   - AlphaTex tab into `song_tabs`
+8. Expose stage progress through `/api/status/{job_id}` using:
+   - `queued`
+   - `analyzing_chords`
+   - `splitting_stems`
+   - `transcribing_bass_midi`
+   - `generating_tabs`
+   - `persisting`
+   - `complete` or `error`
+
+For `POST /api/tab/from-demucs-stems`:
+
+1. Accept already-separated `bass` and `drums` files, plus optional `other` and `guitar`.
+2. Parse the user-facing tab params directly from the form payload.
+3. Build an analysis stem from the uploaded stems.
+4. Fall back to the uploaded `bass.wav` if analysis-stem refinement fails.
+5. Run the same `TabPipeline.run(...)` path as the async upload job.
+6. Persist MIDI and AlphaTex and return the generated tab payload immediately.
+
+#### Stage-by-stage breakdown
+
+##### 1. Stem acquisition
+
+There are two ways the backend gets stems:
+
+- Source-mix flow: `split_to_stems(...)` in `app.stems`
+- Uploaded-stems flow: `POST /api/tab/from-demucs-stems`
+
+`split_to_stems(...)` decides whether to use Demucs or the fallback splitter from:
+
+- `DECHORD_STEM_ENGINE`
+- `DECHORD_STEM_FALLBACK_ON_ERROR`
+
+Demucs execution depends on:
+
+- Python runtime modules: `demucs.api`, `lameenc`, `torch`
+- external tool: `ffmpeg`
+- separation config parsed in `app.stems`
+
+Raw separated files are persisted for playback/download. They are not the final transcription input.
+
+##### 2. Analysis-stem refinement
+
+The actual transcription input is an analysis-only artifact:
+
+- path: `stems/<song_id>/analysis/bass_analysis.wav` in the upload-job flow
+- temp path under `stems/_tmp/.../analysis/bass_analysis.wav` in the direct-stems flow
+
+`build_bass_analysis_stem(...)` does the following:
+
+1. Load `StemAnalysisConfig` from env and optional preset overrides.
+2. Decide candidate Demucs models with `_candidate_models_for_analysis(...)`.
+3. Optionally rerun candidate separation per model when ensemble mode is enabled and a source mix is available.
+4. Refine each candidate bass stem by:
+   - resampling to `DECHORD_STEM_ANALYSIS_SAMPLE_RATE`
+   - high-pass filtering with `DECHORD_STEM_ANALYSIS_HIGHPASS_HZ`
+   - low-pass filtering with `DECHORD_STEM_ANALYSIS_LOWPASS_HZ`
+   - subtracting bleed from `other` and `guitar` when available using:
+     - `DECHORD_STEM_ANALYSIS_OTHER_SUBTRACT_WEIGHT`
+     - `DECHORD_STEM_ANALYSIS_GUITAR_SUBTRACT_WEIGHT`
+   - applying a noise gate with `DECHORD_STEM_ANALYSIS_NOISE_GATE_DB`
+5. Score candidates for transcription suitability and choose one winner.
+6. Persist the winning candidate as `bass_analysis.wav`.
+7. Return diagnostics such as:
+   - `selected_model`
+   - `candidate_scores`
+   - `candidate_diagnostics`
+   - `bleed_subtraction_applied`
+   - `noise_gate_applied`
+   - `analysis_rms`
+   - `refinement_fallback_used`
+
+Important nuance:
+
+- `POST /api/tab/from-demucs-stems` calls `_get_uploaded_stems_analysis_config(...)`, which disables ensemble reseparation because there is no source mix to re-separate.
+- If uploaded-stem refinement still fails, the route falls back to the uploaded bass stem instead of aborting immediately.
+
+##### 3. Bass transcription and note preparation
+
+`TabPipeline` defaults to `BasicPitchTranscriber`, defined in `app.services.bass_transcriber`.
+
+That path does this:
+
+1. Call `transcribe_bass_stem_to_midi_detailed(...)` from `app.midi`.
+2. Keep the generated `midi_bytes`.
+3. Parse MIDI notes into `RawNoteEvent` values.
+4. Optionally merge in raw model note events when `DECHORD_RAW_NOTE_RECALL_ENABLE=1`.
+5. Apply pitch-stability and note-admission filtering driven by `PitchStabilityConfig`.
+6. Emit transcription diagnostics that later appear inside tab `debug_info.pipeline_trace`.
+
+All current pitch/note env knobs are parsed in `app.midi` and feed this stage:
+
+| Group | Variables |
+| --- | --- |
+| Pitch stability | `DECHORD_PITCH_STABILITY_ENABLE`, `DECHORD_PITCH_MIN_CONFIDENCE`, `DECHORD_PITCH_TRANSITION_HYSTERESIS_FRAMES`, `DECHORD_PITCH_OCTAVE_JUMP_PENALTY`, `DECHORD_PITCH_MAX_CENTS_DRIFT_WITHIN_NOTE`, `DECHORD_PITCH_MIN_NOTE_DURATION_MS`, `DECHORD_PITCH_MERGE_GAP_MS`, `DECHORD_PITCH_SMOOTHING_WINDOW_FRAMES`, `DECHORD_PITCH_HARMONIC_RECHECK_ENABLE` |
+| Note admission | `DECHORD_NOTE_ADMISSION_ENABLE`, `DECHORD_NOTE_MIN_DURATION_MS`, `DECHORD_NOTE_LOW_CONFIDENCE_THRESHOLD`, `DECHORD_NOTE_OCTAVE_INTRUSION_MAX_DURATION_MS`, `DECHORD_NOTE_MERGE_GAP_MS` |
+| Raw-note recall | `DECHORD_RAW_NOTE_RECALL_ENABLE`, `DECHORD_RAW_NOTE_MIN_CONFIDENCE`, `DECHORD_RAW_NOTE_MIN_DURATION_MS`, `DECHORD_RAW_NOTE_ALLOW_WEAK_BASS_CANDIDATES`, `DECHORD_RAW_NOTE_SPARSE_REGION_BOOST_ENABLE` |
+| Dense-note recovery | `DECHORD_DENSE_CANDIDATE_MIN_DURATION_MS`, `DECHORD_DENSE_CANDIDATE_SPARSE_REGION_THRESHOLD_MS`, `DECHORD_DENSE_CANDIDATE_SUPPORT_RELAXATION`, `DECHORD_DENSE_UNSTABLE_CONTEXT_PENALTY`, `DECHORD_DENSE_OCTAVE_NEIGHBOR_PENALTY`, `DECHORD_DENSE_NOTE_GENERATOR_ENABLE` |
+| Onset-driven recovery | `DECHORD_ONSET_NOTE_GENERATOR_ENABLE`, `DECHORD_ONSET_NOTE_GENERATOR_MODE`, `DECHORD_ONSET_MIN_SPACING_MS`, `DECHORD_ONSET_STRENGTH_THRESHOLD`, `DECHORD_ONSET_DENSITY_NOTES_PER_SEC_THRESHOLD`, `DECHORD_ONSET_REGION_MAX_DURATION_MS`, `DECHORD_ONSET_REGION_MIN_DURATION_MS`, `DECHORD_ONSET_REGION_PITCH_ENABLE`, `DECHORD_ONSET_REGION_PITCH_METHOD`, `DECHORD_ONSET_REGION_OCTAVE_SUPPRESSION_ENABLE`, `DECHORD_ONSET_REGION_OCTAVE_PENALTY`, `DECHORD_ONSET_REGION_MIN_CONFIDENCE`, `DECHORD_ONSET_REGION_LOWBAND_SUPPORT_WEIGHT`, `DECHORD_ONSET_REGION_HARMONIC_PENALTY_WEIGHT`, `DECHORD_ONSET_REGION_PITCH_FLOOR_MIDI`, `DECHORD_ONSET_REGION_PITCH_CEILING_MIDI` |
+
+##### 4. Drum-derived rhythm grid
+
+`TabPipeline.run(...)` does not infer bars from bass notes. It uses the drums stem:
+
+1. `extract_beats_and_downbeats(drums_wav, time_signature_numerator=...)`
+2. Prefer `madmom` downbeat extraction.
+3. Fall back to `librosa` beat tracking if `madmom` is unavailable or fails.
+4. Build bars with `build_bars_from_beats_downbeats(...)`.
+5. Compute tempo with `compute_derived_bpm(...)` and `reconcile_tempo(...)`.
+
+Tempo sources are resolved like this:
+
+- `bpm_hint` from route input wins when supplied
+- otherwise the upload-job flow uses tempo from `analyze_audio(...)`
+- otherwise `reconcile_tempo(...)` falls back to the beat-derived tempo or `120.0`
+
+##### 5. Cleanup, recovery, quantization, and fingering
+
+After transcription and rhythm-grid creation, `TabPipeline.run(...)` performs the conversion steps that matter for actual tablature:
+
+1. Optional onset detection on the analysis stem.
+2. Optional onset-note generation and onset-based note splitting.
+3. Optional sparse-region dense-note recovery in higher-quality modes.
+4. `cleanup_note_events(...)`
+5. `quantize_note_events(cleaned_notes, BarGrid(bars=bars), subdivision=subdivision)`
+6. `candidate_sanity_probe(max_fret=max_fret)`
+7. `optimize_fingering_with_debug(quantized_notes, max_fret=max_fret)`
+
+The routing parameters that directly influence this stage are:
+
+| Parameter | Where it comes from | Current usage |
+| --- | --- | --- |
+| `tabGenerationQuality` / `tab_generation_quality_mode` | both routes | switches high-accuracy recovery branches and can auto-enable analysis-stem ensemble |
+| `onset_recovery` | both routes | overrides automatic onset-recovery enablement |
+| `time_signature` | direct-stems route; upload-job flow currently hardcodes `4/4` | affects beat grouping and bar construction |
+| `subdivision` | direct-stems route; upload-job flow currently hardcodes `16` | quantization grid density |
+| `max_fret` | direct-stems route; upload-job flow currently hardcodes `24` | playable-fingering search space |
+| `bpm` / `bpm_hint` | direct-stems route or upload-job tempo analysis | guides final tempo reconciliation |
+
+If fingering collapses completely, the backend raises `FingeringCollapseError`, and the caller receives or stores the associated `debug_info`.
+
+##### 6. AlphaTex export
+
+The current production tab artifact is AlphaTex, not GP5.
+
+`export_alphatex(...)` writes:
+
+- `\tempo <rounded bpm>`
+- `\ts <numerator> <denominator>`
+- `\tuning E1 A1 D2 G2`
+- `\sync(bar 0 ms 0)` style sync markers generated by `build_sync_points(...)`
+- bar bodies containing notes as `<fret>.<string>.<duration>` and inserted rests
+
+`sync_every_bars` controls the sync density. Current defaults:
+
+- upload-job flow: `8`
+- direct-stems route: request parameter, default `8`
+
+There is also a lower-level GP5 helper path in `app.tabs`, but the active web-app tab pipeline persists AlphaTex from `TabPipeline.run(...)`.
+
+#### Active function contract
+
+The effective public pipeline contract today is:
+
+```python
+TabPipeline.run(
+    bass_wav: Path,
+    drums_wav: Path,
+    *,
+    tab_generation_quality_mode: Literal["standard", "high_accuracy", "high_accuracy_aggressive"] = "standard",
+    bpm_hint: float | None = None,
+    time_signature: tuple[int, int] = (4, 4),
+    subdivision: int = 16,
+    max_fret: int = 24,
+    sync_every_bars: int = 8,
+    onset_recovery: bool | None = None,
+) -> TabPipelineResult
+```
+
+`TabPipelineResult` contains:
+
+- `alphatex`
+- `tempo_used`
+- `bars`
+- `sync_points`
+- `midi_bytes`
+- `debug_info`
+- `fingered_notes`
+
+#### Persisted artifacts and runtime outputs
+
+| Stage | Artifact | Persisted? | Where |
+| --- | --- | --- | --- |
+| Upload | original source mix | yes | `songs.audio_blob` |
+| Stem split | `bass.wav`, `drums.wav`, `vocals.wav`, `other.wav`, etc. | yes | filesystem + `song_stems` |
+| Analysis refinement | `bass_analysis.wav` | no DB row today | filesystem only; path exposed in `debug_info` |
+| Transcription | MIDI bytes | yes | `song_midis` |
+| Tab export | AlphaTex text | yes | `song_tabs` with `tab_format=alphatex` |
+| Diagnostics | pipeline trace, fingering debug, analysis diagnostics | no DB row today | in-memory job state or route response payload |
+
+Frontend/API retrieval uses:
+
+- `GET /api/songs/{song_id}/tabs`
+- `GET /api/songs/{song_id}/tabs/file`
+- `GET /api/songs/{song_id}/tabs/download`
+
+#### Dependencies by module
+
+| Module | Responsibility | Main dependencies |
+| --- | --- | --- |
+| `backend/app/main.py` | route orchestration, job stages, persistence wiring | FastAPI, `app.analysis`, `app.stems`, `app.services.tab_pipeline`, `app.db` |
+| `backend/app/stems.py` | stem separation and analysis-stem refinement | Demucs, torch, ffmpeg, dotenv, optional fallback stem extractor |
+| `backend/app/services/tab_pipeline.py` | end-to-end tab conversion orchestration | `bass_transcriber`, `rhythm_grid`, `note_cleanup`, `quantization`, `fingering`, `alphatex_exporter` |
+| `backend/app/services/bass_transcriber.py` | MIDI-to-raw-note conversion and pitch/note filtering | `app.midi`, mido |
+| `backend/app/midi.py` | detailed bass-stem MIDI transcription and env-config parsing | transcription backend, mido, numpy, env parsing |
+| `backend/app/services/rhythm_grid.py` | beat/downbeat extraction and bar creation | madmom, librosa |
+| `backend/app/services/alphatex_exporter.py` | final AlphaTex serialization and `\sync` generation | internal fingered-note/bar models |
+| `backend/app/db.py` + schema | artifact persistence | LibSQL/SQLite-compatible SQL layer |
+
+#### Extraction seams for a future standalone tabs tool
+
+If this gets split out of the monorepo later, the practical boundary is:
+
+- Keep in the future tab service:
+  - `app.stems.build_bass_analysis_stem`
+  - `app.services.tab_pipeline`
+  - `app.services.bass_transcriber`
+  - `app.midi`
+  - `app.services.rhythm_grid`
+  - `app.services.note_cleanup`
+  - `app.services.quantization`
+  - `app.services.fingering`
+  - `app.services.alphatex_exporter`
+- Treat as integration adapters:
+  - FastAPI routes in `app.main`
+  - DB persistence in `app.db`
+  - current in-memory job status store
+- Inputs the standalone tool would need to preserve:
+  - source mix or prepared stems
+  - optional bleed-cancellation stems (`other`, `guitar`)
+  - pipeline quality mode
+  - tempo/time-signature/quantization/fret/sync parameters
+  - env-config or explicit structured config replacing env vars
+- Outputs the standalone tool should expose:
+  - AlphaTex
+  - MIDI bytes
+  - bars and sync points
+  - detailed diagnostics (`pipeline_trace`, fingering debug, analysis-stem diagnostics)
+
+In other words, the current reusable core is already closer to `app.stems + app.services.tab_pipeline`; `app.main` is mostly transport, job-state, and persistence glue.
+
 ### tmux Controls
 
 ```bash
