@@ -18,7 +18,7 @@
 - [x] Scaffold prototype `designs/2` and adapt it to the DAW-inspired design language.
 - [x] Scaffold prototype `designs/3` and adapt it to the editorial modern design language.
 - [x] Scaffold prototype `designs/4` and adapt it to the Scandinavian instrument-lab design language.
-- [ ] Scaffold prototype `designs/5` and adapt it to the live-performance design language.
+- [x] Scaffold prototype `designs/5` and adapt it to the live-performance design language.
 - [ ] Verify each prototype can run independently with Bun on port `3001` from its own directory.
 - [ ] Run the local reset workflow before final verification.
 - [ ] Prepare final handoff summary and send the Telegram notification unless the user opts out.
