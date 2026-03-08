@@ -14,14 +14,16 @@ interface PlayerPageProps {
   onBack: () => void;
 }
 
+type SidePanel = "none" | "stems" | "comments";
+
 export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProps) {
-  // Simulated playback state
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [speedPercent, setSpeedPercent] = useState(100);
   const [loopStart, setLoopStart] = useState<number | null>(null);
   const [loopEnd, setLoopEnd] = useState<number | null>(null);
+  const [sidePanel, setSidePanel] = useState<SidePanel>("none");
 
   // Stem mixer state
   const [activeStemKeys, setActiveStemKeys] = useState<Set<string>>(() => {
@@ -36,9 +38,6 @@ export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProp
     });
     return map;
   });
-
-  // Comment panel
-  const [showComments, setShowComments] = useState(false);
 
   // Chord sync
   const currentIndex = useMemo(() => {
@@ -62,6 +61,9 @@ export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProp
     [song.notes],
   );
 
+  const activeStemCount = song.stems.filter((s) => !s.isArchived).length;
+  const openCommentCount = song.notes.filter((n) => !n.resolved).length;
+
   // Simulated playback tick
   const togglePlay = useCallback(() => {
     if (!playing) {
@@ -70,17 +72,13 @@ export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProp
         setCurrentTime((t) => {
           const next = t + 0.1;
           if (next >= song.duration) { setPlaying(false); clearInterval(interval); return 0; }
-          // Loop logic
           if (loopStart !== null && loopEnd !== null) {
             const endChord = song.chords[loopEnd];
-            if (endChord && next >= endChord.end) {
-              return song.chords[loopStart].start;
-            }
+            if (endChord && next >= endChord.end) return song.chords[loopStart].start;
           }
           return next;
         });
       }, 100);
-      // Store interval id for cleanup
       (window as any).__dechordInterval = interval;
     } else {
       setPlaying(false);
@@ -92,23 +90,20 @@ export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProp
     if (loopStart === null) {
       setLoopStart(index);
     } else if (loopEnd === null) {
-      if (index > loopStart) {
-        setLoopEnd(index);
-      } else {
-        setLoopStart(index);
-        setLoopEnd(null);
-      }
+      if (index > loopStart) setLoopEnd(index);
+      else { setLoopStart(index); setLoopEnd(null); }
     } else {
       setLoopStart(index);
       setLoopEnd(null);
     }
-    // Seek to chord start
     if (song.chords[index]) setCurrentTime(song.chords[index].start);
   }, [loopStart, loopEnd, song.chords]);
 
   const loopLabel = loopStart !== null && loopEnd !== null
     ? `${song.chords[loopStart]?.label} → ${song.chords[loopEnd]?.label}`
     : undefined;
+
+  const togglePanel = (panel: SidePanel) => setSidePanel((p) => p === panel ? "none" : panel);
 
   return (
     <div className="flex h-screen flex-col" style={{ background: "#f8f6f1" }}>
@@ -119,22 +114,28 @@ export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProp
           <div className="h-4 w-px" style={{ background: "#e0ddd6" }} />
           <span className="text-xs" style={{ color: "#6b6b6b" }}>{band.name} / {project.name}</span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <div>
             <h1 className="text-lg leading-tight" style={{ fontFamily: "Playfair Display, serif", color: "#1a1a1a" }}>{song.title}</h1>
             <div className="flex items-center gap-3 text-xs" style={{ color: "#6b6b6b" }}>
-              <span>{song.artist}</span>
-              <span>&middot;</span>
-              <span>{song.key}</span>
-              <span>&middot;</span>
-              <span>{song.tempo} BPM</span>
+              <span>{song.artist}</span><span>&middot;</span><span>{song.key}</span><span>&middot;</span><span>{song.tempo} BPM</span>
             </div>
           </div>
-          <button onClick={() => setShowComments(!showComments)}
-            className="border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/[0.03]"
-            style={{ borderColor: showComments ? "#e63946" : "#e0ddd6", color: showComments ? "#e63946" : "#1a1a1a", borderRadius: "2px" }}>
-            Comments {song.notes.filter((n) => !n.resolved).length}
+
+          {/* Stems toggle */}
+          <button onClick={() => togglePanel("stems")}
+            className="flex items-center gap-1.5 border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/[0.03]"
+            style={{ borderColor: sidePanel === "stems" ? "#e63946" : "#e0ddd6", color: sidePanel === "stems" ? "#e63946" : "#1a1a1a", borderRadius: "2px" }}>
+            🎚 <span>{activeStemKeys.size}/{activeStemCount}</span>
           </button>
+
+          {/* Comments toggle */}
+          <button onClick={() => togglePanel("comments")}
+            className="flex items-center gap-1.5 border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/[0.03]"
+            style={{ borderColor: sidePanel === "comments" ? "#e63946" : "#e0ddd6", color: sidePanel === "comments" ? "#e63946" : "#1a1a1a", borderRadius: "2px" }}>
+            💬 <span>{openCommentCount}</span>
+          </button>
+
           <div className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#1a1a1a" }}>{user.avatar}</div>
         </div>
       </nav>
@@ -151,36 +152,50 @@ export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProp
 
           {/* Tab Viewer */}
           <TabViewerPanel tabSourceUrl="/mock-bass.alphatex" currentTime={currentTime} isPlaying={playing} />
-
-          {/* Stem Mixer */}
-          <StemMixer stems={song.stems} activeStemKeys={activeStemKeys} selectedVersions={selectedVersions}
-            onToggleStem={(key) => setActiveStemKeys((prev) => { const next = new Set(prev); next.has(key) ? next.delete(key) : next.add(key); return next; })}
-            onSelectVersion={(key, id) => setSelectedVersions((prev) => ({ ...prev, [key]: id }))} />
         </div>
 
-        {/* Comments sidebar */}
-        {showComments && (
+        {/* Slide-in side panel */}
+        {sidePanel !== "none" && (
           <aside className="w-80 shrink-0 overflow-y-auto border-l p-4" style={{ borderColor: "#e0ddd6", background: "#f0ede6" }}>
-            <h3 className="mb-4 text-sm" style={{ fontFamily: "Playfair Display, serif", color: "#1a1a1a", fontWeight: 600 }}>Comments</h3>
-            <div className="space-y-3">
-              {song.notes.map((note) => (
-                <div key={note.id} className="border-l-2 pl-3" style={{ borderColor: note.resolved ? "#d4d0c8" : "#e63946", opacity: note.resolved ? 0.5 : 1 }}>
-                  <div className="mb-1 flex items-center gap-2">
-                    <span className="text-xs font-semibold" style={{ color: "#1a1a1a" }}>{note.authorName}</span>
-                    <span className="text-[10px]" style={{ color: "#6b6b6b" }}>
-                      {note.type === "time" ? `${note.timestampSec?.toFixed(1)}s` : `chord #${(note.chordIndex ?? 0) + 1}`}
-                    </span>
-                    {note.resolved && <span className="text-[10px]" style={{ color: "#2d6a30" }}>&#10003;</span>}
-                  </div>
-                  <p className="text-xs leading-relaxed" style={{ color: "#6b6b6b" }}>{note.text}</p>
+            {sidePanel === "stems" && (
+              <>
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-sm" style={{ fontFamily: "Playfair Display, serif", color: "#1a1a1a", fontWeight: 600 }}>Stems</h3>
+                  <span className="text-[10px]" style={{ color: "#6b6b6b" }}>{activeStemKeys.size} of {activeStemCount} active</span>
                 </div>
-              ))}
-            </div>
+                <StemMixer stems={song.stems} activeStemKeys={activeStemKeys} selectedVersions={selectedVersions}
+                  onToggleStem={(key) => setActiveStemKeys((prev) => { const next = new Set(prev); next.has(key) ? next.delete(key) : next.add(key); return next; })}
+                  onSelectVersion={(key, id) => setSelectedVersions((prev) => ({ ...prev, [key]: id }))} />
+              </>
+            )}
+
+            {sidePanel === "comments" && (
+              <>
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-sm" style={{ fontFamily: "Playfair Display, serif", color: "#1a1a1a", fontWeight: 600 }}>Comments</h3>
+                  <span className="text-[10px]" style={{ color: "#6b6b6b" }}>{openCommentCount} open</span>
+                </div>
+                <div className="space-y-3">
+                  {song.notes.map((note) => (
+                    <div key={note.id} className="border-l-2 pl-3" style={{ borderColor: note.resolved ? "#d4d0c8" : "#e63946", opacity: note.resolved ? 0.5 : 1 }}>
+                      <div className="mb-1 flex items-center gap-2">
+                        <span className="text-xs font-semibold" style={{ color: "#1a1a1a" }}>{note.authorName}</span>
+                        <span className="text-[10px]" style={{ color: "#6b6b6b" }}>
+                          {note.type === "time" ? `${note.timestampSec?.toFixed(1)}s` : `chord #${(note.chordIndex ?? 0) + 1}`}
+                        </span>
+                        {note.resolved && <span className="text-[10px]" style={{ color: "#2d6a30" }}>&#10003;</span>}
+                      </div>
+                      <p className="text-xs leading-relaxed" style={{ color: "#6b6b6b" }}>{note.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </aside>
         )}
       </div>
 
-      {/* Transport Bar — pinned to bottom */}
+      {/* Transport Bar */}
       <div className="shrink-0 border-t px-4 py-2" style={{ borderColor: "#e0ddd6" }}>
         <TransportBar currentTime={currentTime} duration={song.duration} playing={playing} volume={volume} speedPercent={speedPercent}
           loopActive={loopStart !== null && loopEnd !== null} loopLabel={loopLabel} noteMarkers={timeNoteMarkers}
