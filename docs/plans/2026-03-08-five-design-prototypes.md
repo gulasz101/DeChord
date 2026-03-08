@@ -50,9 +50,9 @@ Build five standalone frontend design prototypes under `designs/1`..`designs/5`,
 - [x] Build Design 5 (Midnight Chrome)
 - [x] Verify Design 5 builds and boots
 - [x] Create designs/README.md
-- [ ] Run `make reset`
+- [x] Run `make reset`
 - [x] Final verification — all five build and boot
-- [ ] Send Telegram summary
+- [x] Send Telegram summary
 
 ## Notes
 - No TDD — these are prototype-only mock apps
