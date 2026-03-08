@@ -4,165 +4,84 @@ interface TransportBarProps {
   playing: boolean;
   volume: number;
   speedPercent: number;
-  timeNoteMarkers: Array<{ id: string; timestampSec: number }>;
   loopActive: boolean;
   loopLabel?: string;
+  noteMarkers: Array<{ id: number; timestampSec: number }>;
   onTogglePlay: () => void;
   onSeek: (time: number) => void;
-  onSeekDragStart: () => void;
-  onSeekDragEnd: () => void;
   onSeekRelative: (delta: number) => void;
-  onNoteLaneClick: (time: number) => void;
-  onNoteMarkerClick: (noteId: string) => void;
-  onVolumeChange: (volume: number) => void;
-  onSpeedChange: (speedPercent: number) => void;
+  onVolumeChange: (v: number) => void;
+  onSpeedChange: (s: number) => void;
   onClearLoop: () => void;
 }
 
-const SPEED_OPTIONS = Array.from({ length: 17 }, (_, index) => 40 + index * 10);
-
-function formatTime(seconds: number): string {
-  const minutes = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${minutes}:${secs.toString().padStart(2, "0")}`;
+function formatTime(s: number): string {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2, "0")}`;
 }
 
-export function TransportBar({
-  currentTime,
-  duration,
-  playing,
-  volume,
-  speedPercent,
-  timeNoteMarkers,
-  loopActive,
-  loopLabel,
-  onTogglePlay,
-  onSeek,
-  onSeekDragStart,
-  onSeekDragEnd,
-  onSeekRelative,
-  onNoteLaneClick,
-  onNoteMarkerClick,
-  onVolumeChange,
-  onSpeedChange,
-  onClearLoop,
-}: TransportBarProps) {
-  const clampTimeFromClientX = (target: HTMLDivElement, clientX: number) => {
-    const rect = target.getBoundingClientRect();
-    if (rect.width <= 0) {
-      return 0;
-    }
-    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    return (duration || 0) * ratio;
-  };
+const SPEED_OPTIONS = Array.from({ length: 17 }, (_, i) => 40 + i * 10);
 
+export function TransportBar({ currentTime, duration, playing, volume, speedPercent, loopActive, loopLabel, noteMarkers, onTogglePlay, onSeek, onSeekRelative, onVolumeChange, onSpeedChange, onClearLoop }: TransportBarProps) {
   return (
-    <div className="sticky bottom-0 z-40 border-t border-[var(--line-strong)] bg-[var(--transport-bg)]/95 px-4 py-3 backdrop-blur">
-      <div className="mb-2 flex items-center gap-2">
-        <button className="px-2 text-[var(--muted)] hover:text-[var(--text)]" onClick={() => onSeekRelative(-10)} title="Back 10s">
-          &#x23EA;
-        </button>
-        <button
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent)] text-white shadow-[var(--shadow-soft)] hover:opacity-90"
-          onClick={onTogglePlay}
-        >
-          {playing ? "\u23F8" : "\u25B6"}
-        </button>
-        <button className="px-2 text-[var(--muted)] hover:text-[var(--text)]" onClick={() => onSeekRelative(10)} title="Forward 10s">
-          &#x23E9;
+    <div className="border px-4 py-3" style={{ borderColor: "rgba(0, 255, 65, 0.12)", background: "rgba(10, 10, 10, 0.9)" }}>
+      <div className="flex items-center gap-3">
+        {/* Skip back */}
+        <button onClick={() => onSeekRelative(-10)} className="px-1.5 font-mono text-sm transition-colors hover:text-green-300" style={{ color: "#00ff41" }}>&lt;&lt;</button>
+
+        {/* Play/Pause */}
+        <button onClick={onTogglePlay} className="flex h-10 w-10 items-center justify-center border-2 font-mono text-sm font-bold transition-all hover:bg-green-900/20" style={{ borderColor: "#00ff41", color: "#00ff41", boxShadow: "0 0 12px rgba(0, 255, 65, 0.2)" }}>
+          {playing ? "||" : "|>"}
         </button>
 
-        <span className="w-12 text-right font-mono text-xs text-[var(--text-soft)]">{formatTime(currentTime)}</span>
+        {/* Skip forward */}
+        <button onClick={() => onSeekRelative(10)} className="px-1.5 font-mono text-sm transition-colors hover:text-green-300" style={{ color: "#00ff41" }}>&gt;&gt;</button>
 
+        {/* Time */}
+        <span className="w-11 text-right font-mono text-xs" style={{ color: "#00ff41" }}>{formatTime(currentTime)}</span>
+
+        {/* Progress + note lane */}
         <div className="relative flex-1">
-          <div
-            className="mb-1 h-4 w-full cursor-pointer rounded-full bg-[var(--lane-bg)]"
-            onClick={(event) => onNoteLaneClick(clampTimeFromClientX(event.currentTarget, event.clientX))}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                onNoteLaneClick(duration * 0.5);
-              }
-            }}
-            role="button"
-            tabIndex={0}
-            title="Click to add or inspect a timed note"
-          >
+          {/* Note markers */}
+          <div className="mb-1 h-3 w-full" style={{ background: "rgba(26, 26, 26, 0.8)" }}>
             <div className="relative h-full w-full">
-              {timeNoteMarkers.map((marker) => {
-                const left = duration > 0 ? (marker.timestampSec / duration) * 100 : 0;
+              {noteMarkers.map((m) => {
+                const left = duration > 0 ? (m.timestampSec / duration) * 100 : 0;
                 return (
-                  <button
-                    key={marker.id}
-                    className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[var(--marker-border)] bg-[var(--marker-bg)] shadow"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onNoteMarkerClick(marker.id);
-                    }}
-                    style={{ left: `${left}%` }}
-                    title="Inspect note"
-                    type="button"
-                  />
+                  <div key={m.id} className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2" style={{ left: `${left}%`, background: "#00e5ff", border: "1px solid #0a0a0a" }} />
                 );
               })}
             </div>
           </div>
 
-          <input
-            className="h-1 w-full accent-[var(--accent)]"
-            max={duration || 1}
-            min={0}
-            onBlur={onSeekDragEnd}
-            onChange={(event) => onSeek(parseFloat(event.target.value))}
-            onMouseDown={onSeekDragStart}
-            onMouseUp={onSeekDragEnd}
-            onPointerCancel={onSeekDragEnd}
-            onPointerDown={onSeekDragStart}
-            onPointerUp={onSeekDragEnd}
-            onTouchEnd={onSeekDragEnd}
-            onTouchStart={onSeekDragStart}
-            step={0.05}
-            type="range"
-            value={currentTime}
-          />
+          {/* Seek slider */}
+          <input type="range" min={0} max={duration || 1} step={0.05} value={currentTime}
+            onChange={(e) => onSeek(parseFloat(e.target.value))}
+            className="h-1 w-full" />
         </div>
 
-        <span className="w-12 font-mono text-xs text-[var(--text-soft)]">{formatTime(duration)}</span>
+        {/* Duration */}
+        <span className="w-11 font-mono text-xs" style={{ color: "#3a3a3a" }}>{formatTime(duration)}</span>
 
-        <select
-          className="rounded-full border border-[var(--line)] bg-[var(--page-strong)] px-2 py-1 text-xs text-[var(--text)]"
-          onChange={(event) => onSpeedChange(parseInt(event.target.value, 10))}
-          value={speedPercent}
-        >
-          {SPEED_OPTIONS.map((speed) => (
-            <option key={speed} value={speed}>
-              {speed}%
-            </option>
-          ))}
+        {/* Speed */}
+        <select value={speedPercent} onChange={(e) => onSpeedChange(parseInt(e.target.value, 10))}
+          className="border px-2 py-1 font-mono text-xs" style={{ background: "#111111", borderColor: "rgba(0, 255, 65, 0.2)", color: "#00ff41" }}>
+          {SPEED_OPTIONS.map((v) => <option key={v} value={v}>{v}%</option>)}
         </select>
 
-        {loopActive ? (
-          <button
-            className="rounded-full bg-[var(--loop-bg)] px-3 py-1 text-xs text-[var(--loop-text)]"
-            onClick={onClearLoop}
-            title="Clear loop"
-          >
-            🔁 {loopLabel}
+        {/* Loop */}
+        {loopActive && (
+          <button onClick={onClearLoop} className="border px-2.5 py-1 font-mono text-xs font-medium transition-colors hover:brightness-110" style={{ borderColor: "rgba(255, 0, 255, 0.3)", background: "rgba(255, 0, 255, 0.08)", color: "#ff00ff" }}>
+            [loop] {loopLabel}
           </button>
-        ) : null}
+        )}
 
-        <input
-          className="h-1 w-20 accent-[var(--accent)]"
-          max={1}
-          min={0}
-          onChange={(event) => onVolumeChange(parseFloat(event.target.value))}
-          step={0.05}
-          type="range"
-          value={volume}
-        />
+        {/* Volume */}
+        <input type="range" min={0} max={1} step={0.05} value={volume}
+          onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
+          className="h-1 w-20" />
       </div>
-      <p className="text-[11px] text-[var(--muted)]">
-        Player notes stay visible in the lane above progress. Chord notes and timeline comments remain attached to rehearsal time.
-      </p>
     </div>
   );
 }
