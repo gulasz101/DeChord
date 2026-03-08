@@ -12,16 +12,16 @@
 
 ## Task Checklist
 
-- [ ] Create the `designs/` directory structure and decide the standalone app template shape.
-- [ ] Scaffold prototype `designs/1` with Bun, Vite, React, TypeScript, and Tailwind.
-- [ ] Build prototype `designs/1` screens and styling around the IBM-inspired design language.
-- [ ] Scaffold prototype `designs/2` and adapt it to the DAW-inspired design language.
-- [ ] Scaffold prototype `designs/3` and adapt it to the editorial modern design language.
-- [ ] Scaffold prototype `designs/4` and adapt it to the Scandinavian instrument-lab design language.
-- [ ] Scaffold prototype `designs/5` and adapt it to the live-performance design language.
-- [ ] Verify each prototype can run independently with Bun on port `3001` from its own directory.
-- [ ] Run the local reset workflow before final verification.
-- [ ] Prepare final handoff summary and send the Telegram notification unless the user opts out.
+- [x] Create the `designs/` directory structure and decide the standalone app template shape.
+- [x] Scaffold prototype `designs/1` with Bun, Vite, React, TypeScript, and Tailwind.
+- [x] Build prototype `designs/1` screens and styling around the IBM-inspired design language.
+- [x] Scaffold prototype `designs/2` and adapt it to the DAW-inspired design language.
+- [x] Scaffold prototype `designs/3` and adapt it to the editorial modern design language.
+- [x] Scaffold prototype `designs/4` and adapt it to the Scandinavian instrument-lab design language.
+- [x] Scaffold prototype `designs/5` and adapt it to the live-performance design language.
+- [x] Verify each prototype can run independently with Bun on port `3001` from its own directory.
+- [x] Run the local reset workflow before final verification.
+- [x] Prepare final handoff summary and send the Telegram notification unless the user opts out.
 
 ## Prototype Exception Notes
 
