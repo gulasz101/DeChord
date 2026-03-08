@@ -7,9 +7,4 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ["@coderline/alphatab"],
   },
-  server: {
-    host: "0.0.0.0",
-    port: 3001,
-    strictPort: true,
-  },
 });

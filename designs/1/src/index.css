@@ -1,119 +1,64 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
-:root {
-  color-scheme: light;
-  font-family: var(--font-body), sans-serif;
-  --page: #eef2f4;
-  --page-strong: #f8fbfc;
-  --panel: #ffffff;
-  --panel-alt: #e9eff5;
-  --line: #c7d0d9;
-  --line-strong: #9fa9b4;
-  --text: #16212b;
-  --text-soft: #475566;
-  --muted: #697585;
-  --accent: #0f62fe;
-  --accent-soft: rgba(15, 98, 254, 0.12);
-  --success: #1d7f46;
-  --success-soft: rgba(29, 127, 70, 0.12);
-  --warning: #9f5b00;
-  --warning-soft: rgba(255, 131, 43, 0.14);
-  --danger: #b42318;
-  --danger-soft: rgba(180, 35, 24, 0.12);
-  --shadow-soft: 0 18px 42px rgba(10, 24, 39, 0.08);
-  --shadow-strong: 0 28px 64px rgba(10, 24, 39, 0.12);
-  --radius-md: 1rem;
-  --radius-lg: 1.5rem;
-  --radius-xl: 2rem;
-  --transport-bg: rgba(248, 251, 252, 0.96);
-  --lane-bg: rgba(15, 98, 254, 0.08);
-  --marker-bg: #ffd166;
-  --marker-border: #fff2c2;
-  --loop-bg: #dce8ff;
-  --loop-text: #0f3d91;
-  --track-grid: #8a939d;
-  --next-bg: #9f5b00;
-  --next-border: #fddc69;
-  --next-text: #fff1c2;
-  --overlap: #8a3ffc;
-  --current-chord: #0f62fe;
-  --current-progress: rgba(255, 255, 255, 0.26);
-  --next-chord: #ff832b;
-  --next-chord-text: #ffffff;
-  --loop-chord: #dce8ff;
-  --loop-chord-text: #0f3d91;
-  --chord-bg: #dde6ef;
-  --chord-hover: #d2dbe5;
-  --loop-start: #24a148;
-  --loop-end: #da1e28;
+@font-face {
+  font-family: "Bravura";
+  src: url("./assets/alphatab/Bravura.woff2") format("woff2"),
+    url("./assets/alphatab/Bravura.woff") format("woff");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
 }
 
-* {
-  box-sizing: border-box;
+/* alphaTab cursor styles */
+.at-cursor-bar {
+  background: rgba(139, 90, 43, 0.08);
+}
+.at-cursor-beat {
+  background: rgba(180, 83, 9, 0.7);
+  width: 3px;
+}
+.at-highlight {
+  fill: rgba(180, 83, 9, 0.85);
+  stroke: rgba(180, 83, 9, 0.85);
+}
+
+:root {
+  --vinyl-cream: #faf5eb;
+  --vinyl-brown: #3d2b1f;
+  --vinyl-tan: #c4a882;
+  --vinyl-orange: #b45309;
+  --vinyl-olive: #6b7234;
+  --vinyl-dark: #1a1209;
+  --vinyl-warm-gray: #8b7d6b;
+  --vinyl-paper: #f0e8d8;
 }
 
 body {
+  font-family: "Karla", sans-serif;
+  background: var(--vinyl-dark);
+  color: var(--vinyl-cream);
   margin: 0;
-  background:
-    linear-gradient(180deg, rgba(15, 98, 254, 0.08), transparent 24%),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.2));
-  color: var(--text);
-  font-family: var(--font-body), sans-serif;
 }
 
-button,
-input {
-  font: inherit;
+/* Noise texture overlay */
+.vinyl-noise {
+  position: relative;
 }
-
-#root {
-  min-height: 100vh;
-}
-
-.timeline-pin {
-  position: absolute;
-  top: 0.25rem;
-  transform: translateX(-50%);
-}
-
-.timeline-dot {
-  border: 2px solid white;
-  border-radius: 999px;
-  background: transparent;
-  cursor: pointer;
-  padding: 0;
-  box-shadow: 0 12px 22px rgba(10, 24, 39, 0.18);
-}
-
-.timeline-dot::after {
-  position: absolute;
-  top: 2.2rem;
-  left: 50%;
-  height: 1.75rem;
-  width: 2px;
-  transform: translateX(-50%);
-  background: var(--accent);
+.vinyl-noise::before {
   content: "";
-}
-
-.timeline-tooltip {
-  pointer-events: none;
   position: absolute;
-  left: 50%;
-  top: 4.25rem;
-  width: 18rem;
-  transform: translateX(-50%) translateY(6px);
-  border: 1px solid var(--line);
-  background: var(--panel);
-  padding: 0.9rem 1rem;
-  opacity: 0;
-  box-shadow: var(--shadow-soft);
-  transition: 160ms ease;
+  inset: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1;
 }
 
-.timeline-pin:hover .timeline-tooltip,
-.timeline-pin:focus-within .timeline-tooltip {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: rgba(61, 43, 31, 0.3); }
+::-webkit-scrollbar-thumb { background: var(--vinyl-tan); border-radius: 3px; }
+
+h1, h2, h3, h4 {
+  font-family: "DM Serif Display", serif;
 }
