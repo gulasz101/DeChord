@@ -38,20 +38,20 @@ Build five standalone frontend design prototypes under `designs/1`..`designs/5`,
 
 ## Tasks
 
-- [ ] Create plan doc and commit
-- [ ] Build Design 1 (Vinyl Warmth) — full canonical app
-- [ ] Verify Design 1 builds and boots
-- [ ] Build Design 2 (Neon Terminal)
-- [ ] Verify Design 2 builds and boots
-- [ ] Build Design 3 (Editorial Studio)
-- [ ] Verify Design 3 builds and boots
-- [ ] Build Design 4 (Brutalist Raw)
-- [ ] Verify Design 4 builds and boots
-- [ ] Build Design 5 (Midnight Chrome)
-- [ ] Verify Design 5 builds and boots
-- [ ] Create designs/README.md
+- [x] Create plan doc and commit
+- [x] Build Design 1 (Vinyl Warmth) — full canonical app
+- [x] Verify Design 1 builds and boots
+- [x] Build Design 2 (Neon Terminal)
+- [x] Verify Design 2 builds and boots
+- [x] Build Design 3 (Editorial Studio)
+- [x] Verify Design 3 builds and boots
+- [x] Build Design 4 (Brutalist Raw)
+- [x] Verify Design 4 builds and boots
+- [x] Build Design 5 (Midnight Chrome)
+- [x] Verify Design 5 builds and boots
+- [x] Create designs/README.md
 - [ ] Run `make reset`
-- [ ] Final verification — all five build and boot
+- [x] Final verification — all five build and boot
 - [ ] Send Telegram summary
 
 ## Notes
