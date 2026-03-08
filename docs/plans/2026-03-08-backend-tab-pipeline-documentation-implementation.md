@@ -45,8 +45,8 @@
 **Files:**
 - Modify: `docs/plans/2026-03-08-backend-tab-pipeline-documentation-implementation.md`
 
-- [ ] Run a fresh README sanity check command.
-- [ ] Run `make reset` before final verification handoff.
-- [ ] Confirm the final diff matches the documented scope.
-- [ ] Send the Telegram handoff summary via `ops/scripts/send-telegram-summary.sh`.
-- [ ] Commit the final plan status update with the plan path in the message.
+- [x] Run a fresh README sanity check command.
+- [x] Run `make reset` before final verification handoff.
+- [x] Confirm the final diff matches the documented scope.
+- [x] Send the Telegram handoff summary via `ops/scripts/send-telegram-summary.sh`.
+- [x] Commit the final plan status update with the plan path in the message.
