@@ -1,6 +1,7 @@
 # backend/app/main.py
 import asyncio
 from dataclasses import replace
+import hashlib
 import logging
 import os
 import re
@@ -19,7 +20,16 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.analysis import AnalysisResult, analyze_audio
-from app.db import close_db, execute, get_default_user, init_db
+from app.db import (
+    claim_identity_user,
+    close_db,
+    execute,
+    get_default_project,
+    get_default_user,
+    get_user_by_id,
+    init_db,
+    resolve_identity_user,
+)
 from app.midi import transcribe_bass_stem_to_midi
 from app.models import ProcessMode
 from app.pipeline_presets import active_pipeline_preset_name, resolve_pipeline_preset
@@ -108,20 +118,31 @@ class PlaybackPrefsUpdate(BaseModel):
     loop_end_index: int | None = None
 
 
+class IdentityResolveRequest(BaseModel):
+    fingerprint_token: str = Field(min_length=6, max_length=256)
+
+
+class IdentityClaimRequest(BaseModel):
+    user_id: int
+    username: str = Field(min_length=3, max_length=64, pattern=r"^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$")
+    password: str = Field(min_length=8, max_length=256)
+
+
 def _row_to_dict(row) -> dict:
     return row.asdict() if hasattr(row, "asdict") else dict(row)
 
 
 async def _create_song_record(filename: str | None, mime_type: str | None, audio_blob: bytes) -> int:
     user = await get_default_user()
+    project = await get_default_project()
     title = Path(filename or "Untitled").stem or "Untitled"
     rs = await execute(
         """
-        INSERT INTO songs (user_id, title, original_filename, mime_type, audio_blob)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO songs (user_id, project_id, title, original_filename, mime_type, audio_blob)
+        VALUES (?, ?, ?, ?, ?, ?)
         RETURNING id
         """,
-        [user["id"], title, filename, mime_type, audio_blob],
+        [user["id"], project["id"], title, filename, mime_type, audio_blob],
     )
     return int(rs.rows[0][0])
 
@@ -472,6 +493,35 @@ async def shutdown_event():
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.post("/api/identity/resolve")
+async def resolve_identity(payload: IdentityResolveRequest):
+    user = await resolve_identity_user(payload.fingerprint_token)
+    return {"user": user}
+
+
+@app.post("/api/identity/claim")
+async def claim_identity(payload: IdentityClaimRequest):
+    user = await get_user_by_id(payload.user_id)
+    if user is None:
+        raise HTTPException(404, "User not found")
+
+    password_hash = hashlib.sha256(payload.password.encode("utf-8")).hexdigest()
+    try:
+        claimed = await claim_identity_user(
+            user_id=payload.user_id,
+            username=payload.username,
+            password_hash=password_hash,
+        )
+    except Exception as exc:
+        if "UNIQUE constraint failed: users.username" in str(exc):
+            raise HTTPException(409, "Username already taken") from exc
+        raise
+
+    if claimed is None:
+        raise HTTPException(404, "User not found")
+    return {"user": claimed}
 
 
 def _parse_time_signature(time_signature: str) -> tuple[int, int]:

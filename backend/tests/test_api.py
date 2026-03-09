@@ -1,6 +1,8 @@
 import importlib
 import asyncio
 import threading
+import sys
+import types
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -9,6 +11,8 @@ from fastapi.testclient import TestClient
 def _build_client(tmp_path: Path, monkeypatch):
     db_path = tmp_path / "api-test.db"
     monkeypatch.setenv("DECHORD_DB_URL", f"file:{db_path}")
+    if "torch" not in sys.modules:
+        sys.modules["torch"] = types.SimpleNamespace(cuda=types.SimpleNamespace(is_available=lambda: False))
 
     import app.main as main_mod
 
@@ -45,6 +49,47 @@ def test_health(tmp_path, monkeypatch):
     response = client.get("/api/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_identity_resolve_creates_guest_user(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+
+    response = client.post(
+        "/api/identity/resolve",
+        json={"fingerprint_token": "fp-browser-123"},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["user"]["id"] > 0
+    assert payload["user"]["fingerprint_token"] == "fp-browser-123"
+    assert payload["user"]["is_claimed"] is False
+    assert isinstance(payload["user"]["display_name"], str)
+    assert len(payload["user"]["display_name"]) > 0
+
+
+def test_identity_claim_sets_username_and_password_hash(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+
+    created = client.post(
+        "/api/identity/resolve",
+        json={"fingerprint_token": "fp-claim-1"},
+    )
+    assert created.status_code == 200
+    user_id = created.json()["user"]["id"]
+
+    claim = client.post(
+        "/api/identity/claim",
+        json={
+            "user_id": user_id,
+            "username": "bassbot",
+            "password": "secret-pass",
+        },
+    )
+    assert claim.status_code == 200
+    claim_payload = claim.json()
+    assert claim_payload["user"]["id"] == user_id
+    assert claim_payload["user"]["is_claimed"] is True
+    assert claim_payload["user"]["username"] == "bassbot"
 
 
 def test_analyze_persists_song_and_analysis(tmp_path, monkeypatch):

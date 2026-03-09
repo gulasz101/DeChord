@@ -13,7 +13,7 @@
 ## Task Checklist
 
 - [x] Task 1: Introduce reset collaboration schema and DB bootstrap updates.
-- [ ] Task 2: Add lightweight fingerprint identity and account-claim endpoints.
+- [x] Task 2: Add lightweight fingerprint identity and account-claim endpoints.
 - [ ] Task 3: Add bands/projects/songs listing APIs for redesigned navigation.
 - [ ] Task 4: Add stem download APIs (single + zip) and backend tests.
 - [ ] Task 5: Add frontend domain/API client for identity + band/project/song flow.
