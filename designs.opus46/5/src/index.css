@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Bravura";
+  src: url("./assets/alphatab/Bravura.woff2") format("woff2"),
+    url("./assets/alphatab/Bravura.woff") format("woff");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+/* alphaTab cursor styles */
+.at-cursor-bar {
+  background: rgba(124, 58, 237, 0.08);
+}
+.at-cursor-beat {
+  background: rgba(124, 58, 237, 0.7);
+  width: 3px;
+}
+.at-highlight {
+  fill: rgba(124, 58, 237, 0.85);
+  stroke: rgba(124, 58, 237, 0.85);
+}
+
+:root {
+  --mc-navy: #0a0e27;
+  --mc-navy-light: #111638;
+  --mc-chrome: #c0c0c0;
+  --mc-chrome-dim: #8a8a9a;
+  --mc-chrome-dark: #5a5a6e;
+  --mc-purple: #7c3aed;
+  --mc-purple-light: #a78bfa;
+  --mc-purple-dark: #5b21b6;
+  --mc-teal: #14b8a6;
+  --mc-teal-dark: #0d9488;
+  --mc-text: #e2e2f0;
+  --mc-text-dim: #7a7a90;
+}
+
+body {
+  font-family: "Nunito Sans", sans-serif;
+  background: var(--mc-navy);
+  color: var(--mc-text);
+  margin: 0;
+}
+
+/* Gradient mesh overlay */
+.midnight-mesh {
+  position: relative;
+}
+.midnight-mesh::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 600px 400px at 20% 30%, rgba(124, 58, 237, 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 500px 500px at 80% 70%, rgba(20, 184, 166, 0.04) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Glass-morphism utility */
+.glass {
+  background: rgba(17, 22, 56, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(192, 192, 192, 0.08);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: rgba(124, 58, 237, 0.05); }
+::-webkit-scrollbar-thumb { background: rgba(124, 58, 237, 0.35); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(124, 58, 237, 0.55); }
+
+h1, h2, h3, h4 {
+  font-family: "Orbitron", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
