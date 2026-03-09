@@ -73,3 +73,48 @@ def test_init_db_creates_song_midis_and_song_tabs_tables(tmp_path: Path, monkeyp
         assert len(index_rows.rows) == 1
 
     asyncio.run(db.close_db())
+
+
+def test_init_db_creates_collaboration_tables(tmp_path: Path, monkeypatch):
+    db_path = tmp_path / "dechord-test.db"
+    monkeypatch.setenv("DECHORD_DB_URL", f"file:{db_path}")
+
+    asyncio.run(db.reset_db_client_for_tests())
+    asyncio.run(db.init_db())
+
+    required_tables = (
+        "users",
+        "user_credentials",
+        "bands",
+        "band_memberships",
+        "projects",
+        "songs",
+    )
+    for table_name in required_tables:
+        table_rows = asyncio.run(
+            db.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+                [table_name],
+            )
+        )
+        assert len(table_rows.rows) == 1
+
+    asyncio.run(db.close_db())
+
+
+def test_songs_table_is_project_scoped(tmp_path: Path, monkeypatch):
+    db_path = tmp_path / "dechord-test.db"
+    monkeypatch.setenv("DECHORD_DB_URL", f"file:{db_path}")
+
+    asyncio.run(db.reset_db_client_for_tests())
+    asyncio.run(db.init_db())
+
+    columns = asyncio.run(db.execute("PRAGMA table_info(songs)"))
+    column_names = {row[1] for row in columns.rows}
+    assert "project_id" in column_names
+
+    foreign_keys = asyncio.run(db.execute("PRAGMA foreign_key_list(songs)"))
+    fk_targets = {row[2] for row in foreign_keys.rows}
+    assert "projects" in fk_targets
+
+    asyncio.run(db.close_db())

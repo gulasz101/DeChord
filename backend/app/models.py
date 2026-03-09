@@ -8,6 +8,7 @@ ProcessMode = Literal["analysis_only", "analysis_and_stems"]
 class Song:
     id: int
     user_id: int
+    project_id: int
     title: str
     original_filename: str | None
     mime_type: str | None

@@ -1,20 +1,66 @@
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     display_name TEXT NOT NULL UNIQUE,
+    fingerprint_token TEXT UNIQUE,
+    username TEXT UNIQUE,
+    is_claimed INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS user_credentials (
+    user_id INTEGER PRIMARY KEY,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS bands (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    owner_user_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(name, owner_user_id),
+    FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS band_memberships (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    band_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    role TEXT NOT NULL DEFAULT 'member',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(band_id, user_id),
+    FOREIGN KEY (band_id) REFERENCES bands(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS projects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    band_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(band_id, name),
+    FOREIGN KEY (band_id) REFERENCES bands(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS songs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
+    project_id INTEGER NOT NULL,
     title TEXT NOT NULL,
     original_filename TEXT,
     mime_type TEXT,
     audio_blob BLOB NOT NULL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS analyses (
@@ -107,6 +153,11 @@ CREATE TABLE IF NOT EXISTS song_tabs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_songs_user_id ON songs(user_id);
+CREATE INDEX IF NOT EXISTS idx_songs_project_id ON songs(project_id);
+CREATE INDEX IF NOT EXISTS idx_bands_owner_user_id ON bands(owner_user_id);
+CREATE INDEX IF NOT EXISTS idx_band_memberships_band_id ON band_memberships(band_id);
+CREATE INDEX IF NOT EXISTS idx_band_memberships_user_id ON band_memberships(user_id);
+CREATE INDEX IF NOT EXISTS idx_projects_band_id ON projects(band_id);
 CREATE INDEX IF NOT EXISTS idx_analyses_song_id ON analyses(song_id);
 CREATE INDEX IF NOT EXISTS idx_chords_analysis_id ON analysis_chords(analysis_id);
 CREATE INDEX IF NOT EXISTS idx_notes_song_id ON notes(song_id);
