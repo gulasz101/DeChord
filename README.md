@@ -60,6 +60,62 @@ Stop services with:
 make down
 ```
 
+## Makefile Guide
+
+The root `Makefile` is the supported entrypoint for local development. It wraps the backend and frontend startup commands, keeps both services in named tmux sessions, and standardizes cleanup and verification.
+
+### Setup Targets
+
+- `make install`: installs backend dependencies with `uv sync` and frontend dependencies with `bun install`
+- `make download-models`: prefetches the configured Demucs models for local stem separation work
+
+### Main Dev Targets
+
+- `make dev`: alias for `make up`
+- `make up`: starts backend and frontend in tmux sessions
+- `make down`: stops both tmux sessions
+- `make status`: shows whether each service session is currently running
+- `make logs`: prints captured logs from both tmux sessions
+
+### Backend Targets
+
+- `make backend` or `make backend-up`: starts the backend session if it is not already running
+- `make backend-down`: stops the backend session
+- `make backend-status`: reports backend session state
+- `make backend-logs`: prints the current backend pane output
+- `make backend-attach`: attaches directly to the backend tmux session
+
+### Frontend Targets
+
+- `make frontend` or `make frontend-up`: starts the frontend session if it is not already running
+- `make frontend-down`: stops the frontend session
+- `make frontend-status`: reports frontend session state
+- `make frontend-logs`: prints the current frontend pane output
+- `make frontend-attach`: attaches directly to the frontend tmux session
+
+### Proxy And Routing Targets
+
+- `make portless-proxy-up`: starts the shared Portless proxy
+- `make portless-proxy-down`: stops the shared Portless proxy
+- `make portless-routes`: lists active Portless routes
+
+### Verification And Reset Targets
+
+- `make test`: runs backend pytest and frontend Vitest
+- `make reset`: stops local services, deletes local DB/cache/uploads/stems runtime state, and recreates the required backend runtime directories
+
+The backend session runs:
+
+```bash
+cd backend && portless api.dechord ./scripts/run-fastapi-portless.sh
+```
+
+The frontend session runs:
+
+```bash
+cd frontend && portless dechord ./scripts/run-vite-portless.sh
+```
+
 ## Direct Development Commands
 
 ### Backend
@@ -229,6 +285,34 @@ There are two entrypoints into the pipeline:
 | --- | --- | --- |
 | `POST /api/analyze` | standard upload flow | async job with persisted artifacts |
 | `POST /api/tab/from-demucs-stems` | direct stems-to-tab flow | immediate JSON response plus persisted MIDI and tabs |
+
+### Architecture Flowchart
+
+```mermaid
+flowchart TD
+    A["Source audio upload<br/>Endpoint: POST /api/analyze<br/>Params: process_mode, tabGenerationQuality, onset_recovery<br/>Module: backend/app/main.py"] --> B{"process_mode == analysis_and_stems?"}
+    B -- "no" --> C["Chord/key analysis only<br/>analyze_audio(audio_path)<br/>Tab pipeline not entered"]
+    B -- "yes" --> D["Stem separation<br/>split_to_stems(audio_path, output_dir)<br/>Module: app.stems<br/>Depends on: Demucs or fallback splitter, ffmpeg, torch, lameenc<br/>Config: DECHORD_STEM_ENGINE, DECHORD_STEM_FALLBACK_ON_ERROR, DECHORD_STEM_DEVICE, DECHORD_STEM_SEGMENT, DECHORD_STEM_OVERLAP, DECHORD_STEM_SHIFTS, DECHORD_STEM_INPUT_GAIN_DB, DECHORD_STEM_OUTPUT_GAIN_DB, DECHORD_STEM_JOBS, DECHORD_DEMUCS_MODEL, DECHORD_DEMUCS_FALLBACK_MODEL"]
+    E["Uploaded stems<br/>Endpoint: POST /api/tab/from-demucs-stems<br/>Params: bass, drums, other?, guitar?, song_id?, bpm?, time_signature, subdivision, max_fret, sync_every_bars, tabGenerationQuality, onset_recovery<br/>Module: backend/app/main.py"] --> F["Persist temp stem files<br/>bass.wav, drums.wav, other.wav?, guitar.wav?"]
+    D --> G["Build analysis stem<br/>build_bass_analysis_stem(stems, output_dir, analysis_config, source_audio_path)<br/>Module: app.stems<br/>Output: bass_analysis.wav + diagnostics"]
+    F --> G2["Build analysis stem for uploaded stems<br/>build_bass_analysis_stem(..., source_audio_path=None)<br/>Ensemble reseparation disabled; falls back to uploaded bass on failure"]
+    G --> H["TabPipeline.run(bass_analysis.wav, drums.wav)<br/>Module: app.services.tab_pipeline<br/>Args: tab_generation_quality_mode, bpm_hint, time_signature, subdivision, max_fret, sync_every_bars, onset_recovery"]
+    G2 --> H
+    H --> I["Rhythm extraction from drums<br/>extract_beats_and_downbeats()<br/>Modules: app.services.rhythm_grid + madmom/librosa<br/>Uses: time_signature numerator"]
+    H --> J["Bass transcription from analysis stem<br/>BasicPitchTranscriber.transcribe()<br/>Modules: app.services.bass_transcriber + app.midi<br/>Depends on: DECHORD_PITCH_*, DECHORD_NOTE_*, DECHORD_RAW_NOTE_*, DECHORD_DENSE_*, DECHORD_ONSET_* env flags"]
+    I --> K["Bar grid + tempo reconciliation<br/>build_bars_from_beats_downbeats(), compute_derived_bpm(), reconcile_tempo()"]
+    J --> L["Raw note recovery and cleanup<br/>optional onset-note generation, onset recovery, dense sparse-region recovery, cleanup_note_events()"]
+    K --> M["Quantization<br/>quantize_note_events(cleaned_notes, BarGrid, subdivision)"]
+    L --> M
+    M --> N["Fingering<br/>optimize_fingering_with_debug(quantized_notes, max_fret)<br/>Guard: candidate_sanity_probe()"]
+    N --> O["AlphaTex export<br/>export_alphatex(fingered_notes, bars, tempo_used, time_signature, sync_every_bars)<br/>Output: alphatex + sync points"]
+    J --> P["MIDI bytes retained from transcription"]
+    P --> Q["Persist MIDI<br/>song_midis.source_stem_key=bass"]
+    O --> R["Persist tab<br/>song_tabs.tab_format=alphatex<br/>generator_version=v2-rhythm-grid"]
+    O --> S["Runtime/debug outputs<br/>bars, sync_points, debug_info, pipeline_trace, analysis_stem_diagnostics"]
+    Q --> T["Frontend/API consumers<br/>GET /api/songs/{song_id}/tabs<br/>GET /api/songs/{song_id}/tabs/file<br/>GET /api/songs/{song_id}/tabs/download"]
+    R --> T
+```
 
 ### Pipeline Stages
 
