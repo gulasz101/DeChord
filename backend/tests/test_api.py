@@ -14,7 +14,14 @@ def _build_client(tmp_path: Path, monkeypatch):
     db_path = tmp_path / "api-test.db"
     monkeypatch.setenv("DECHORD_DB_URL", f"file:{db_path}")
     if "torch" not in sys.modules:
-        sys.modules["torch"] = types.SimpleNamespace(cuda=types.SimpleNamespace(is_available=lambda: False))
+        class _FakeTorchTensor:
+            pass
+
+        sys.modules["torch"] = types.SimpleNamespace(
+            Tensor=_FakeTorchTensor,
+            backends=types.SimpleNamespace(mps=types.SimpleNamespace(is_available=lambda: False)),
+            cuda=types.SimpleNamespace(is_available=lambda: False),
+        )
 
     import app.main as main_mod
 

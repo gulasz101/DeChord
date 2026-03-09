@@ -19,6 +19,9 @@ try:
     import torch
 except ModuleNotFoundError:  # pragma: no cover - optional in lightweight environments
     class _TorchShim:  # pragma: no cover
+        class Tensor:  # minimal placeholder for scipy array-api torch checks
+            pass
+
         class backends:
             class mps:
                 @staticmethod
