@@ -92,6 +92,32 @@ def test_identity_claim_sets_username_and_password_hash(tmp_path, monkeypatch):
     assert claim_payload["user"]["username"] == "bassbot"
 
 
+def test_list_bands_projects_and_project_songs(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+
+    files = {"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")}
+    created = client.post("/api/analyze", files=files, data={"process_mode": "analysis_only"})
+    assert created.status_code == 200
+    created_song_id = created.json()["song_id"]
+
+    bands_response = client.get("/api/bands")
+    assert bands_response.status_code == 200
+    bands = bands_response.json()["bands"]
+    assert len(bands) >= 1
+    band_id = bands[0]["id"]
+
+    projects_response = client.get(f"/api/bands/{band_id}/projects")
+    assert projects_response.status_code == 200
+    projects = projects_response.json()["projects"]
+    assert len(projects) >= 1
+    project_id = projects[0]["id"]
+
+    songs_response = client.get(f"/api/projects/{project_id}/songs")
+    assert songs_response.status_code == 200
+    songs = songs_response.json()["songs"]
+    assert any(song["id"] == created_song_id for song in songs)
+
+
 def test_analyze_persists_song_and_analysis(tmp_path, monkeypatch):
     client = _build_client(tmp_path, monkeypatch)
 

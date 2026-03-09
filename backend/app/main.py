@@ -798,6 +798,107 @@ async def list_songs():
     return {"songs": songs}
 
 
+@app.get("/api/bands")
+async def list_bands():
+    rows = await execute(
+        """
+        SELECT
+            b.id,
+            b.name,
+            b.owner_user_id,
+            b.created_at,
+            (
+                SELECT COUNT(*)
+                FROM projects p
+                WHERE p.band_id = b.id
+            ) AS project_count
+        FROM bands b
+        ORDER BY b.created_at DESC, b.id DESC
+        """
+    )
+    bands = [
+        {
+            "id": int(row[0]),
+            "name": row[1],
+            "owner_user_id": int(row[2]),
+            "created_at": row[3],
+            "project_count": int(row[4]),
+        }
+        for row in rows.rows
+    ]
+    return {"bands": bands}
+
+
+@app.get("/api/bands/{band_id}/projects")
+async def list_band_projects(band_id: int):
+    rows = await execute(
+        """
+        SELECT
+            p.id,
+            p.band_id,
+            p.name,
+            p.description,
+            p.created_at,
+            (
+                SELECT COUNT(*)
+                FROM songs s
+                WHERE s.project_id = p.id
+            ) AS song_count
+        FROM projects p
+        WHERE p.band_id = ?
+        ORDER BY p.created_at DESC, p.id DESC
+        """,
+        [band_id],
+    )
+    projects = [
+        {
+            "id": int(row[0]),
+            "band_id": int(row[1]),
+            "name": row[2],
+            "description": row[3],
+            "created_at": row[4],
+            "song_count": int(row[5]),
+        }
+        for row in rows.rows
+    ]
+    return {"projects": projects}
+
+
+@app.get("/api/projects/{project_id}/songs")
+async def list_project_songs(project_id: int):
+    rows = await execute(
+        """
+        SELECT
+            s.id,
+            s.project_id,
+            s.title,
+            s.original_filename,
+            s.created_at,
+            (SELECT song_key FROM analyses a WHERE a.song_id = s.id ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS song_key,
+            (SELECT tempo FROM analyses a WHERE a.song_id = s.id ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS tempo,
+            (SELECT duration FROM analyses a WHERE a.song_id = s.id ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS duration
+        FROM songs s
+        WHERE s.project_id = ?
+        ORDER BY s.created_at DESC, s.id DESC
+        """,
+        [project_id],
+    )
+    songs = [
+        {
+            "id": int(row[0]),
+            "project_id": int(row[1]),
+            "title": row[2],
+            "original_filename": row[3],
+            "created_at": row[4],
+            "key": row[5],
+            "tempo": row[6],
+            "duration": row[7],
+        }
+        for row in rows.rows
+    ]
+    return {"songs": songs}
+
+
 @app.get("/api/songs/{song_id}")
 async def get_song(song_id: int):
     song_rs = await execute(
