@@ -4,9 +4,31 @@
 
 **Goal:** Remove all PyQt5 desktop application code, build artifacts, and dependencies to establish a clean, web-only codebase.
 
-**Architecture:** Comprehensive single-pass cleanup removing three categories: (1) desktop UI code, (2) build/distribution scripts and assets, (3) redundant dependencies. Preserve web stack (frontend/, backend/, designs/). Update documentation and git configuration to reflect web-only focus.
+**Architecture:** Comprehensive single-pass cleanup removing three categories: (1) desktop UI code, (2) build/distribution scripts and assets, (3) redundant dependencies. Preserve web stack (frontend/, backend/) and the retained design variant directories (`designs.gpt54/`, `designs.opus46/`). Update documentation and git configuration to reflect web-only focus.
 
 **Tech Stack:** FastAPI (backend), React 19 + Vite (frontend), Python 3.13+ (backend only)
+
+## Execution Checklist
+
+- [x] Task 0: Document current state, user overrides, and removal scope
+- [ ] Task 1: Remove PyQt5 desktop UI code
+- [ ] Task 2: Remove desktop build and distribution scripts
+- [ ] Task 3: Remove desktop icon assets
+- [ ] Task 4: Remove the tracked `designs/` directory and retain `designs.gpt54/` + `designs.opus46/`
+- [ ] Task 5: Remove source export artifacts
+- [ ] Task 6: Remove generated `docs/reports/` artifacts
+- [ ] Task 7: Remove Demucs-Gui submodule and related git config
+- [ ] Task 8: Audit backend dependencies in `backend/pyproject.toml`
+- [ ] Task 9: Update `README.md`, `CLAUDE.md`, and any cleanup documentation references
+- [ ] Task 10: Final verification, `make reset`, summary, and notification
+
+## User Overrides Recorded On 2026-03-09
+
+- [x] Execute directly on `main` with atomic commits; do not create a worktree for this cleanup.
+- [x] Keep `designs.gpt54/` and `designs.opus46/`.
+- [x] Remove the tracked `designs/` directory from the repository.
+- [x] Remove generated files under `docs/reports/`.
+- [x] Align `CLAUDE.md` with `AGENTS.md` via a link instead of duplicated content.
 
 ---
 
@@ -65,6 +87,13 @@ Files to Remove:
 Dependencies to Review:
 [After checking pyproject.toml]
 ```
+
+**Step 3: Record user-approved scope changes in this plan**
+
+- Keep `designs.gpt54/` and `designs.opus46/`
+- Remove the tracked `designs/` directory instead of those variants
+- Remove generated `docs/reports/` artifacts
+- Replace duplicated `CLAUDE.md` contents with a link to `AGENTS.md`
 
 ---
 
@@ -184,36 +213,36 @@ refs: docs/plans/2026-03-09-desktop-app-cleanup.md"
 
 ---
 
-### Task 4: Remove Old Design Prototype Directories
+### Task 4: Remove Tracked `designs/` Directory And Keep Variant Design Directories
 
 **Files:**
-- Delete: `designs.gpt54/` directory (entire)
-- Delete: `designs.opus46/` directory (entire)
-- Keep: `designs/` (active design directory)
+- Delete: `designs/` directory (entire)
+- Keep: `designs.gpt54/` directory
+- Keep: `designs.opus46/` directory
 
-**Step 1: Verify these are old iterations**
+**Step 1: Verify retained design variant directories exist and `designs/` is already removed or ready to remove**
 
-Run: `ls -la designs.gpt54/ designs.opus46/ | head -20`
+Run: `ls -ld designs designs.gpt54 designs.opus46 2>/dev/null`
 
-Expected: Should see similar structure to `designs/` with numbered folders (1, 2, 3, 4, 5, 5-3, etc.)
+Expected: `designs.gpt54/` and `designs.opus46/` exist. `designs/` may already be absent and appear in git status as tracked deletions.
 
-**Step 2: Delete old design directories**
+**Step 2: Remove the tracked `designs/` directory**
 
 ```bash
-rm -rf designs.gpt54/ designs.opus46/
+rm -rf designs/
 ```
 
-**Step 3: Verify deletion and that designs/ remains**
+**Step 3: Verify retained directories remain**
 
 Run: `ls -la designs* 2>/dev/null`
 
-Expected: Only `designs` directory exists (no `.opus46` or `.gpt54` variants)
+Expected: `designs.gpt54/` and `designs.opus46/` exist; `designs/` does not
 
 **Step 4: Commit**
 
 ```bash
 git add -A
-git commit -m "chore: remove old design prototype directories (designs.gpt54, designs.opus46)
+git commit -m "chore: remove tracked designs directory and retain variant prototypes
 
 refs: docs/plans/2026-03-09-desktop-app-cleanup.md"
 ```
@@ -258,9 +287,43 @@ refs: docs/plans/2026-03-09-desktop-app-cleanup.md"
 
 ---
 
+### Task 6: Remove Generated Report Artifacts
+
+**Files:**
+- Delete: `docs/reports/` generated files
+
+**Step 1: Verify generated report artifacts exist**
+
+Run: `find docs/reports -maxdepth 1 -type f | wc -l`
+
+Expected: One or more generated report files
+
+**Step 2: Remove generated report artifacts**
+
+```bash
+find docs/reports -maxdepth 1 -type f -delete
+```
+
+**Step 3: Verify cleanup**
+
+Run: `find docs/reports -maxdepth 1 -type f`
+
+Expected: No output
+
+**Step 4: Commit**
+
+```bash
+git add -A
+git commit -m "chore: remove generated report artifacts
+
+refs: docs/plans/2026-03-09-desktop-app-cleanup.md"
+```
+
+---
+
 ## Git Configuration & Submodule Cleanup
 
-### Task 6: Remove Demucs-Gui Submodule
+### Task 7: Remove Demucs-Gui Submodule
 
 **Files:**
 - Delete: `Demucs-Gui/` directory
@@ -320,7 +383,7 @@ refs: docs/plans/2026-03-09-desktop-app-cleanup.md"
 
 ## Backend Dependency Audit & Cleanup
 
-### Task 7: Audit Backend Dependencies in pyproject.toml
+### Task 8: Audit Backend Dependencies in pyproject.toml
 
 **Files:**
 - Analyze: `backend/pyproject.toml`
@@ -393,7 +456,7 @@ refs: docs/plans/2026-03-09-desktop-app-cleanup.md"
 
 ## Documentation Updates
 
-### Task 8: Update README.md - Remove Desktop App References
+### Task 9: Update README.md And Project Instructions
 
 **Files:**
 - Modify: `README.md`
