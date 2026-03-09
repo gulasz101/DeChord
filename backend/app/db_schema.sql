@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS projects (
 CREATE TABLE IF NOT EXISTS songs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_id INTEGER NOT NULL,
+    project_id INTEGER,
     title TEXT NOT NULL,
     original_filename TEXT,
     mime_type TEXT,

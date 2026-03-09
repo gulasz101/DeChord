@@ -38,6 +38,7 @@ from app.stems import (
     BassAnalysisStemResult,
     StemResult,
     _get_stem_analysis_config,
+    build_stems_zip,
     build_bass_analysis_stem,
     split_to_stems,
 )
@@ -994,6 +995,79 @@ async def get_song_stems(song_id: int):
         for row in stems_rs.rows
     ]
     return {"stems": stems}
+
+
+@app.get("/api/songs/{song_id}/stems/{stem_key}/download")
+async def download_song_stem(song_id: int, stem_key: str):
+    rs = await execute(
+        """
+        SELECT s.title, ss.relative_path, ss.mime_type
+        FROM song_stems ss
+        JOIN songs s ON s.id = ss.song_id
+        WHERE ss.song_id = ? AND ss.stem_key = ?
+        LIMIT 1
+        """,
+        [song_id, stem_key],
+    )
+    if not rs.rows:
+        raise HTTPException(404, "Stem not found")
+
+    song_title, relative_path, mime_type = rs.rows[0][0], rs.rows[0][1], rs.rows[0][2]
+    path = Path(relative_path)
+    if not path.exists():
+        raise HTTPException(404, "Stem file missing")
+
+    safe_title = re.sub(r"[^a-zA-Z0-9._-]+", "_", song_title or f"song-{song_id}").strip("._-") or f"song-{song_id}"
+    extension = path.suffix or ".wav"
+    filename = f"{safe_title}-{stem_key}{extension}"
+    stem_bytes = path.read_bytes()
+    return Response(
+        content=stem_bytes,
+        media_type=mime_type or "audio/mpeg",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(stem_bytes)),
+        },
+    )
+
+
+@app.get("/api/songs/{song_id}/stems/download")
+async def download_song_stems_zip(song_id: int):
+    song_rs = await execute("SELECT title FROM songs WHERE id = ?", [song_id])
+    if not song_rs.rows:
+        raise HTTPException(404, "Song not found")
+    song_title = song_rs.rows[0][0]
+
+    stems_rs = await execute(
+        """
+        SELECT stem_key, relative_path, mime_type, duration
+        FROM song_stems
+        WHERE song_id = ?
+        ORDER BY stem_key ASC
+        """,
+        [song_id],
+    )
+    stems = [
+        StemResult(
+            stem_key=row[0],
+            relative_path=row[1],
+            mime_type=row[2] or "audio/mpeg",
+            duration=row[3],
+        )
+        for row in stems_rs.rows
+    ]
+    if not stems:
+        raise HTTPException(404, "No stems found")
+
+    archive_bytes, archive_name = build_stems_zip(song_title=song_title, stems=stems)
+    return Response(
+        content=archive_bytes,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{archive_name}"',
+            "Content-Length": str(len(archive_bytes)),
+        },
+    )
 
 
 @app.get("/api/songs/{song_id}/tabs")

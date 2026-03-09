@@ -1,5 +1,7 @@
 import os
 import wave
+import zipfile
+import io
 from pathlib import Path
 
 import numpy as np
@@ -344,6 +346,27 @@ def test_score_bass_analysis_candidate_is_deterministic() -> None:
         )
     )
     assert clean_score > noisy_score
+
+
+def test_build_stems_zip_packages_existing_files(tmp_path: Path):
+    from app.stems import build_stems_zip
+
+    bass_path = tmp_path / "bass.wav"
+    drums_path = tmp_path / "drums.wav"
+    bass_path.write_bytes(b"bass")
+    drums_path.write_bytes(b"drums")
+
+    archive_bytes, archive_name = build_stems_zip(
+        "The Trooper",
+        stems=[
+            StemResult(stem_key="bass", relative_path=str(bass_path), mime_type="audio/x-wav"),
+            StemResult(stem_key="drums", relative_path=str(drums_path), mime_type="audio/x-wav"),
+        ],
+    )
+
+    assert archive_name == "The_Trooper-stems.zip"
+    with zipfile.ZipFile(io.BytesIO(archive_bytes), "r") as archive:
+        assert sorted(archive.namelist()) == ["bass.wav", "drums.wav"]
 
 
 def test_get_stem_analysis_config_parses_extended_weights_and_selection(monkeypatch):
