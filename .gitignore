@@ -30,3 +30,6 @@ requirements.txt
 
 # Local manual test assets
 test songs/
+
+# Local worktrees
+.worktrees/
