@@ -11,7 +11,7 @@
 ## Execution Checklist
 
 - [x] Task 0: Document current state, user overrides, and removal scope
-- [ ] Task 1: Remove PyQt5 desktop UI code
+- [x] Task 1: Remove PyQt5 desktop UI code
 - [ ] Task 2: Remove desktop build and distribution scripts
 - [ ] Task 3: Remove desktop icon assets
 - [ ] Task 4: Remove the tracked `designs/` directory and retain `designs.gpt54/` + `designs.opus46/`
@@ -176,24 +176,24 @@ refs: docs/plans/2026-03-09-desktop-app-cleanup.md"
 ### Task 3: Remove Desktop Icon Assets
 
 **Files:**
-- Delete: `icon/` directory (entire)
+- Delete: `icon` file
 
-**Step 1: Verify icon/ is not referenced by web frontend**
+**Step 1: Verify `icon` is not referenced by web frontend**
 
 Run: `grep -r "icon" frontend/ --include="*.tsx" --include="*.ts" --include="*.css" | head -20`
 
-Expected: May have results (web icons), but NOT references to `/icon/` path. If found, confirm they point to `frontend/src/assets/` instead.
+Expected: May have results (web icons), but NOT references to the top-level `icon` file. If found, confirm they point to `frontend/src/assets/` instead.
 
-**Step 2: Check if icon/ is used by web backend**
+**Step 2: Check if `icon` is used by web backend**
 
 Run: `grep -r "icon" backend/ --include="*.py"`
 
-Expected: No matches, or matches that don't reference the icon/ directory
+Expected: No matches, or matches that don't reference the top-level `icon` file
 
-**Step 3: Delete icon directory**
+**Step 3: Delete icon file**
 
 ```bash
-rm -rf icon/
+rm -f icon
 ```
 
 **Step 4: Verify deletion**
