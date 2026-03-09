@@ -4,6 +4,18 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import App from "../App";
 import { resolvePlaybackSources } from "../lib/playbackSources";
 
+const { claimIdentityMock } = vi.hoisted(() => ({
+  claimIdentityMock: vi.fn().mockResolvedValue({
+    user: {
+      id: 1,
+      display_name: "Groove Bassline",
+      fingerprint_token: "fp-1",
+      username: "bassbot",
+      is_claimed: true,
+    },
+  }),
+}));
+
 vi.mock("../lib/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../lib/api")>();
   return {
@@ -33,6 +45,7 @@ vi.mock("../lib/api", async (importOriginal) => {
       playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
     }),
     listSongStems: vi.fn().mockResolvedValue({ stems: [] }),
+    claimIdentity: claimIdentityMock,
   };
 });
 
@@ -56,6 +69,27 @@ describe("App integration", () => {
       expect(screen.getByText("Your Bands")).toBeTruthy();
       expect(screen.getByText("Default Band")).toBeTruthy();
     });
+  });
+
+  it("triggers claim account flow from bands page", async () => {
+    const promptSpy = vi.spyOn(window, "prompt");
+    promptSpy.mockReturnValueOnce("bassbot").mockReturnValueOnce("secret-pass");
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    await waitFor(() => {
+      expect(screen.getByText("Your Bands")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Claim Account"));
+    await waitFor(() => {
+      expect(claimIdentityMock).toHaveBeenCalledWith({
+        user_id: 1,
+        username: "bassbot",
+        password: "secret-pass",
+      });
+    });
+    promptSpy.mockRestore();
   });
 
   it("falls back to single-track playback when no stems", () => {

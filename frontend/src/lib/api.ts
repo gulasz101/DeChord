@@ -53,6 +53,14 @@ export function getStemAudioUrl(songId: number, stemKey: string): string {
   return `${BASE}/api/audio/${songId}/stems/${encodeURIComponent(stemKey)}`;
 }
 
+export function getStemDownloadUrl(songId: number, stemKey: string): string {
+  return `${BASE}/api/songs/${songId}/stems/${encodeURIComponent(stemKey)}/download`;
+}
+
+export function getStemsZipDownloadUrl(songId: number): string {
+  return `${BASE}/api/songs/${songId}/stems/download`;
+}
+
 export function getMidiFileUrl(songId: number): string {
   return `${BASE}/api/songs/${songId}/midi/file`;
 }

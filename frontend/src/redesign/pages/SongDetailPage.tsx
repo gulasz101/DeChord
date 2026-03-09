@@ -8,6 +8,8 @@ interface SongDetailPageProps {
   song: Song;
   onOpenPlayer: () => void;
   onBack: () => void;
+  onDownloadStem?: (stemId: string) => void;
+  onDownloadAllStems?: () => void;
 }
 
 const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
@@ -18,7 +20,16 @@ const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
   needs_review: { bg: "rgba(124, 58, 237, 0.2)", text: "#a78bfa" },
 };
 
-export function SongDetailPage({ user, band, project, song, onOpenPlayer, onBack }: SongDetailPageProps) {
+export function SongDetailPage({
+  user,
+  band,
+  project,
+  song,
+  onOpenPlayer,
+  onBack,
+  onDownloadStem,
+  onDownloadAllStems,
+}: SongDetailPageProps) {
   const [showResolved, setShowResolved] = useState(false);
   const activeStems = song.stems.filter((s) => !s.isArchived);
   const archivedStems = song.stems.filter((s) => s.isArchived);
@@ -84,7 +95,11 @@ export function SongDetailPage({ user, band, project, song, onOpenPlayer, onBack
                       </div>
                       <div className="mt-0.5 text-xs" style={{ color: "#7a7a90" }}>{stem.description} — by {stem.uploaderName}</div>
                     </div>
-                    <button className="rounded-lg border px-3 py-1.5 text-xs transition-all hover:bg-white/5 hover:border-purple-500/30" style={{ borderColor: "rgba(192, 192, 192, 0.12)", color: "#c0c0c0" }}>
+                    <button
+                      onClick={() => onDownloadStem?.(stem.stemKey)}
+                      className="rounded-lg border px-3 py-1.5 text-xs transition-all hover:bg-white/5 hover:border-purple-500/30"
+                      style={{ borderColor: "rgba(192, 192, 192, 0.12)", color: "#c0c0c0" }}
+                    >
                       Download
                     </button>
                   </div>
@@ -105,6 +120,13 @@ export function SongDetailPage({ user, band, project, song, onOpenPlayer, onBack
 
             {/* Upload actions */}
             <div className="mt-6 flex gap-3">
+              <button
+                onClick={onDownloadAllStems}
+                className="border px-5 py-2.5 text-sm font-medium transition-all hover:bg-white/5 hover:border-purple-500/30"
+                style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.35)", color: "#14b8a6" }}
+              >
+                Download All Stems
+              </button>
               <button className="border px-5 py-2.5 text-sm font-medium transition-all hover:bg-white/5 hover:border-purple-500/30" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}>
                 Upload Stem
               </button>

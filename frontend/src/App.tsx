@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  claimIdentity,
   getSong,
+  getStemDownloadUrl,
+  getStemsZipDownloadUrl,
   listBandProjects,
   listBands,
   listProjectSongs,
@@ -169,6 +172,8 @@ export default function App() {
   const [route, setRoute] = useState<Route>({ page: "landing" });
   const [user, setUser] = useState<User | null>(null);
   const [bands, setBands] = useState<Band[]>([]);
+  const [identityUserId, setIdentityUserId] = useState<number | null>(null);
+  const [isClaimed, setIsClaimed] = useState(false);
 
   const bootstrap = useCallback(async () => {
     try {
@@ -182,6 +187,8 @@ export default function App() {
         avatar: avatarFromName(identity.user.display_name),
       };
       setUser(mappedUser);
+      setIdentityUserId(identity.user.id);
+      setIsClaimed(identity.user.is_claimed);
       const loadedBands = await loadBandHierarchy(mappedUser);
       setBands(loadedBands);
     } catch {
@@ -193,6 +200,8 @@ export default function App() {
         avatar: "GM",
       };
       setUser(fallbackUser);
+      setIdentityUserId(null);
+      setIsClaimed(false);
       const loadedBands = await loadBandHierarchy(fallbackUser);
       setBands(loadedBands);
     }
@@ -263,6 +272,26 @@ export default function App() {
         <BandSelectPage
           user={user}
           bands={bands}
+          isClaimed={isClaimed}
+          onClaimAccount={() => {
+            if (identityUserId === null || typeof window === "undefined") return;
+            const username = window.prompt("Choose a username");
+            if (!username) return;
+            const password = window.prompt("Choose a password (min 8 chars)");
+            if (!password || password.length < 8) return;
+            void (async () => {
+              try {
+                const claimed = await claimIdentity({
+                  user_id: identityUserId,
+                  username,
+                  password,
+                });
+                setIsClaimed(claimed.user.is_claimed);
+              } catch {
+                // Keep current state when claim fails.
+              }
+            })();
+          }}
           onSelectBand={(band) => setRoute({ page: "project", band, project: band.projects[0] })}
           onSignOut={() => {
             setRoute({ page: "landing" });
@@ -302,6 +331,16 @@ export default function App() {
           band={route.band}
           project={route.project}
           song={route.song}
+          onDownloadStem={(stemKey) => {
+            const songId = Number(route.song.id);
+            if (Number.isNaN(songId) || typeof window === "undefined") return;
+            window.location.assign(getStemDownloadUrl(songId, stemKey));
+          }}
+          onDownloadAllStems={() => {
+            const songId = Number(route.song.id);
+            if (Number.isNaN(songId) || typeof window === "undefined") return;
+            window.location.assign(getStemsZipDownloadUrl(songId));
+          }}
           onOpenPlayer={() => setRoute({ page: "player", band: route.band, project: route.project, song: route.song })}
           onBack={goBack}
         />

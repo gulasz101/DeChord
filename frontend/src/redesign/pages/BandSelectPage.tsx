@@ -5,9 +5,11 @@ interface BandSelectPageProps {
   bands: Band[];
   onSelectBand: (band: Band) => void;
   onSignOut: () => void;
+  isClaimed?: boolean;
+  onClaimAccount?: () => void;
 }
 
-export function BandSelectPage({ user, bands, onSelectBand, onSignOut }: BandSelectPageProps) {
+export function BandSelectPage({ user, bands, onSelectBand, onSignOut, isClaimed = false, onClaimAccount }: BandSelectPageProps) {
   return (
     <div className="me-mesh min-h-screen" style={{ background: "linear-gradient(160deg, #0a0e27 0%, #111638 40%, #0a0e27 100%)" }}>
       {/* Header */}
@@ -25,6 +27,11 @@ export function BandSelectPage({ user, bands, onSelectBand, onSignOut }: BandSel
             </div>
             <span className="text-sm" style={{ color: "#c0c0c0" }}>{user.name}</span>
           </div>
+          {!isClaimed && onClaimAccount && (
+            <button onClick={onClaimAccount} className="text-xs transition-colors hover:text-teal-300" style={{ color: "#14b8a6" }}>
+              Claim Account
+            </button>
+          )}
           <button onClick={onSignOut} className="text-xs transition-colors hover:text-purple-300" style={{ color: "#7a7a90" }}>
             Sign Out
           </button>

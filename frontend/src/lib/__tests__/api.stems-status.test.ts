@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { listSongStems, uploadAudio } from "../api";
+import { getStemDownloadUrl, getStemsZipDownloadUrl, listSongStems, uploadAudio } from "../api";
 
 describe("api stems/status contract", () => {
   it("sends process_mode and default tabGenerationQuality on upload analyze request", async () => {
@@ -101,5 +101,10 @@ describe("api stems/status contract", () => {
     } finally {
       (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
     }
+  });
+
+  it("builds per-stem and zip download urls", () => {
+    expect(getStemDownloadUrl(7, "bass")).toBe("/api/songs/7/stems/bass/download");
+    expect(getStemsZipDownloadUrl(7)).toBe("/api/songs/7/stems/download");
   });
 });
