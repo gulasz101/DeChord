@@ -12,7 +12,7 @@
 
 - [x] Task 0: Document current state, user overrides, and removal scope
 - [x] Task 1: Remove PyQt5 desktop UI code
-- [ ] Task 2: Remove desktop build and distribution scripts
+- [x] Task 2: Remove desktop build and distribution scripts
 - [ ] Task 3: Remove desktop icon assets
 - [ ] Task 4: Remove the tracked `designs/` directory and retain `designs.gpt54/` + `designs.opus46/`
 - [ ] Task 5: Remove source export artifacts
