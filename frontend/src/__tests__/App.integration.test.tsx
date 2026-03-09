@@ -1,15 +1,61 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import App from "../App";
 import { resolvePlaybackSources } from "../lib/playbackSources";
 
+vi.mock("../lib/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/api")>();
+  return {
+    ...actual,
+    resolveIdentity: vi.fn().mockResolvedValue({
+      user: {
+        id: 1,
+        display_name: "Groove Bassline",
+        fingerprint_token: "fp-1",
+        username: null,
+        is_claimed: false,
+      },
+    }),
+    listBands: vi.fn().mockResolvedValue({
+      bands: [{ id: 10, name: "Default Band", owner_user_id: 1, created_at: "2026-03-09", project_count: 1 }],
+    }),
+    listBandProjects: vi.fn().mockResolvedValue({
+      projects: [{ id: 20, band_id: 10, name: "Default Project", description: "", created_at: "2026-03-09", song_count: 1 }],
+    }),
+    listProjectSongs: vi.fn().mockResolvedValue({
+      songs: [{ id: 30, project_id: 20, title: "The Trooper", original_filename: "demo.mp3", created_at: "2026-03-09", key: "Em", tempo: 160, duration: 48 }],
+    }),
+    getSong: vi.fn().mockResolvedValue({
+      song: { id: 30, title: "The Trooper", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-09" },
+      analysis: { key: "Em", tempo: 160, duration: 48, chords: [] },
+      notes: [],
+      playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+    }),
+    listSongStems: vi.fn().mockResolvedValue({ stems: [] }),
+  };
+});
+
 describe("App integration", () => {
-  it("shows drop zone prompt before analysis", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renders opus landing shell", () => {
     const html = renderToStaticMarkup(<App />);
-    expect(html).toContain("Drop audio file here or click to browse");
-    expect(html).not.toContain("Show Tabs");
-    expect(html).not.toContain("Download Tab");
-    expect(html).not.toContain("Tab accuracy");
+    expect(html).toContain("Get Started Free");
+    expect(html).toContain("DeChord");
+  });
+
+  it("navigates from landing to bands", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Your Bands")).toBeTruthy();
+      expect(screen.getByText("Default Band")).toBeTruthy();
+    });
   });
 
   it("falls back to single-track playback when no stems", () => {
