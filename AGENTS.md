@@ -1,39 +1,38 @@
-# AGENTS.md
-
-## Execution and Progress Rules
-
-- All progress MUST be tracked in Markdown plan files under `docs/plans/`.
-- Every new task must start unchecked as `[ ]`.
-- When a task is finished, it MUST be marked done as `[x]` in the relevant plan file.
-- Task completion status in plans is the source of truth for execution history.
-
-## Commit and Traceability Rules
-
-- After finishing each task, commit the changes.
-- Every task commit message MUST reference a specific plan path in `docs/plans/` so history is cross-referenced.
-- Commit history and plan files together MUST provide a complete execution overview.
-
-## Required Development Method
-
-- All tasks and activities (including research) MUST use subagent-driven development and test-driven development (TDD).
-- If subagent-driven development or TDD cannot be applied in a specific case, explicitly inform the user and explain why.
-
-## Reset and Verification Rules
-
-- After finishing development work and before final verification/handoff, run the local reset workflow (`make reset`) so testing starts from a fresh runtime state.
-
-## Completion Notification Rules
-
-- After finishing any job that has a final handoff summary, send a Telegram summary notification by default.
-- Skip the Telegram notification only when the user explicitly says `skip telegram`.
-- Prepare the final handoff summary in a subagent whenever the environment supports subagents, to keep the main agent context lean.
-- Run Telegram notification work in a subagent whenever the environment supports subagents. This includes summary formatting, SOPS decryption, and the actual send step.
-- If the environment does not support subagents, the main agent MAY perform the summary and Telegram work directly as a fallback.
-- The Telegram notification MUST be sent after the required verification flow for that job is complete.
-- Use `ops/scripts/send-telegram-summary.sh` to deliver the message.
-- Telegram credentials MUST be loaded from the SOPS-encrypted file `ops/secrets/telegram.sops.yaml` and decrypted only at send time.
-- Never print, commit, or persist plaintext Telegram secrets.
-- If Telegram delivery fails, explicitly report that in the final handoff.
-
-
-end of AGENTS.md
+<agents>
+  <section id="branching-and-commits">
+    <rule>Work on main by default and ignore backward compatibility unless explicitly requested; avoid feature branches unless directed; keep commits small and atomic to ease revert.</rule>
+    <rule>Complete each task with a commit that references its plan path in docs/plans/, the specific task, the tool name opencode, and the model gpt-5.1-codex-max.</rule>
+    <rule>After pushes, add clickable commit links to completed tasks in the plan so plan and history stay cross-referenced.</rule>
+  </section>
+  <section id="plans-and-tasks">
+    <rule>Track all progress in docs/plans/ using XML with &lt;phase&gt; blocks and &lt;task&gt;[ ] ...&lt;/task&gt; entries; tasks start unchecked and move to [x] when done.</rule>
+    <rule>Plans and design documents in docs/plans/ are the source of truth for execution history.</rule>
+  </section>
+  <section id="skills-and-execution">
+    <rule>Apply the 1% trigger rule: invoke brainstorming, writing-plans, subagent-driven-development (same session) or executing-plans (parallel session), using-git-worktrees before execution, test-driven-development, and verification-before-completion whenever possibly relevant.</rule>
+    <rule>Default to subagent execution to keep the controller lean; run Telegram and final handoff summaries in subagents.</rule>
+    <rule>Follow TDD for all tasks; if TDD or subagent-driven development cannot apply, explicitly state why.</rule>
+  </section>
+  <section id="reset-and-verification">
+    <rule>Run make reset before final verification or handoff and again before any Telegram send so checks start from a fresh runtime state.</rule>
+    <rule>Use verification-before-completion to confirm cleanliness and test status before final summaries or Telegram.</rule>
+  </section>
+  <section id="telegram">
+    <step>Send Telegram summaries by default after verification unless the user says skip telegram; perform the send in a subagent.</step>
+    <step>Use ops/scripts/send-telegram-summary.sh; decrypt secrets from ops/secrets/telegram.sops.yaml only at send time and never expose them.</step>
+    <step>Prefix messages with CLI: opencode | Model: gpt-5.1-codex-max - ... with emoji-friendly spacing; report any delivery failures.</step>
+    <step>Send Telegram only after reset and verification steps complete.</step>
+  </section>
+  <section id="architecture">
+    <rule>Frontend: React 19 with Vite and Tailwind v4.</rule>
+    <rule>Backend: FastAPI on Python 3.13+ with uv, LibSQL, and a Demucs-based stem/analysis pipeline.</rule>
+    <rule>Flow: upload -> optional stems -> bass_analysis.wav -> TabPipeline -> outputs (MIDI, AlphaTex, tabs).</rule>
+    <rule>Key directories: frontend/, backend/, docs/plans/, and designs.* as reference snapshots only.</rule>
+  </section>
+  <section id="portless">
+    <rule>Use portless as the standard local routing layer; prefer make up, make backend, make frontend, make portless-proxy-up, make portless-proxy-down, and make portless-routes.</rule>
+  </section>
+  <section id="design-language">
+    <rule>Follow designs.opus46/5-3 as the canonical look and feel; treat other designs.* directories as reference-only and do not modify them.</rule>
+  </section>
+</agents>
