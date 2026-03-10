@@ -3,6 +3,7 @@
     <rule>Work on main by default and ignore backward compatibility unless explicitly requested; avoid feature branches unless directed; keep commits small and atomic to ease revert.</rule>
     <rule>Complete each task with a commit that references its plan path in docs/plans/, the specific task, the tool name opencode, and the model gpt-5.1-codex-max.</rule>
     <rule>After pushes, add clickable commit links to completed tasks in the plan so plan and history stay cross-referenced.</rule>
+    <rule>Delegate commit message curation and plan commit-link updates to a subagent subprocess to keep the main context lean.</rule>
   </section>
   <section id="plans-and-tasks">
     <rule>Track all progress in docs/plans/ using XML with &lt;phase&gt; blocks and &lt;task&gt;[ ] ...&lt;/task&gt; entries; tasks start unchecked and move to [x] when done.</rule>
