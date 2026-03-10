@@ -22,11 +22,13 @@
 - [x] Task 8: Re-run verification/reset after the player parity follow-up.
 - [x] Task 9: Restore note/comment CRUD in the Opus 5-3 player flow.
 - [x] Task 10: Re-run verification/reset after note CRUD restoration.
+- [x] Task 11: Compare the current Opus 5-3 shell against the old MVP and report any remaining parity gaps.
 
 ## Implementation Notes
 
 - Subagent-driven development cannot be applied in this environment because no subagent/task-dispatch tool is available. Execute directly in-session while preserving the plan/task discipline.
 - TDD still applies to every behavior change.
+- TDD does not apply to pure comparison/review work; use direct code inspection and route-by-route behavior comparison instead.
 - Commit after each completed task with a message referencing this plan path.
 
 ### Task 1: Add Backend Song-Scoped Stem Upload API And Persistence
