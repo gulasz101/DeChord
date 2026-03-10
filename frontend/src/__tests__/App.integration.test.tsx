@@ -4,7 +4,18 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import App from "../App";
 import { resolvePlaybackSources } from "../lib/playbackSources";
 
-const { claimIdentityMock, regenerateSongStemsMock, regenerateSongTabsMock, getSongMock, listSongStemsMock } = vi.hoisted(() => ({
+const {
+  claimIdentityMock,
+  regenerateSongStemsMock,
+  regenerateSongTabsMock,
+  getSongMock,
+  listSongStemsMock,
+  listBandsMock,
+  listBandProjectsMock,
+  listProjectSongsMock,
+  createBandMock,
+  createProjectMock,
+} = vi.hoisted(() => ({
   claimIdentityMock: vi.fn().mockResolvedValue({
     user: {
       id: 1,
@@ -41,6 +52,21 @@ const { claimIdentityMock, regenerateSongStemsMock, regenerateSongTabsMock, getS
   listSongStemsMock: vi.fn().mockResolvedValue({
     stems: [{ stem_key: "bass", relative_path: "stems/30/bass.wav", mime_type: "audio/x-wav", duration: 48 }],
   }),
+  listBandsMock: vi.fn().mockResolvedValue({
+    bands: [{ id: 10, name: "Default Band", owner_user_id: 1, created_at: "2026-03-09", project_count: 1 }],
+  }),
+  listBandProjectsMock: vi.fn().mockResolvedValue({
+    projects: [{ id: 20, band_id: 10, name: "Default Project", description: "", created_at: "2026-03-09", song_count: 1 }],
+  }),
+  listProjectSongsMock: vi.fn().mockResolvedValue({
+    songs: [{ id: 30, project_id: 20, title: "The Trooper", original_filename: "demo.mp3", created_at: "2026-03-09", key: "Em", tempo: 160, duration: 48 }],
+  }),
+  createBandMock: vi.fn().mockResolvedValue({
+    band: { id: 11, name: "My Band", owner_user_id: 1, created_at: "2026-03-10", project_count: 0 },
+  }),
+  createProjectMock: vi.fn().mockResolvedValue({
+    project: { id: 21, band_id: 11, name: "Debut", description: "", created_at: "2026-03-10", song_count: 0 },
+  }),
 }));
 
 vi.mock("../lib/api", async (importOriginal) => {
@@ -56,20 +82,16 @@ vi.mock("../lib/api", async (importOriginal) => {
         is_claimed: false,
       },
     }),
-    listBands: vi.fn().mockResolvedValue({
-      bands: [{ id: 10, name: "Default Band", owner_user_id: 1, created_at: "2026-03-09", project_count: 1 }],
-    }),
-    listBandProjects: vi.fn().mockResolvedValue({
-      projects: [{ id: 20, band_id: 10, name: "Default Project", description: "", created_at: "2026-03-09", song_count: 1 }],
-    }),
-    listProjectSongs: vi.fn().mockResolvedValue({
-      songs: [{ id: 30, project_id: 20, title: "The Trooper", original_filename: "demo.mp3", created_at: "2026-03-09", key: "Em", tempo: 160, duration: 48 }],
-    }),
+    listBands: listBandsMock,
+    listBandProjects: listBandProjectsMock,
+    listProjectSongs: listProjectSongsMock,
     getSong: getSongMock,
     listSongStems: listSongStemsMock,
     claimIdentity: claimIdentityMock,
     regenerateSongStems: regenerateSongStemsMock,
     regenerateSongTabs: regenerateSongTabsMock,
+    createBand: createBandMock,
+    createProject: createProjectMock,
   };
 });
 
@@ -92,6 +114,41 @@ describe("App integration", () => {
     await waitFor(() => {
       expect(screen.getByText("Your Bands")).toBeTruthy();
       expect(screen.getByText("Default Band")).toBeTruthy();
+    });
+  });
+
+  it("shows honest empty state instead of mock bands when backend is empty", async () => {
+    listBandsMock.mockResolvedValueOnce({ bands: [] });
+
+    render(<App />);
+    fireEvent.click(screen.getByText("Get Started Free"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Create Your First Band")).toBeTruthy();
+    });
+    expect(screen.queryByText("The Rust Belt")).toBeNull();
+    expect(screen.queryByText("The Trooper")).toBeNull();
+  });
+
+  it("creates a band from the inline empty-state panel", async () => {
+    listBandsMock.mockResolvedValueOnce({ bands: [] }).mockResolvedValueOnce({
+      bands: [{ id: 11, name: "My Band", owner_user_id: 1, created_at: "2026-03-10", project_count: 0 }],
+    });
+    listBandProjectsMock.mockResolvedValueOnce({ projects: [] });
+
+    render(<App />);
+    fireEvent.click(screen.getByText("Get Started Free"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Create Your First Band")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Create Band"));
+    fireEvent.change(screen.getByLabelText("Band Name"), { target: { value: "My Band" } });
+    fireEvent.click(screen.getByText("Save Band"));
+
+    await waitFor(() => {
+      expect(createBandMock).toHaveBeenCalledWith({ name: "My Band" });
     });
   });
 

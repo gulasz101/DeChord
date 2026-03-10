@@ -15,7 +15,7 @@
 - [x] Task 1: Add backend tests for band creation, project creation, and project-scoped upload.
 - [x] Task 2: Implement backend create-band, create-project, and project-scoped upload behavior.
 - [x] Task 3: Add frontend API/type tests for the new real-data flows.
-- [ ] Task 4: Add frontend app integration tests proving no mock fallback and first-band inline creation.
+- [x] Task 4: Add frontend app integration tests proving no mock fallback and first-band inline creation.
 - [ ] Task 5: Implement real API-only bootstrapping and the inline first-band flow.
 - [ ] Task 6: Add project creation and project-scoped upload frontend tests.
 - [ ] Task 7: Implement inline create-project and real song upload flows.
