@@ -19,7 +19,7 @@
 - [x] Task 5: Implement real API-only bootstrapping and the inline first-band flow.
 - [x] Task 6: Add project creation and project-scoped upload frontend tests.
 - [x] Task 7: Implement inline create-project and real song upload flows.
-- [ ] Task 8: Verify, run `make reset`, finalize plan state, and notify.
+- [x] Task 8: Verify, run `make reset`, finalize plan state, and notify.
 
 ## Notes
 
