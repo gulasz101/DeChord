@@ -119,3 +119,61 @@ export interface SongTabMeta {
 export interface SongTabsResponse {
   tab: SongTabMeta | null;
 }
+
+export interface IdentityUser {
+  id: number;
+  display_name: string;
+  fingerprint_token: string | null;
+  username: string | null;
+  is_claimed: boolean;
+}
+
+export interface IdentityResponse {
+  user: IdentityUser;
+}
+
+export interface IdentityClaimPayload {
+  user_id: number;
+  username: string;
+  password: string;
+}
+
+export interface BandSummary {
+  id: number;
+  name: string;
+  owner_user_id: number;
+  created_at: string;
+  project_count: number;
+}
+
+export interface BandsListResponse {
+  bands: BandSummary[];
+}
+
+export interface ProjectSummary {
+  id: number;
+  band_id: number;
+  name: string;
+  description: string | null;
+  created_at: string;
+  song_count: number;
+}
+
+export interface ProjectsListResponse {
+  projects: ProjectSummary[];
+}
+
+export interface ProjectSongSummary {
+  id: number;
+  project_id: number;
+  title: string;
+  original_filename: string | null;
+  created_at: string;
+  key: string | null;
+  tempo: number | null;
+  duration: number | null;
+}
+
+export interface ProjectSongsListResponse {
+  songs: ProjectSongSummary[];
+}

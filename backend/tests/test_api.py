@@ -1,6 +1,10 @@
 import importlib
 import asyncio
 import threading
+import sys
+import types
+import io
+import zipfile
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -9,6 +13,15 @@ from fastapi.testclient import TestClient
 def _build_client(tmp_path: Path, monkeypatch):
     db_path = tmp_path / "api-test.db"
     monkeypatch.setenv("DECHORD_DB_URL", f"file:{db_path}")
+    if "torch" not in sys.modules:
+        class _FakeTorchTensor:
+            pass
+
+        sys.modules["torch"] = types.SimpleNamespace(
+            Tensor=_FakeTorchTensor,
+            backends=types.SimpleNamespace(mps=types.SimpleNamespace(is_available=lambda: False)),
+            cuda=types.SimpleNamespace(is_available=lambda: False),
+        )
 
     import app.main as main_mod
 
@@ -45,6 +58,124 @@ def test_health(tmp_path, monkeypatch):
     response = client.get("/api/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_identity_resolve_creates_guest_user(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+
+    response = client.post(
+        "/api/identity/resolve",
+        json={"fingerprint_token": "fp-browser-123"},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["user"]["id"] > 0
+    assert payload["user"]["fingerprint_token"] == "fp-browser-123"
+    assert payload["user"]["is_claimed"] is False
+    assert isinstance(payload["user"]["display_name"], str)
+    assert len(payload["user"]["display_name"]) > 0
+
+
+def test_identity_claim_sets_username_and_password_hash(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+
+    created = client.post(
+        "/api/identity/resolve",
+        json={"fingerprint_token": "fp-claim-1"},
+    )
+    assert created.status_code == 200
+    user_id = created.json()["user"]["id"]
+
+    claim = client.post(
+        "/api/identity/claim",
+        json={
+            "user_id": user_id,
+            "username": "bassbot",
+            "password": "secret-pass",
+        },
+    )
+    assert claim.status_code == 200
+    claim_payload = claim.json()
+    assert claim_payload["user"]["id"] == user_id
+    assert claim_payload["user"]["is_claimed"] is True
+    assert claim_payload["user"]["username"] == "bassbot"
+
+
+def test_list_bands_projects_and_project_songs(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+
+    files = {"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")}
+    created = client.post("/api/analyze", files=files, data={"process_mode": "analysis_only"})
+    assert created.status_code == 200
+    created_song_id = created.json()["song_id"]
+
+    bands_response = client.get("/api/bands")
+    assert bands_response.status_code == 200
+    bands = bands_response.json()["bands"]
+    assert len(bands) >= 1
+    band_id = bands[0]["id"]
+
+    projects_response = client.get(f"/api/bands/{band_id}/projects")
+    assert projects_response.status_code == 200
+    projects = projects_response.json()["projects"]
+    assert len(projects) >= 1
+    project_id = projects[0]["id"]
+
+    songs_response = client.get(f"/api/projects/{project_id}/songs")
+    assert songs_response.status_code == 200
+    songs = songs_response.json()["songs"]
+    assert any(song["id"] == created_song_id for song in songs)
+
+
+def test_stem_download_endpoints_support_single_and_zip(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+
+    import app.main as main
+    from app.services.alphatex_exporter import SyncPoint
+    from app.services.rhythm_grid import Bar
+    from app.services.tab_pipeline import TabPipelineResult
+    from app.stems import StemResult
+
+    def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
+        output_dir.mkdir(parents=True, exist_ok=True)
+        bass = output_dir / "bass.wav"
+        drums = output_dir / "drums.wav"
+        bass.write_bytes(b"bass-bytes")
+        drums.write_bytes(b"drums-bytes")
+        return [
+            StemResult(stem_key="bass", relative_path=str(bass), mime_type="audio/x-wav"),
+            StemResult(stem_key="drums", relative_path=str(drums), mime_type="audio/x-wav"),
+        ]
+
+    def fake_run(*_args, **_kwargs):
+        return TabPipelineResult(
+            alphatex="\\tempo 120\n\\sync(0 0 0 0)",
+            tempo_used=120.0,
+            bars=[Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])],
+            sync_points=[SyncPoint(bar_index=0, millisecond_offset=0)],
+            midi_bytes=b"MThd\x00\x00\x00\x06",
+            fingered_notes=[],
+            debug_info={"rhythm_source": "madmom"},
+        )
+
+    monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
+    monkeypatch.setattr(main.tab_pipeline, "run", fake_run)
+
+    files = {"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")}
+    created = client.post("/api/analyze", files=files, data={"process_mode": "analysis_and_stems"})
+    assert created.status_code == 200
+    song_id = created.json()["song_id"]
+
+    single = client.get(f"/api/songs/{song_id}/stems/bass/download")
+    assert single.status_code == 200
+    assert single.content == b"bass-bytes"
+    assert "attachment;" in single.headers.get("content-disposition", "")
+
+    bundled = client.get(f"/api/songs/{song_id}/stems/download")
+    assert bundled.status_code == 200
+    assert "attachment;" in bundled.headers.get("content-disposition", "")
+    with zipfile.ZipFile(io.BytesIO(bundled.content), "r") as archive:
+        assert sorted(archive.namelist()) == ["bass.wav", "drums.wav"]
 
 
 def test_analyze_persists_song_and_analysis(tmp_path, monkeypatch):

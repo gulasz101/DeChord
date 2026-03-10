@@ -10,6 +10,11 @@ import type {
   PlaybackPrefs,
   ProcessMode,
   TabGenerationQuality,
+  IdentityResponse,
+  IdentityClaimPayload,
+  BandsListResponse,
+  ProjectsListResponse,
+  ProjectSongsListResponse,
 } from "./types";
 
 const BASE = "";
@@ -46,6 +51,14 @@ export function getAudioUrl(songId: number): string {
 
 export function getStemAudioUrl(songId: number, stemKey: string): string {
   return `${BASE}/api/audio/${songId}/stems/${encodeURIComponent(stemKey)}`;
+}
+
+export function getStemDownloadUrl(songId: number, stemKey: string): string {
+  return `${BASE}/api/songs/${songId}/stems/${encodeURIComponent(stemKey)}/download`;
+}
+
+export function getStemsZipDownloadUrl(songId: number): string {
+  return `${BASE}/api/songs/${songId}/stems/download`;
 }
 
 export function getMidiFileUrl(songId: number): string {
@@ -151,5 +164,43 @@ export async function savePlaybackPrefs(
     body: JSON.stringify(prefs),
   });
   if (!res.ok) throw new Error("Failed to save playback prefs");
+  return res.json();
+}
+
+export async function resolveIdentity(fingerprintToken: string): Promise<IdentityResponse> {
+  const res = await fetch(`${BASE}/api/identity/resolve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fingerprint_token: fingerprintToken }),
+  });
+  if (!res.ok) throw new Error("Failed to resolve identity");
+  return res.json();
+}
+
+export async function claimIdentity(payload: IdentityClaimPayload): Promise<IdentityResponse> {
+  const res = await fetch(`${BASE}/api/identity/claim`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Failed to claim identity");
+  return res.json();
+}
+
+export async function listBands(): Promise<BandsListResponse> {
+  const res = await fetch(`${BASE}/api/bands`);
+  if (!res.ok) throw new Error("Failed to fetch bands");
+  return res.json();
+}
+
+export async function listBandProjects(bandId: number): Promise<ProjectsListResponse> {
+  const res = await fetch(`${BASE}/api/bands/${bandId}/projects`);
+  if (!res.ok) throw new Error("Failed to fetch projects");
+  return res.json();
+}
+
+export async function listProjectSongs(projectId: number): Promise<ProjectSongsListResponse> {
+  const res = await fetch(`${BASE}/api/projects/${projectId}/songs`);
+  if (!res.ok) throw new Error("Failed to fetch project songs");
   return res.json();
 }

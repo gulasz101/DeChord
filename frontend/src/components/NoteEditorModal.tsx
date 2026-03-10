@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface NoteEditorModalProps {
   open: boolean;
@@ -23,19 +23,47 @@ export function NoteEditorModal({
   onClose,
   onSave,
 }: NoteEditorModalProps) {
-  const [text, setText] = useState("");
-  const [toastDurationSec, setToastDurationSec] = useState(2);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setText(initialText ?? "");
-      setToastDurationSec(initialToastDurationSec ?? 2);
-      setSaving(false);
-    }
-  }, [open, initialText, initialToastDurationSec]);
-
   if (!open) return null;
+
+  return (
+    <NoteEditorModalContent
+      key={`${mode}:${initialText ?? ""}:${initialToastDurationSec ?? 2}`}
+      mode={mode}
+      title={title}
+      initialText={initialText}
+      initialToastDurationSec={initialToastDurationSec}
+      submitLabel={submitLabel}
+      onDelete={onDelete}
+      onClose={onClose}
+      onSave={onSave}
+    />
+  );
+}
+
+interface NoteEditorModalContentProps {
+  mode: "time" | "chord";
+  title: string;
+  initialText?: string;
+  initialToastDurationSec?: number;
+  submitLabel?: string;
+  onDelete?: () => Promise<void>;
+  onClose: () => void;
+  onSave: (payload: { text: string; toastDurationSec?: number }) => Promise<void>;
+}
+
+function NoteEditorModalContent({
+  mode,
+  title,
+  initialText,
+  initialToastDurationSec,
+  submitLabel,
+  onDelete,
+  onClose,
+  onSave,
+}: NoteEditorModalContentProps) {
+  const [text, setText] = useState(initialText ?? "");
+  const [toastDurationSec, setToastDurationSec] = useState(initialToastDurationSec ?? 2);
+  const [saving, setSaving] = useState(false);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">

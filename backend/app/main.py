@@ -1,6 +1,7 @@
 # backend/app/main.py
 import asyncio
 from dataclasses import replace
+import hashlib
 import logging
 import os
 import re
@@ -19,7 +20,16 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.analysis import AnalysisResult, analyze_audio
-from app.db import close_db, execute, get_default_user, init_db
+from app.db import (
+    claim_identity_user,
+    close_db,
+    execute,
+    get_default_project,
+    get_default_user,
+    get_user_by_id,
+    init_db,
+    resolve_identity_user,
+)
 from app.midi import transcribe_bass_stem_to_midi
 from app.models import ProcessMode
 from app.pipeline_presets import active_pipeline_preset_name, resolve_pipeline_preset
@@ -28,6 +38,7 @@ from app.stems import (
     BassAnalysisStemResult,
     StemResult,
     _get_stem_analysis_config,
+    build_stems_zip,
     build_bass_analysis_stem,
     split_to_stems,
 )
@@ -108,20 +119,31 @@ class PlaybackPrefsUpdate(BaseModel):
     loop_end_index: int | None = None
 
 
+class IdentityResolveRequest(BaseModel):
+    fingerprint_token: str = Field(min_length=6, max_length=256)
+
+
+class IdentityClaimRequest(BaseModel):
+    user_id: int
+    username: str = Field(min_length=3, max_length=64, pattern=r"^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$")
+    password: str = Field(min_length=8, max_length=256)
+
+
 def _row_to_dict(row) -> dict:
     return row.asdict() if hasattr(row, "asdict") else dict(row)
 
 
 async def _create_song_record(filename: str | None, mime_type: str | None, audio_blob: bytes) -> int:
     user = await get_default_user()
+    project = await get_default_project()
     title = Path(filename or "Untitled").stem or "Untitled"
     rs = await execute(
         """
-        INSERT INTO songs (user_id, title, original_filename, mime_type, audio_blob)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO songs (user_id, project_id, title, original_filename, mime_type, audio_blob)
+        VALUES (?, ?, ?, ?, ?, ?)
         RETURNING id
         """,
-        [user["id"], title, filename, mime_type, audio_blob],
+        [user["id"], project["id"], title, filename, mime_type, audio_blob],
     )
     return int(rs.rows[0][0])
 
@@ -474,6 +496,35 @@ async def health():
     return {"status": "ok"}
 
 
+@app.post("/api/identity/resolve")
+async def resolve_identity(payload: IdentityResolveRequest):
+    user = await resolve_identity_user(payload.fingerprint_token)
+    return {"user": user}
+
+
+@app.post("/api/identity/claim")
+async def claim_identity(payload: IdentityClaimRequest):
+    user = await get_user_by_id(payload.user_id)
+    if user is None:
+        raise HTTPException(404, "User not found")
+
+    password_hash = hashlib.sha256(payload.password.encode("utf-8")).hexdigest()
+    try:
+        claimed = await claim_identity_user(
+            user_id=payload.user_id,
+            username=payload.username,
+            password_hash=password_hash,
+        )
+    except Exception as exc:
+        if "UNIQUE constraint failed: users.username" in str(exc):
+            raise HTTPException(409, "Username already taken") from exc
+        raise
+
+    if claimed is None:
+        raise HTTPException(404, "User not found")
+    return {"user": claimed}
+
+
 def _parse_time_signature(time_signature: str) -> tuple[int, int]:
     match = re.match(r"^\s*(\d+)\s*/\s*(\d+)\s*$", time_signature or "")
     if not match:
@@ -748,6 +799,107 @@ async def list_songs():
     return {"songs": songs}
 
 
+@app.get("/api/bands")
+async def list_bands():
+    rows = await execute(
+        """
+        SELECT
+            b.id,
+            b.name,
+            b.owner_user_id,
+            b.created_at,
+            (
+                SELECT COUNT(*)
+                FROM projects p
+                WHERE p.band_id = b.id
+            ) AS project_count
+        FROM bands b
+        ORDER BY b.created_at DESC, b.id DESC
+        """
+    )
+    bands = [
+        {
+            "id": int(row[0]),
+            "name": row[1],
+            "owner_user_id": int(row[2]),
+            "created_at": row[3],
+            "project_count": int(row[4]),
+        }
+        for row in rows.rows
+    ]
+    return {"bands": bands}
+
+
+@app.get("/api/bands/{band_id}/projects")
+async def list_band_projects(band_id: int):
+    rows = await execute(
+        """
+        SELECT
+            p.id,
+            p.band_id,
+            p.name,
+            p.description,
+            p.created_at,
+            (
+                SELECT COUNT(*)
+                FROM songs s
+                WHERE s.project_id = p.id
+            ) AS song_count
+        FROM projects p
+        WHERE p.band_id = ?
+        ORDER BY p.created_at DESC, p.id DESC
+        """,
+        [band_id],
+    )
+    projects = [
+        {
+            "id": int(row[0]),
+            "band_id": int(row[1]),
+            "name": row[2],
+            "description": row[3],
+            "created_at": row[4],
+            "song_count": int(row[5]),
+        }
+        for row in rows.rows
+    ]
+    return {"projects": projects}
+
+
+@app.get("/api/projects/{project_id}/songs")
+async def list_project_songs(project_id: int):
+    rows = await execute(
+        """
+        SELECT
+            s.id,
+            s.project_id,
+            s.title,
+            s.original_filename,
+            s.created_at,
+            (SELECT song_key FROM analyses a WHERE a.song_id = s.id ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS song_key,
+            (SELECT tempo FROM analyses a WHERE a.song_id = s.id ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS tempo,
+            (SELECT duration FROM analyses a WHERE a.song_id = s.id ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS duration
+        FROM songs s
+        WHERE s.project_id = ?
+        ORDER BY s.created_at DESC, s.id DESC
+        """,
+        [project_id],
+    )
+    songs = [
+        {
+            "id": int(row[0]),
+            "project_id": int(row[1]),
+            "title": row[2],
+            "original_filename": row[3],
+            "created_at": row[4],
+            "key": row[5],
+            "tempo": row[6],
+            "duration": row[7],
+        }
+        for row in rows.rows
+    ]
+    return {"songs": songs}
+
+
 @app.get("/api/songs/{song_id}")
 async def get_song(song_id: int):
     song_rs = await execute(
@@ -843,6 +995,79 @@ async def get_song_stems(song_id: int):
         for row in stems_rs.rows
     ]
     return {"stems": stems}
+
+
+@app.get("/api/songs/{song_id}/stems/{stem_key}/download")
+async def download_song_stem(song_id: int, stem_key: str):
+    rs = await execute(
+        """
+        SELECT s.title, ss.relative_path, ss.mime_type
+        FROM song_stems ss
+        JOIN songs s ON s.id = ss.song_id
+        WHERE ss.song_id = ? AND ss.stem_key = ?
+        LIMIT 1
+        """,
+        [song_id, stem_key],
+    )
+    if not rs.rows:
+        raise HTTPException(404, "Stem not found")
+
+    song_title, relative_path, mime_type = rs.rows[0][0], rs.rows[0][1], rs.rows[0][2]
+    path = Path(relative_path)
+    if not path.exists():
+        raise HTTPException(404, "Stem file missing")
+
+    safe_title = re.sub(r"[^a-zA-Z0-9._-]+", "_", song_title or f"song-{song_id}").strip("._-") or f"song-{song_id}"
+    extension = path.suffix or ".wav"
+    filename = f"{safe_title}-{stem_key}{extension}"
+    stem_bytes = path.read_bytes()
+    return Response(
+        content=stem_bytes,
+        media_type=mime_type or "audio/mpeg",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(stem_bytes)),
+        },
+    )
+
+
+@app.get("/api/songs/{song_id}/stems/download")
+async def download_song_stems_zip(song_id: int):
+    song_rs = await execute("SELECT title FROM songs WHERE id = ?", [song_id])
+    if not song_rs.rows:
+        raise HTTPException(404, "Song not found")
+    song_title = song_rs.rows[0][0]
+
+    stems_rs = await execute(
+        """
+        SELECT stem_key, relative_path, mime_type, duration
+        FROM song_stems
+        WHERE song_id = ?
+        ORDER BY stem_key ASC
+        """,
+        [song_id],
+    )
+    stems = [
+        StemResult(
+            stem_key=row[0],
+            relative_path=row[1],
+            mime_type=row[2] or "audio/mpeg",
+            duration=row[3],
+        )
+        for row in stems_rs.rows
+    ]
+    if not stems:
+        raise HTTPException(404, "No stems found")
+
+    archive_bytes, archive_name = build_stems_zip(song_title=song_title, stems=stems)
+    return Response(
+        content=archive_bytes,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{archive_name}"',
+            "Content-Length": str(len(archive_bytes)),
+        },
+    )
 
 
 @app.get("/api/songs/{song_id}/tabs")

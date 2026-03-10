@@ -7,12 +7,33 @@ import shutil
 import inspect
 import subprocess
 import tempfile
+import io
+import zipfile
+import re
 from importlib import import_module
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-import torch
+try:
+    import torch
+except ModuleNotFoundError:  # pragma: no cover - optional in lightweight environments
+    class _TorchShim:  # pragma: no cover
+        class Tensor:  # minimal placeholder for scipy array-api torch checks
+            pass
+
+        class backends:
+            class mps:
+                @staticmethod
+                def is_available() -> bool:
+                    return False
+
+        class cuda:
+            @staticmethod
+            def is_available() -> bool:
+                return False
+
+    torch = _TorchShim()
 from dotenv import load_dotenv
 
 from app.pipeline_presets import active_pipeline_preset_name, resolve_pipeline_preset
@@ -1062,3 +1083,17 @@ def split_to_stems(
         on_progress(100.0, "Stem separation complete")
 
     return stems
+
+
+def build_stems_zip(song_title: str, stems: list[StemResult]) -> tuple[bytes, str]:
+    safe_title = re.sub(r"[^a-zA-Z0-9._-]+", "_", song_title or "song").strip("._-") or "song"
+    archive_name = f"{safe_title}-stems.zip"
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for stem in stems:
+            stem_path = Path(stem.relative_path)
+            if not stem_path.exists():
+                continue
+            extension = stem_path.suffix or ".wav"
+            archive.write(stem_path, arcname=f"{stem.stem_key}{extension}")
+    return zip_buffer.getvalue(), archive_name
