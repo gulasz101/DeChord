@@ -12,8 +12,8 @@
 
 - [x] Task 1: Confirm current backend pipeline reuse points for stem regeneration and bass-tab regeneration.
 - [x] Task 2: Define the minimal backend API contracts for song-scoped generation.
-- [ ] Task 3: Add backend tests for the new generation endpoints.
-- [ ] Task 4: Implement backend generation endpoints and persistence updates.
+- [x] Task 3: Add backend tests for the new generation endpoints.
+- [x] Task 4: Implement backend generation endpoints and persistence updates.
 - [ ] Task 5: Extend frontend API/types for generation flows and job/result handling.
 - [ ] Task 6: Add Opus 5-3 song detail generation panels and source selection UX.
 - [ ] Task 7: Wire `App.tsx` route refresh and progress handling for generation actions.

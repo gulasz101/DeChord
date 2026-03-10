@@ -1065,3 +1065,213 @@ def test_analyze_forwards_optional_onset_recovery_flag(tmp_path, monkeypatch):
     )
     assert response.status_code == 200
     assert captured_onset == [True]
+
+
+def test_regenerate_song_stems_reuses_original_mix_and_persists_refreshed_stems(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+    from app.stems import StemResult
+
+    inserted = asyncio.run(
+        main.execute(
+            """
+            INSERT INTO songs (user_id, title, original_filename, mime_type, audio_blob)
+            VALUES (1, 'Demo Song', 'demo.mp3', 'audio/mpeg', ?)
+            RETURNING id
+            """,
+            [b"song-audio"],
+        )
+    )
+    song_id = int(inserted.rows[0][0])
+
+    stale_dir = tmp_path / "stale"
+    stale_dir.mkdir(parents=True, exist_ok=True)
+    stale_bass = stale_dir / "bass.wav"
+    stale_bass.write_bytes(b"old-bass")
+    asyncio.run(
+        main.execute(
+            """
+            INSERT INTO song_stems (song_id, stem_key, relative_path, mime_type, duration)
+            VALUES (?, 'bass', ?, 'audio/x-wav', 1.0)
+            """,
+            [song_id, str(stale_bass)],
+        )
+    )
+
+    captured: dict[str, object] = {}
+
+    def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
+        captured["audio_path"] = str(audio_path)
+        captured["output_dir"] = str(output_dir)
+        captured["audio_bytes"] = Path(audio_path).read_bytes()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        bass = output_dir / "bass.wav"
+        drums = output_dir / "drums.wav"
+        bass.write_bytes(b"new-bass")
+        drums.write_bytes(b"new-drums")
+        return [
+            StemResult(stem_key="bass", relative_path=str(bass), mime_type="audio/x-wav", duration=2.5),
+            StemResult(stem_key="drums", relative_path=str(drums), mime_type="audio/x-wav", duration=2.5),
+        ]
+
+    monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
+
+    response = client.post(f"/api/songs/{song_id}/stems/regenerate")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [stem["stem_key"] for stem in payload["stems"]] == ["bass", "drums"]
+    assert str(captured["audio_path"]).endswith(".mp3")
+    assert captured["audio_bytes"] == b"song-audio"
+    assert str(captured["output_dir"]).endswith(f"stems/{song_id}")
+
+    refreshed = asyncio.run(
+        main.execute(
+            "SELECT stem_key, relative_path FROM song_stems WHERE song_id = ? ORDER BY stem_key ASC",
+            [song_id],
+        )
+    )
+    assert [tuple(row) for row in refreshed.rows] == [
+        ("bass", str(Path(captured["output_dir"]) / "bass.wav")),
+        ("drums", str(Path(captured["output_dir"]) / "drums.wav")),
+    ]
+
+
+def test_regenerate_song_tabs_uses_selected_stem_and_persists_new_tab(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+    from app.services.alphatex_exporter import SyncPoint
+    from app.services.rhythm_grid import Bar
+    from app.services.tab_pipeline import TabPipelineResult
+
+    inserted = asyncio.run(
+        main.execute(
+            """
+            INSERT INTO songs (user_id, title, original_filename, mime_type, audio_blob)
+            VALUES (1, 'Demo Song', 'demo.mp3', 'audio/mpeg', x'00')
+            RETURNING id
+            """
+        )
+    )
+    song_id = int(inserted.rows[0][0])
+
+    stem_dir = tmp_path / "stems" / str(song_id)
+    stem_dir.mkdir(parents=True, exist_ok=True)
+    bass = stem_dir / "bass.wav"
+    drums = stem_dir / "drums.wav"
+    bass.write_bytes(b"bass-audio")
+    drums.write_bytes(b"drums-audio")
+    for stem_key, path in (("bass", bass), ("drums", drums)):
+        asyncio.run(
+            main.execute(
+                """
+                INSERT INTO song_stems (song_id, stem_key, relative_path, mime_type, duration)
+                VALUES (?, ?, ?, 'audio/x-wav', 2.0)
+                """,
+                [song_id, stem_key, str(path)],
+            )
+        )
+
+    captured: dict[str, object] = {}
+
+    def fake_build_bass_analysis_stem(*, stems, output_dir, source_audio_path=None, analysis_config=None, separate_fn=None):
+        captured["stems"] = stems
+        captured["output_dir"] = str(output_dir)
+        analysis_path = output_dir / "bass_analysis.wav"
+        analysis_path.parent.mkdir(parents=True, exist_ok=True)
+        analysis_path.write_bytes(b"analysis-bass")
+        return main.BassAnalysisStemResult(
+            path=analysis_path,
+            source_model="test-model",
+            diagnostics={"selected_model": "test-model"},
+        )
+
+    def fake_run(bass_wav, drums_wav, **kwargs):
+        captured["bass_wav"] = str(bass_wav)
+        captured["drums_wav"] = str(drums_wav)
+        captured["kwargs"] = kwargs
+        return TabPipelineResult(
+            alphatex="\\tempo 120\n\\sync(0 0 0 0)",
+            tempo_used=120.0,
+            bars=[Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])],
+            sync_points=[SyncPoint(bar_index=0, millisecond_offset=0)],
+            midi_bytes=b"MThd\x00\x00\x00\x06",
+            fingered_notes=[],
+            debug_info={"rhythm_source": "madmom"},
+        )
+
+    monkeypatch.setattr(main, "build_bass_analysis_stem", fake_build_bass_analysis_stem)
+    monkeypatch.setattr(main.tab_pipeline, "run", fake_run)
+
+    response = client.post(
+        f"/api/songs/{song_id}/tabs/regenerate",
+        json={"source_stem_key": "bass"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["tab"]["tab_format"] == "alphatex"
+    assert payload["tab"]["source_stem_key"] == "bass"
+    assert str(captured["stems"]["bass"]).endswith("bass.wav")
+    assert str(captured["stems"]["drums"]).endswith("drums.wav")
+    assert str(captured["bass_wav"]).endswith("bass_analysis.wav")
+    assert str(captured["drums_wav"]).endswith("drums.wav")
+
+    midi_rs = asyncio.run(
+        main.execute(
+            "SELECT source_stem_key, midi_blob FROM song_midis WHERE song_id = ? ORDER BY id DESC LIMIT 1",
+            [song_id],
+        )
+    )
+    assert tuple(midi_rs.rows[0]) == ("bass", b"MThd\x00\x00\x00\x06")
+
+    tab_rs = asyncio.run(
+        main.execute(
+            """
+            SELECT t.tab_blob, t.tab_format, m.source_stem_key
+            FROM song_tabs t
+            JOIN song_midis m ON m.id = t.source_midi_id
+            WHERE t.song_id = ?
+            ORDER BY t.id DESC
+            LIMIT 1
+            """,
+            [song_id],
+        )
+    )
+    assert tuple(tab_rs.rows[0]) == (b"\\tempo 120\n\\sync(0 0 0 0)", "alphatex", "bass")
+
+
+def test_regenerate_song_tabs_requires_drums_stem_for_rhythm_grid(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    inserted = asyncio.run(
+        main.execute(
+            """
+            INSERT INTO songs (user_id, title, original_filename, mime_type, audio_blob)
+            VALUES (1, 'Demo Song', 'demo.mp3', 'audio/mpeg', x'00')
+            RETURNING id
+            """
+        )
+    )
+    song_id = int(inserted.rows[0][0])
+
+    bass = tmp_path / "bass.wav"
+    bass.write_bytes(b"bass-audio")
+    asyncio.run(
+        main.execute(
+            """
+            INSERT INTO song_stems (song_id, stem_key, relative_path, mime_type, duration)
+            VALUES (?, 'bass', ?, 'audio/x-wav', 2.0)
+            """,
+            [song_id, str(bass)],
+        )
+    )
+
+    response = client.post(
+        f"/api/songs/{song_id}/tabs/regenerate",
+        json={"source_stem_key": "bass"},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "Drums stem missing; cannot build rhythm grid."

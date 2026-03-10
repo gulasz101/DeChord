@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import shutil
+import tempfile
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -127,6 +128,10 @@ class IdentityClaimRequest(BaseModel):
     user_id: int
     username: str = Field(min_length=3, max_length=64, pattern=r"^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$")
     password: str = Field(min_length=8, max_length=256)
+
+
+class SongTabRegenerateRequest(BaseModel):
+    source_stem_key: str = Field(min_length=1, max_length=64)
 
 
 def _row_to_dict(row) -> dict:
@@ -291,6 +296,138 @@ async def _load_latest_analysis(song_id: int) -> dict | None:
             for row in chords_rs.rows
         ],
     }
+
+
+async def _load_song_row(song_id: int) -> dict | None:
+    song_rs = await execute(
+        """
+        SELECT id, title, original_filename, mime_type, audio_blob, created_at
+        FROM songs
+        WHERE id = ?
+        LIMIT 1
+        """,
+        [song_id],
+    )
+    if not song_rs.rows:
+        return None
+    row = song_rs.rows[0]
+    return {
+        "id": int(row[0]),
+        "title": row[1],
+        "original_filename": row[2],
+        "mime_type": row[3],
+        "audio_blob": row[4],
+        "created_at": row[5],
+    }
+
+
+async def _load_song_stems(song_id: int) -> list[dict]:
+    stems_rs = await execute(
+        """
+        SELECT stem_key, relative_path, mime_type, duration
+        FROM song_stems
+        WHERE song_id = ?
+        ORDER BY stem_key ASC
+        """,
+        [song_id],
+    )
+    return [
+        {
+            "stem_key": row[0],
+            "relative_path": row[1],
+            "mime_type": row[2],
+            "duration": row[3],
+        }
+        for row in stems_rs.rows
+    ]
+
+
+async def _load_song_tab_meta(song_id: int) -> dict | None:
+    rs = await execute(
+        """
+        SELECT t.id, m.source_stem_key, t.source_midi_id, t.tab_format, t.tuning, t.strings, t.generator_version, t.status, t.error_message, t.created_at, t.updated_at
+        FROM song_tabs t
+        JOIN song_midis m ON m.id = t.source_midi_id
+        WHERE t.song_id = ?
+        ORDER BY t.updated_at DESC, t.id DESC
+        LIMIT 1
+        """,
+        [song_id],
+    )
+    if not rs.rows:
+        return None
+    row = rs.rows[0]
+    return {
+        "id": row[0],
+        "source_stem_key": row[1],
+        "source_midi_id": row[2],
+        "tab_format": row[3],
+        "tuning": row[4],
+        "strings": row[5],
+        "generator_version": row[6],
+        "status": row[7],
+        "error_message": row[8],
+        "created_at": row[9],
+        "updated_at": row[10],
+    }
+
+
+def _write_song_audio_tempfile(song_id: int, original_filename: str | None, audio_blob: bytes) -> Path:
+    suffix = Path(original_filename or "").suffix or ".mp3"
+    temp_dir = Path(tempfile.mkdtemp(prefix=f"dechord-song-{song_id}-"))
+    audio_path = temp_dir / f"source{suffix}"
+    audio_path.write_bytes(audio_blob)
+    return audio_path
+
+
+async def _regenerate_song_tabs(song_id: int, source_stem_key: str) -> dict:
+    stems = await _load_song_stems(song_id)
+    stems_by_key = {
+        str(stem["stem_key"]): Path(str(stem["relative_path"]))
+        for stem in stems
+    }
+    if source_stem_key not in stems_by_key:
+        raise HTTPException(404, "Requested source stem not found.")
+    drums_path = stems_by_key.get("drums")
+    if drums_path is None:
+        raise HTTPException(422, "Drums stem missing; cannot build rhythm grid.")
+
+    analysis_output_dir = STEMS_DIR / str(song_id) / "analysis"
+    analysis_output_dir.mkdir(parents=True, exist_ok=True)
+    analysis_stem_result = build_bass_analysis_stem(
+        stems=stems_by_key,
+        output_dir=analysis_output_dir,
+        analysis_config=_get_uploaded_stems_analysis_config("standard"),
+        source_audio_path=None,
+    )
+    tab_result = tab_pipeline.run(
+        analysis_stem_result.path,
+        drums_path,
+        bpm_hint=None,
+        time_signature=(4, 4),
+        subdivision=16,
+        max_fret=24,
+        sync_every_bars=8,
+        tab_generation_quality_mode="standard",
+        onset_recovery=None,
+    )
+    midi_id = await _persist_midi(
+        song_id,
+        source_stem_key=source_stem_key,
+        midi_blob=tab_result.midi_bytes,
+        engine="basic_pitch",
+    )
+    await _persist_tab(
+        song_id,
+        source_midi_id=midi_id,
+        tab_blob=tab_result.alphatex.encode("utf-8"),
+        tab_format="alphatex",
+        generator_version="v2-rhythm-grid",
+    )
+    tab_meta = await _load_song_tab_meta(song_id)
+    if tab_meta is None:
+        raise RuntimeError("Expected tab metadata after regeneration.")
+    return tab_meta
 
 
 def _run_analysis(job_id: str, audio_path: str, song_id: int):
@@ -976,25 +1113,30 @@ async def get_song(song_id: int):
 
 @app.get("/api/songs/{song_id}/stems")
 async def get_song_stems(song_id: int):
-    stems_rs = await execute(
-        """
-        SELECT stem_key, relative_path, mime_type, duration
-        FROM song_stems
-        WHERE song_id = ?
-        ORDER BY stem_key ASC
-        """,
-        [song_id],
+    return {"stems": await _load_song_stems(song_id)}
+
+
+@app.post("/api/songs/{song_id}/stems/regenerate")
+async def regenerate_song_stems(song_id: int):
+    song = await _load_song_row(song_id)
+    if song is None:
+        raise HTTPException(404, "Song not found")
+
+    audio_path = _write_song_audio_tempfile(
+        song_id,
+        song["original_filename"],
+        song["audio_blob"],
     )
-    stems = [
-        {
-            "stem_key": row[0],
-            "relative_path": row[1],
-            "mime_type": row[2],
-            "duration": row[3],
-        }
-        for row in stems_rs.rows
-    ]
-    return {"stems": stems}
+    try:
+        stems = split_to_stems(
+            audio_path=str(audio_path),
+            output_dir=STEMS_DIR / str(song_id),
+        )
+        await _persist_stems(song_id, stems)
+    finally:
+        shutil.rmtree(audio_path.parent, ignore_errors=True)
+
+    return {"stems": await _load_song_stems(song_id)}
 
 
 @app.get("/api/songs/{song_id}/stems/{stem_key}/download")
@@ -1072,34 +1214,16 @@ async def download_song_stems_zip(song_id: int):
 
 @app.get("/api/songs/{song_id}/tabs")
 async def get_song_tabs(song_id: int):
-    rs = await execute(
-        """
-        SELECT id, source_midi_id, tab_format, tuning, strings, generator_version, status, error_message, created_at, updated_at
-        FROM song_tabs
-        WHERE song_id = ?
-        ORDER BY updated_at DESC, id DESC
-        LIMIT 1
-        """,
-        [song_id],
-    )
-    if not rs.rows:
-        return {"tab": None}
+    return {"tab": await _load_song_tab_meta(song_id)}
 
-    row = rs.rows[0]
-    return {
-        "tab": {
-            "id": row[0],
-            "source_midi_id": row[1],
-            "tab_format": row[2],
-            "tuning": row[3],
-            "strings": row[4],
-            "generator_version": row[5],
-            "status": row[6],
-            "error_message": row[7],
-            "created_at": row[8],
-            "updated_at": row[9],
-        }
-    }
+
+@app.post("/api/songs/{song_id}/tabs/regenerate")
+async def regenerate_song_tabs(song_id: int, payload: SongTabRegenerateRequest):
+    song = await _load_song_row(song_id)
+    if song is None:
+        raise HTTPException(404, "Song not found")
+    tab_meta = await _regenerate_song_tabs(song_id, payload.source_stem_key)
+    return {"tab": tab_meta}
 
 
 @app.get("/api/songs/{song_id}/midi/file")
