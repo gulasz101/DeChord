@@ -137,6 +137,9 @@ const {
   deleteSongNoteMock: vi.fn().mockResolvedValue(undefined),
   playerPagePropsSpy: vi.fn(),
   savePlaybackPrefsMock: vi.fn().mockResolvedValue({ speed_percent: 120, volume: 1, loop_start_index: null, loop_end_index: null }),
+  createSongNoteMock: vi.fn().mockResolvedValue({ id: 77, type: "time", text: "Watch the Em push", timestamp_sec: 0, chord_index: null, toast_duration_sec: null }),
+  updateSongNoteMock: vi.fn().mockResolvedValue({ id: 90, text: "Lock this transition tighter", toast_duration_sec: null }),
+  deleteSongNoteMock: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../redesign/pages/PlayerPage", () => ({
@@ -234,6 +237,9 @@ vi.mock("../lib/api", async (importOriginal) => {
     pollUntilComplete: pollUntilCompleteMock,
     uploadSongStem: uploadSongStemMock,
     savePlaybackPrefs: savePlaybackPrefsMock,
+    createSongNote: createSongNoteMock,
+    updateSongNote: updateSongNoteMock,
+    deleteSongNote: deleteSongNoteMock,
     claimIdentity: claimIdentityMock,
     uploadAudio: uploadAudioMock,
     uploadSongStem: uploadSongStemMock,
@@ -1284,6 +1290,67 @@ describe("App integration", () => {
 
     await waitFor(() => {
       expect(savePlaybackPrefsMock).toHaveBeenCalledWith(30, expect.objectContaining({ speed_percent: 120 }));
+    });
+  });
+
+  it("creates, edits, and deletes comments through the redesign player flow", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    await waitFor(() => {
+      expect(screen.getByText("Your Bands")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Default Band"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library →")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("The Trooper"));
+    await waitFor(() => {
+      expect(screen.getByText("▶ Open Player")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("▶ Open Player"));
+    await waitFor(() => {
+      expect(screen.getByText("Tab Viewer")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText(/Comments/));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Comment Text")).toBeTruthy();
+      expect(screen.getByText("Tighten this entrance")).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText("Comment Text"), { target: { value: "Watch the Em push" } });
+    fireEvent.click(screen.getByText("Save Time Note"));
+
+    await waitFor(() => {
+      expect(createSongNoteMock).toHaveBeenCalledWith(30, expect.objectContaining({
+        type: "time",
+        text: "Watch the Em push",
+      }));
+      expect(screen.getByText("Watch the Em push")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByLabelText("Edit note 90"));
+    fireEvent.change(screen.getByLabelText("Edit Comment 90"), { target: { value: "Lock this transition tighter" } });
+    fireEvent.click(screen.getByText("Save Edit"));
+
+    await waitFor(() => {
+      expect(updateSongNoteMock).toHaveBeenCalledWith(90, { text: "Lock this transition tighter" });
+      expect(screen.getByText("Lock this transition tighter")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByLabelText("Delete note 90"));
+    await waitFor(() => {
+      expect(deleteSongNoteMock).toHaveBeenCalledWith(90);
+      expect(screen.queryByText("Lock this transition tighter")).toBeNull();
     });
   });
 

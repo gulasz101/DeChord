@@ -522,6 +522,28 @@ export default function App() {
     return response.json() as Promise<{ unread_count: number }>;
   }, [identityUserId]);
 
+  const updateSongEverywhere = useCallback((songId: string, updater: (song: Song) => Song) => {
+    setBands((currentBands) => currentBands.map((band) => ({
+      ...band,
+      projects: band.projects.map((project) => ({
+        ...project,
+        songs: project.songs.map((song) => (
+          song.id === songId ? updater(song) : song
+        )),
+      })),
+    })));
+
+    setRoute((currentRoute) => {
+      if ((currentRoute.page !== "song-detail" && currentRoute.page !== "player") || currentRoute.song.id !== songId) {
+        return currentRoute;
+      }
+      return {
+        ...currentRoute,
+        song: updater(currentRoute.song),
+      };
+    });
+  }, []);
+
   const bootstrap = useCallback(async () => {
     try {
       const fingerprint = getOrCreateFingerprint();
@@ -895,30 +917,56 @@ export default function App() {
       loopStartIndex: prefs.loop_start_index,
       loopEndIndex: prefs.loop_end_index,
     };
+    updateSongEverywhere(routeSong.id, (song) => ({ ...song, playbackPrefs: mappedPrefs }));
+  }, [updateSongEverywhere]);
 
-    setBands((currentBands) => currentBands.map((band) => ({
-      ...band,
-      projects: band.projects.map((project) => ({
-        ...project,
-        songs: project.songs.map((song) => (
-          song.id === routeSong.id ? { ...song, playbackPrefs: mappedPrefs } : song
-        )),
-      })),
-    })));
+  const handleCreateNote = useCallback(async (
+    routeSong: Song,
+    payload: {
+      type: "time" | "chord";
+      text: string;
+      timestamp_sec?: number;
+      chord_index?: number;
+    },
+  ) => {
+    if (!user) return;
+    const songId = Number(routeSong.id);
+    if (Number.isNaN(songId)) return;
 
-    setRoute((currentRoute) => {
-      if (currentRoute.page !== "player" || currentRoute.song.id !== routeSong.id) {
-        return currentRoute;
-      }
-      return {
-        ...currentRoute,
-        song: {
-          ...currentRoute.song,
-          playbackPrefs: mappedPrefs,
-        },
-      };
-    });
-  }, []);
+    const created = await createSongNote(songId, payload);
+    const mapped = mapNote(created, user);
+    updateSongEverywhere(routeSong.id, (song) => ({
+      ...song,
+      notes: [...song.notes, mapped],
+    }));
+  }, [updateSongEverywhere, user]);
+
+  const handleUpdateNote = useCallback(async (
+    routeSong: Song,
+    noteId: number,
+    payload: { text?: string },
+  ) => {
+    await updateSongNote(noteId, payload);
+    updateSongEverywhere(routeSong.id, (song) => ({
+      ...song,
+      notes: song.notes.map((note) => (
+        note.id === noteId
+          ? { ...note, text: payload.text ?? note.text }
+          : note
+      )),
+    }));
+  }, [updateSongEverywhere]);
+
+  const handleDeleteNote = useCallback(async (
+    routeSong: Song,
+    noteId: number,
+  ) => {
+    await deleteSongNote(noteId);
+    updateSongEverywhere(routeSong.id, (song) => ({
+      ...song,
+      notes: song.notes.filter((note) => note.id !== noteId),
+    }));
+  }, [updateSongEverywhere]);
 
   if (!user) {
     return <LandingPage onGetStarted={() => setRoute({ page: "bands" })} onSignIn={() => setRoute({ page: "bands" })} />;
@@ -1201,6 +1249,15 @@ export default function App() {
           band={route.band}
           project={route.project}
           song={route.song}
+          onCreateNote={(payload) => {
+            void handleCreateNote(route.song, payload);
+          }}
+          onUpdateNote={(noteId, payload) => {
+            void handleUpdateNote(route.song, noteId, payload);
+          }}
+          onDeleteNote={(noteId) => {
+            void handleDeleteNote(route.song, noteId);
+          }}
           onSavePlaybackPrefs={(prefs) => {
             void handlePlaybackPrefsSave(route.song, prefs);
           }}

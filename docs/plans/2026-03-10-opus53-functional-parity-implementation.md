@@ -20,6 +20,8 @@
 - [x] Task 6: Wire redesigned routes through `App.tsx` and refresh flows.
 - [x] Task 7: Verify, reset, finalize plan status, and notify.
 - [x] Task 8: Re-run verification/reset after the player parity follow-up.
+- [x] Task 9: Restore note/comment CRUD in the Opus 5-3 player flow.
+- [ ] Task 10: Re-run verification/reset after note CRUD restoration.
 
 ## Implementation Notes
 
