@@ -18,9 +18,9 @@
     <rule>Use verification-before-completion to confirm cleanliness and test status before final summaries or Telegram.</rule>
   </section>
   <section id="telegram">
-    <step>Send Telegram summaries by default after verification unless the user says skip telegram; perform the send in a subagent.</step>
+    <step>Send Telegram summaries by default after verification unless the user says skip telegram; dispatch a subagent to send only once reset/verification are complete.</step>
     <step>Use ops/scripts/send-telegram-summary.sh; decrypt secrets from ops/secrets/telegram.sops.yaml only at send time and never expose them.</step>
-    <step>Prefix messages with CLI: opencode | Model: gpt-5.1-codex-max - ... with emoji-friendly spacing; report any delivery failures.</step>
+    <step>Prefix messages with CLI: opencode | Model: gpt-5.1-codex-max - ... and include upbeat emojis plus generous spacing in the message body; report any delivery failures.</step>
     <step>Send Telegram only after reset and verification steps complete.</step>
   </section>
   <section id="architecture">
@@ -33,6 +33,6 @@
     <rule>Use portless as the standard local routing layer; prefer make up, make backend, make frontend, make portless-proxy-up, make portless-proxy-down, and make portless-routes.</rule>
   </section>
   <section id="design-language">
-    <rule>Follow designs.opus46/5-3 as the canonical look and feel; treat other designs.* directories as reference-only and do not modify them.</rule>
+    <rule>Follow designs.opus46/5-3 as the canonical look and feel; designs.* directories preserve the initial configured design languages for reference and must remain unchanged; treat other designs.* directories as reference-only and do not modify them.</rule>
   </section>
 </agents>
