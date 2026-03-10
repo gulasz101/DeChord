@@ -14,7 +14,11 @@ import type {
   IdentityResponse,
   IdentityClaimPayload,
   BandsListResponse,
+  BandCreatePayload,
+  BandCreateResponse,
   ProjectsListResponse,
+  ProjectCreatePayload,
+  ProjectCreateResponse,
   ProjectSongsListResponse,
 } from "./types";
 
@@ -24,11 +28,15 @@ export async function uploadAudio(
   file: File,
   processMode: ProcessMode = "analysis_only",
   tabGenerationQuality: TabGenerationQuality = "standard",
+  projectId?: number,
 ): Promise<UploadResponse> {
   const form = new FormData();
   form.append("file", file);
   form.append("process_mode", processMode);
   form.append("tabGenerationQuality", tabGenerationQuality);
+  if (typeof projectId === "number") {
+    form.append("project_id", String(projectId));
+  }
   const res = await fetch(`${BASE}/api/analyze`, { method: "POST", body: form });
   if (!res.ok) throw new Error("Upload failed");
   return res.json();
@@ -218,6 +226,29 @@ export async function listBands(): Promise<BandsListResponse> {
 export async function listBandProjects(bandId: number): Promise<ProjectsListResponse> {
   const res = await fetch(`${BASE}/api/bands/${bandId}/projects`);
   if (!res.ok) throw new Error("Failed to fetch projects");
+  return res.json();
+}
+
+export async function createBand(payload: BandCreatePayload): Promise<BandCreateResponse> {
+  const res = await fetch(`${BASE}/api/bands`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Failed to create band");
+  return res.json();
+}
+
+export async function createProject(
+  bandId: number,
+  payload: ProjectCreatePayload,
+): Promise<ProjectCreateResponse> {
+  const res = await fetch(`${BASE}/api/bands/${bandId}/projects`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Failed to create project");
   return res.json();
 }
 

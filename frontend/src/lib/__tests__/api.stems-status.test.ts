@@ -28,6 +28,28 @@ describe("api stems/status contract", () => {
     }
   });
 
+  it("sends project_id on upload analyze request when provided", async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ job_id: "job123", song_id: 7 }),
+    });
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      const file = new File([new Uint8Array([1, 2, 3])], "demo.mp3", {
+        type: "audio/mpeg",
+      });
+      await uploadAudio(file, "analysis_only", "standard", 20);
+
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const form = init.body as FormData;
+      expect(form.get("project_id")).toBe("20");
+    } finally {
+      (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
+    }
+  });
+
   it("sends tabGenerationQuality when high accuracy is selected", async () => {
     const originalFetch = globalThis.fetch;
     const fetchMock = vi.fn().mockResolvedValue({

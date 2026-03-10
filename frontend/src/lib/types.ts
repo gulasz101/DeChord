@@ -155,6 +155,14 @@ export interface BandsListResponse {
   bands: BandSummary[];
 }
 
+export interface BandCreatePayload {
+  name: string;
+}
+
+export interface BandCreateResponse {
+  band: BandSummary;
+}
+
 export interface ProjectSummary {
   id: number;
   band_id: number;
@@ -166,6 +174,15 @@ export interface ProjectSummary {
 
 export interface ProjectsListResponse {
   projects: ProjectSummary[];
+}
+
+export interface ProjectCreatePayload {
+  name: string;
+  description?: string;
+}
+
+export interface ProjectCreateResponse {
+  project: ProjectSummary;
 }
 
 export interface ProjectSongSummary {
