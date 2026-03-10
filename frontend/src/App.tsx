@@ -25,11 +25,12 @@ import {
   listSongStems,
   resolveSongNote,
   resolveIdentity,
+  savePlaybackPrefs,
   setApiIdentityUserId,
   updateSongNote,
   updateProject,
 } from "./lib/api";
-import type { JobStatus, ProcessMode, TabGenerationQuality } from "./lib/types";
+import type { JobStatus, PlaybackPrefs, ProcessMode, TabGenerationQuality } from "./lib/types";
 import type { Band, Project, Song, StemInfo, User, SongNote, Chord } from "./redesign/lib/types";
 import { LandingPage } from "./redesign/pages/LandingPage";
 import { BandSelectPage } from "./redesign/pages/BandSelectPage";
@@ -116,6 +117,13 @@ function mapProjectSongSummaryToSong(raw: {
     stems: [],
     notes: [],
     updatedAt: raw.created_at,
+    tabSourceUrl: null,
+    playbackPrefs: {
+      speedPercent: 100,
+      volume: 1,
+      loopStartIndex: null,
+      loopEndIndex: null,
+    },
   };
 }
 
@@ -873,6 +881,45 @@ export default function App() {
     }
   }, [loadSongDetails]);
 
+  const handlePlaybackPrefsSave = useCallback(async (
+    routeSong: Song,
+    prefs: PlaybackPrefs,
+  ) => {
+    const songId = Number(routeSong.id);
+    if (Number.isNaN(songId)) return;
+
+    await savePlaybackPrefs(songId, prefs);
+    const mappedPrefs = {
+      speedPercent: prefs.speed_percent,
+      volume: prefs.volume,
+      loopStartIndex: prefs.loop_start_index,
+      loopEndIndex: prefs.loop_end_index,
+    };
+
+    setBands((currentBands) => currentBands.map((band) => ({
+      ...band,
+      projects: band.projects.map((project) => ({
+        ...project,
+        songs: project.songs.map((song) => (
+          song.id === routeSong.id ? { ...song, playbackPrefs: mappedPrefs } : song
+        )),
+      })),
+    })));
+
+    setRoute((currentRoute) => {
+      if (currentRoute.page !== "player" || currentRoute.song.id !== routeSong.id) {
+        return currentRoute;
+      }
+      return {
+        ...currentRoute,
+        song: {
+          ...currentRoute.song,
+          playbackPrefs: mappedPrefs,
+        },
+      };
+    });
+  }, []);
+
   if (!user) {
     return <LandingPage onGetStarted={() => setRoute({ page: "bands" })} onSignIn={() => setRoute({ page: "bands" })} />;
   }
@@ -1154,6 +1201,9 @@ export default function App() {
           band={route.band}
           project={route.project}
           song={route.song}
+          onSavePlaybackPrefs={(prefs) => {
+            void handlePlaybackPrefsSave(route.song, prefs);
+          }}
           onCreateNote={async ({ type, text, timestampSec, chordIndex, toastDurationSec }: {
             type: "time" | "chord";
             text: string;

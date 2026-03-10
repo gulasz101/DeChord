@@ -19,7 +19,9 @@ export function ChordTimeline({ chords, currentIndex, currentTime, loopStart, lo
   const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    if (typeof activeRef.current?.scrollIntoView === "function") {
+      activeRef.current.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
   }, [currentIndex]);
 
   const isInLoop = useCallback((index: number) => {

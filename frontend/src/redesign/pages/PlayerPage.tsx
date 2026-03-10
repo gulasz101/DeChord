@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import type { Band, Project, Song, SongNote, User } from "../lib/types";
+import type { PlaybackPrefs } from "../../lib/types";
 import { Fretboard } from "../components/Fretboard";
 import { ChordTimeline } from "../components/ChordTimeline";
 import { TransportBar } from "../components/TransportBar";
@@ -16,6 +17,7 @@ interface PlayerPageProps {
   band: Band;
   project: Project;
   song: Song;
+  onSavePlaybackPrefs?: (prefs: PlaybackPrefs) => void | Promise<void>;
   onBack: () => void;
   currentUserId?: number | null;
   onCreateNote?: (payload: { type: "time" | "chord"; text: string; timestampSec?: number; chordIndex?: number; toastDurationSec?: number }) => Promise<void> | void;
@@ -39,6 +41,7 @@ export function PlayerPage({
   band,
   project,
   song,
+  onSavePlaybackPrefs,
   onBack,
   currentUserId,
   onCreateNote,
@@ -83,6 +86,31 @@ export function PlayerPage({
     });
     return map;
   });
+  const saveSignatureRef = useRef<string | null>(null);
+
+  const playbackMode = song.stems.length > 0 ? "stems" : "full_mix";
+  const enabledByStem = useMemo(
+    () => Object.fromEntries(song.stems.map((stem) => [stem.stemKey, activeStemKeys.has(stem.stemKey)])),
+    [activeStemKeys, song.stems],
+  );
+  const playbackSources = useMemo(
+    () => resolvePlaybackSources({
+      songId: Number.isNaN(songId) ? null : songId,
+      playbackMode,
+      stems: song.stems.map((stem) => ({
+        stem_key: stem.stemKey,
+        relative_path: stem.description,
+        mime_type: null,
+        duration: null,
+      })),
+      enabledByStem,
+    }),
+    [enabledByStem, playbackMode, song.stems, songId],
+  );
+  const audioPlayer = useAudioPlayer(playbackSources.audioSrc, playbackSources.stemSources);
+  const currentTime = audioPlayer.currentTime;
+  const playing = audioPlayer.playing;
+  const effectiveDuration = audioPlayer.duration || song.duration;
 
   // Chord sync
   const songId = Number(song.id);
@@ -143,6 +171,33 @@ export function PlayerPage({
     },
     [song.chords],
   );
+
+  useEffect(() => {
+    if (!onSavePlaybackPrefs || Number.isNaN(songId)) return;
+    const signature = JSON.stringify({
+      speedPercent: Math.round(player.playbackRate * 100),
+      volume: player.volume,
+      loopStart,
+      loopEnd,
+    });
+    if (saveSignatureRef.current === null) {
+      saveSignatureRef.current = signature;
+      return;
+    }
+    if (saveSignatureRef.current === signature) return;
+    saveSignatureRef.current = signature;
+
+    const handle = window.setTimeout(() => {
+      void onSavePlaybackPrefs({
+        speed_percent: Math.round(player.playbackRate * 100),
+        volume: player.volume,
+        loop_start_index: loopStart,
+        loop_end_index: loopEnd,
+      });
+    }, 150);
+
+    return () => window.clearTimeout(handle);
+  }, [loopEnd, loopStart, onSavePlaybackPrefs, player.playbackRate, player.volume, songId]);
 
   const handleCommentLaneClick = useCallback(
     (timestampSec: number) => {

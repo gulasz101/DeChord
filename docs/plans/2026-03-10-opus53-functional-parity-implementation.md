@@ -16,9 +16,10 @@
 - [x] Task 2: Extend frontend API/types for manual stem upload.
 - [x] Task 3: Restore song upload flow in `SongLibraryPage` with progress and warnings.
 - [x] Task 4: Add Opus 5-3 stem upload UI in `SongDetailPage`.
-- [ ] Task 5: Restore real player functionality behind `PlayerPage`.
+- [x] Task 5: Restore real player functionality behind `PlayerPage`.
 - [x] Task 6: Wire redesigned routes through `App.tsx` and refresh flows.
 - [x] Task 7: Verify, reset, finalize plan status, and notify.
+- [ ] Task 8: Re-run verification/reset after the player parity follow-up.
 
 ## Implementation Notes
 

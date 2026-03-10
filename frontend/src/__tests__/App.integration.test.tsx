@@ -28,6 +28,7 @@ const {
   resolveSongNoteMock,
   deleteSongNoteMock,
   playerPagePropsSpy,
+  savePlaybackPrefsMock,
 } = vi.hoisted(() => ({
   claimIdentityMock: vi.fn().mockResolvedValue({
     user: {
@@ -135,6 +136,7 @@ const {
   resolveSongNoteMock: vi.fn().mockResolvedValue({ id: 301, resolved: true }),
   deleteSongNoteMock: vi.fn().mockResolvedValue(undefined),
   playerPagePropsSpy: vi.fn(),
+  savePlaybackPrefsMock: vi.fn().mockResolvedValue({ speed_percent: 120, volume: 1, loop_start_index: null, loop_end_index: null }),
 }));
 
 vi.mock("../redesign/pages/PlayerPage", () => ({
@@ -205,7 +207,6 @@ vi.mock("../redesign/pages/PlayerPage", () => ({
       </div>
     );
   },
-}));
 
 vi.mock("../lib/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../lib/api")>();
@@ -232,6 +233,7 @@ vi.mock("../lib/api", async (importOriginal) => {
     listSongStems: listSongStemsMock,
     pollUntilComplete: pollUntilCompleteMock,
     uploadSongStem: uploadSongStemMock,
+    savePlaybackPrefs: savePlaybackPrefsMock,
     claimIdentity: claimIdentityMock,
     uploadAudio: uploadAudioMock,
     uploadSongStem: uploadSongStemMock,
@@ -245,6 +247,30 @@ vi.mock("../lib/api", async (importOriginal) => {
     deleteSongNote: deleteSongNoteMock,
   };
 });
+
+class MockAudio {
+  currentTime = 0;
+  duration = 48;
+  volume = 1;
+  playbackRate = 1;
+  src = "";
+  private listeners = new Map<string, Array<() => void>>();
+
+  play() {
+    return Promise.resolve();
+  }
+
+  pause() {}
+
+  addEventListener(event: string, listener: () => void) {
+    const current = this.listeners.get(event) ?? [];
+    current.push(listener);
+    this.listeners.set(event, current);
+    if (event === "loadedmetadata") {
+      queueMicrotask(() => listener());
+    }
+  }
+}
 
 describe("App integration", () => {
   beforeEach(() => {
@@ -270,7 +296,10 @@ describe("App integration", () => {
     resolveSongNoteMock.mockReset();
     deleteSongNoteMock.mockReset();
     playerPagePropsSpy.mockReset();
+    savePlaybackPrefsMock.mockReset();
     vi.useRealTimers();
+    Element.prototype.scrollIntoView = vi.fn();
+    vi.stubGlobal("Audio", MockAudio);
     claimIdentityMock.mockResolvedValue({
       user: {
         id: 1,
@@ -1219,6 +1248,42 @@ describe("App integration", () => {
         stemName: "Bass Guide",
         description: "Manual cleaned bass stem",
       });
+    });
+  });
+
+
+  it("persists player speed changes through the redesign shell", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    await waitFor(() => {
+      expect(screen.getByText("Your Bands")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Default Band"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library →")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("The Trooper"));
+    await waitFor(() => {
+      expect(screen.getByText("▶ Open Player")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("▶ Open Player"));
+    await waitFor(() => {
+      expect(screen.getByText("Tab Viewer")).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByDisplayValue("100%"), { target: { value: "120" } });
+
+    await waitFor(() => {
+      expect(savePlaybackPrefsMock).toHaveBeenCalledWith(30, expect.objectContaining({ speed_percent: 120 }));
     });
   });
 

@@ -67,6 +67,13 @@ export interface NoteMarker {
   toastDurationSec?: number | null;
 }
 
+export interface SongPlaybackPrefs {
+  speedPercent: number;
+  volume: number;
+  loopStartIndex: number | null;
+  loopEndIndex: number | null;
+}
+
 export interface Song {
   id: string;
   title: string;
@@ -81,6 +88,8 @@ export interface Song {
   playbackPrefs?: SongPlaybackPrefs | null;
   notes: SongNote[];
   updatedAt: string;
+  tabSourceUrl?: string | null;
+  playbackPrefs?: SongPlaybackPrefs;
 }
 
 export interface Project {
