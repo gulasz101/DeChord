@@ -231,6 +231,7 @@ vi.mock("../lib/api", async (importOriginal) => {
     getSongTabs: getSongTabsMock,
     listSongStems: listSongStemsMock,
     pollUntilComplete: pollUntilCompleteMock,
+    uploadSongStem: uploadSongStemMock,
     claimIdentity: claimIdentityMock,
     uploadAudio: uploadAudioMock,
     uploadSongStem: uploadSongStemMock,
@@ -1178,6 +1179,46 @@ describe("App integration", () => {
     await waitFor(() => {
       expect(uploadAudioMock).toHaveBeenCalledWith(file, "analysis_and_stems", "standard");
       expect(pollUntilCompleteMock).toHaveBeenCalled();
+    });
+  });
+
+
+  it("uploads a manual stem from song detail", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    await waitFor(() => {
+      expect(screen.getByText("Your Bands")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Default Band"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library →")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("The Trooper"));
+    await waitFor(() => {
+      expect(screen.getByText("Upload Stem")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Upload Stem"));
+    fireEvent.change(screen.getByLabelText("Stem Name"), { target: { value: "Bass Guide" } });
+    fireEvent.change(screen.getByLabelText("Stem Description"), { target: { value: "Manual cleaned bass stem" } });
+    const file = new File([new Uint8Array([1, 2, 3])], "bass-guide.wav", { type: "audio/wav" });
+    fireEvent.change(screen.getByLabelText("Stem Upload File"), { target: { files: [file] } });
+    fireEvent.click(screen.getByText("Save Stem"));
+
+    await waitFor(() => {
+      expect(uploadSongStemMock).toHaveBeenCalledWith(30, {
+        file,
+        stemName: "Bass Guide",
+        description: "Manual cleaned bass stem",
+      });
     });
   });
 

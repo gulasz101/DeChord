@@ -453,6 +453,8 @@ export default function App() {
   const [songUploadStatus, setSongUploadStatus] = useState<Pick<JobStatus, "message" | "progress_pct" | "stage_progress_pct"> | null>(null);
   const [songUploadWarning, setSongUploadWarning] = useState<string | null>(null);
   const [songUploadError, setSongUploadError] = useState<string | null>(null);
+  const [stemUploadLoading, setStemUploadLoading] = useState(false);
+  const [stemUploadError, setStemUploadError] = useState<string | null>(null);
 
   const refreshBands = useCallback(async (includeArchived = false) => {
     const loadedBands = await loadBandHierarchy(includeArchived);
@@ -850,6 +852,27 @@ export default function App() {
     }
   }, [loadSongDetails, user]);
 
+  const handleStemUpload = useCallback(async (
+    band: Band,
+    project: Project,
+    song: Song,
+    payload: { file: File; stemName: string; description: string },
+  ) => {
+    const songId = Number(song.id);
+    if (Number.isNaN(songId)) return;
+    setStemUploadLoading(true);
+    setStemUploadError(null);
+    try {
+      await uploadSongStem(songId, payload);
+      const refreshedSong = await loadSongDetails(song);
+      setRoute({ page: "song-detail", band, project, song: refreshedSong });
+    } catch (error) {
+      setStemUploadError(error instanceof Error ? error.message : "Stem upload failed");
+    } finally {
+      setStemUploadLoading(false);
+    }
+  }, [loadSongDetails]);
+
   if (!user) {
     return <LandingPage onGetStarted={() => setRoute({ page: "bands" })} onSignIn={() => setRoute({ page: "bands" })} />;
   }
@@ -1056,6 +1079,11 @@ export default function App() {
           band={route.band}
           project={route.project}
           song={route.song}
+          onUploadStem={(payload) => {
+            void handleStemUpload(route.band, route.project, route.song, payload);
+          }}
+          uploadStemLoading={stemUploadLoading}
+          uploadStemError={stemUploadError}
           onDownloadStem={(stemKey) => {
             const songId = Number(route.song.id);
             if (Number.isNaN(songId) || typeof window === "undefined") return;
