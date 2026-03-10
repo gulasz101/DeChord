@@ -10,8 +10,8 @@
 
 ## Execution Checklist
 
-- [ ] Task 1: Confirm current backend pipeline reuse points for stem regeneration and bass-tab regeneration.
-- [ ] Task 2: Define the minimal backend API contracts for song-scoped generation.
+- [x] Task 1: Confirm current backend pipeline reuse points for stem regeneration and bass-tab regeneration.
+- [x] Task 2: Define the minimal backend API contracts for song-scoped generation.
 - [ ] Task 3: Add backend tests for the new generation endpoints.
 - [ ] Task 4: Implement backend generation endpoints and persistence updates.
 - [ ] Task 5: Extend frontend API/types for generation flows and job/result handling.
@@ -25,6 +25,9 @@
 - Reuse existing pipelines and persistence paths where possible.
 - Do not ship dead controls: if one action cannot be completed in the same delivery, disable it honestly.
 - Preserve Opus 5-3 design language.
+- Current backend schema only stores one active `song_stems` row per `song_id + stem_key` and does not encode stem origin, uploader, archival state, or version lineage. This delivery should regenerate the current system set in place rather than introducing versioned asset history.
+- Current backend already has reusable generation internals inside `backend/app/main.py`: `split_to_stems(...)`, `build_bass_analysis_stem(...)`, `tab_pipeline.run(...)`, `_persist_stems(...)`, `_persist_midi(...)`, and `_persist_tab(...)`.
+- Current frontend `SongDetailPage` is a presentational component. Route refresh and API side effects currently live in `frontend/src/App.tsx`, so the new generation actions should follow that split instead of inventing a page-local data layer.
 
 ### Task 1: Confirm Backend Reuse Points
 
@@ -41,6 +44,12 @@
   - midi -> tab
 - Decide whether the new routes can call those paths directly or need small extraction/refactoring.
 
+**Audit result:**
+- mix -> stems currently runs through `split_to_stems(...)` in `_run_analysis(...)`.
+- bass/drums stems -> analysis bass stem -> midi/tab currently runs through `build_bass_analysis_stem(...)` plus `tab_pipeline.run(...)` in `_run_analysis(...)` and `/api/tab/from-demucs-stems`.
+- persistence already exists via `_persist_stems(...)`, `_persist_midi(...)`, and `_persist_tab(...)`.
+- Small extraction/refactoring is required so the new song-scoped routes can reuse this logic without duplicating the upload job implementation.
+
 ### Task 2: Define Backend API Contracts
 
 **Recommended routes:**
@@ -54,6 +63,17 @@
 **Expected responses:**
 - Prefer a job-style response if generation is not near-instant
 - Reuse existing polling model where practical
+
+**Refined contract for current codebase:**
+- `POST /api/songs/{song_id}/stems/regenerate`
+  - no body
+  - synchronous response for now: `{ "stems": [...] }`
+  - reuses stored original mix from `songs.audio_blob`, writes refreshed `song_stems` rows
+- `POST /api/songs/{song_id}/tabs/regenerate`
+  - JSON body: `{ "source_stem_key": string }`
+  - synchronous response for now: `{ "tab": {...} }`
+  - validates that the requested song stem exists and that a `drums` stem exists for the rhythm grid pipeline
+- Defer job polling integration for these routes. Existing polling is upload-job-specific and there is no shared job model for song-scoped actions yet.
 
 ### Task 3: Add Backend Tests First
 
@@ -73,8 +93,8 @@
 - persist source provenance for regenerated tab assets if current schema requires it
 
 **Important guardrails:**
-- manual stems must not be deleted by stem regeneration
-- system stem regeneration should refresh only the system-generated asset set
+- current schema cannot distinguish manual vs system stems, so this delivery regenerates the current persisted stem set in place
+- system stem regeneration should refresh the persisted generated asset set without changing unrelated song records
 - tab generation must record which source was used
 
 ### Task 5: Extend Frontend API and Types
