@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { getStemDownloadUrl, getStemsZipDownloadUrl, listSongStems, regenerateSongStems, uploadAudio } from "../api";
+import { getStemDownloadUrl, getStemsZipDownloadUrl, listSongStems, regenerateSongStems, uploadAudio, uploadSongStem } from "../api";
 
 describe("api stems/status contract", () => {
   it("sends process_mode and default tabGenerationQuality on upload analyze request", async () => {
@@ -108,7 +108,7 @@ describe("api stems/status contract", () => {
       ok: true,
       json: async () => ({
         stems: [
-          { stem_key: "drums", relative_path: "stems/1/drums.wav", mime_type: "audio/x-wav", duration: null },
+          { stem_key: "drums", relative_path: "stems/1/drums.wav", mime_type: "audio/x-wav", duration: null, description: "Take 2" },
         ],
       }),
     });
@@ -120,6 +120,43 @@ describe("api stems/status contract", () => {
       expect(fetchMock).toHaveBeenCalledWith("/api/songs/42/stems");
       expect(res.stems).toHaveLength(1);
       expect(res.stems[0].stem_key).toBe("drums");
+      expect(res.stems[0].description).toBe("Take 2");
+    } finally {
+      (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
+    }
+  });
+
+  it("uploads a manual stem with name and description", async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        stem: {
+          stem_key: "bass_guide",
+          relative_path: "stems/7/bass_guide.wav",
+          mime_type: "audio/wav",
+          duration: null,
+          description: "Manual cleaned bass stem",
+        },
+      }),
+    });
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      const file = new File([new Uint8Array([1, 2, 3])], "bass-guide.wav", {
+        type: "audio/wav",
+      });
+      const res = await uploadSongStem(7, { file, stemName: "Bass Guide", description: "Manual cleaned bass stem" });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe("/api/songs/7/stems");
+      expect(init.method).toBe("POST");
+      const form = init.body as FormData;
+      expect(form.get("stem_name")).toBe("Bass Guide");
+      expect(form.get("description")).toBe("Manual cleaned bass stem");
+      expect(form.get("file")).toBe(file);
+      expect(res.stem.stem_key).toBe("bass_guide");
     } finally {
       (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
     }
