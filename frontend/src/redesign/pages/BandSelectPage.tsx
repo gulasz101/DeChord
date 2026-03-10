@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Band, User } from "../lib/types";
 
 interface BandSelectPageProps {
@@ -7,9 +8,35 @@ interface BandSelectPageProps {
   onSignOut: () => void;
   isClaimed?: boolean;
   onClaimAccount?: () => void;
+  onCreateBand?: (payload: { name: string }) => Promise<void> | void;
 }
 
-export function BandSelectPage({ user, bands, onSelectBand, onSignOut, isClaimed = false, onClaimAccount }: BandSelectPageProps) {
+export function BandSelectPage({
+  user,
+  bands,
+  onSelectBand,
+  onSignOut,
+  isClaimed = false,
+  onClaimAccount,
+  onCreateBand,
+}: BandSelectPageProps) {
+  const [isCreatingBand, setIsCreatingBand] = useState(false);
+  const [bandName, setBandName] = useState("");
+  const [isSavingBand, setIsSavingBand] = useState(false);
+
+  const saveBand = async () => {
+    const trimmedName = bandName.trim();
+    if (!trimmedName || !onCreateBand || isSavingBand) return;
+    setIsSavingBand(true);
+    try {
+      await onCreateBand({ name: trimmedName });
+      setBandName("");
+      setIsCreatingBand(false);
+    } finally {
+      setIsSavingBand(false);
+    }
+  };
+
   return (
     <div className="me-mesh min-h-screen" style={{ background: "linear-gradient(160deg, #0a0e27 0%, #111638 40%, #0a0e27 100%)" }}>
       {/* Header */}
@@ -41,7 +68,60 @@ export function BandSelectPage({ user, bands, onSelectBand, onSignOut, isClaimed
       {/* Content */}
       <main className="relative z-10 mx-auto max-w-2xl px-8 pt-16">
         <h1 className="mb-2 text-3xl" style={{ fontFamily: "Playfair Display, serif", color: "#e2e2f0" }}>Your Bands</h1>
-        <p className="mb-10 text-sm" style={{ color: "#7a7a90" }}>Choose a band to enter its workspace.</p>
+        <p className="mb-10 text-sm" style={{ color: "#7a7a90" }}>
+          {bands.length > 0 ? "Choose a band to enter its workspace." : "Create a band to start organizing projects and songs."}
+        </p>
+
+        {bands.length === 0 && (
+          <section className="mb-6 border p-6" style={{ borderRadius: "6px", background: "rgba(255, 255, 255, 0.03)", borderColor: "rgba(124, 58, 237, 0.2)", backdropFilter: "blur(12px)" }}>
+            <h2 className="text-2xl" style={{ fontFamily: "Playfair Display, serif", color: "#e2e2f0" }}>Create Your First Band</h2>
+            <p className="mt-2 text-sm" style={{ color: "#7a7a90" }}>
+              Start with a real workspace. No sample songs, no placeholders.
+            </p>
+            {!isCreatingBand ? (
+              <button
+                onClick={() => setIsCreatingBand(true)}
+                className="mt-5 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+                style={{ borderRadius: "3px", background: "linear-gradient(135deg, #7c3aed, #5b21b6)" }}
+              >
+                Create Band
+              </button>
+            ) : (
+              <div className="mt-5 space-y-4">
+                <label className="block text-xs font-medium uppercase tracking-[0.18em]" style={{ color: "#a78bfa" }}>
+                  Band Name
+                  <input
+                    aria-label="Band Name"
+                    value={bandName}
+                    onChange={(event) => setBandName(event.target.value)}
+                    className="mt-2 w-full border px-3 py-3 text-sm"
+                    style={{ borderRadius: "3px", background: "rgba(10, 14, 39, 0.7)", borderColor: "rgba(192, 192, 192, 0.12)", color: "#e2e2f0" }}
+                  />
+                </label>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setBandName("");
+                      setIsCreatingBand(false);
+                    }}
+                    className="px-4 py-2 text-sm transition-colors hover:text-white"
+                    style={{ color: "#7a7a90" }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => void saveBand()}
+                    disabled={!bandName.trim() || isSavingBand}
+                    className="px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                    style={{ borderRadius: "3px", background: "linear-gradient(135deg, #14b8a6, #0f766e)" }}
+                  >
+                    Save Band
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         <div className="space-y-4">
           {bands.map((band) => (

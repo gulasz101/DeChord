@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   claimIdentity,
+  createBand,
   getSong,
   regenerateSongStems,
   regenerateSongTabs,
@@ -12,7 +13,6 @@ import {
   listSongStems,
   resolveIdentity,
 } from "./lib/api";
-import { MOCK_BANDS } from "./redesign/lib/mockData";
 import type { Band, Project, Song, StemInfo, User, SongNote, Chord } from "./redesign/lib/types";
 import { LandingPage } from "./redesign/pages/LandingPage";
 import { BandSelectPage } from "./redesign/pages/BandSelectPage";
@@ -120,54 +120,46 @@ function mapChord(chord: { start: number; end: number; label: string }): Chord {
 }
 
 async function loadBandHierarchy(currentUser: User | null): Promise<Band[]> {
-  try {
-    const bandsResponse = await listBands();
-    const mappedBands: Band[] = [];
+  const bandsResponse = await listBands();
+  const mappedBands: Band[] = [];
 
-    for (const band of bandsResponse.bands) {
-      const projectsResponse = await listBandProjects(band.id);
-      const mappedProjects: Project[] = [];
+  for (const band of bandsResponse.bands) {
+    const projectsResponse = await listBandProjects(band.id);
+    const mappedProjects: Project[] = [];
 
-      for (const project of projectsResponse.projects) {
-        const songsResponse = await listProjectSongs(project.id);
-        const songs = songsResponse.songs.map(mapProjectSongSummaryToSong);
-        mappedProjects.push({
-          id: String(project.id),
-          name: project.name,
-          description: project.description ?? "",
-          songs,
-          recentActivity: [],
-          unreadCount: 0,
-        });
-      }
-
-      mappedBands.push({
-        id: String(band.id),
-        name: band.name,
-        avatarColor: "#7c3aed",
-        projects: mappedProjects,
-        members: currentUser
-          ? [
-              {
-                id: currentUser.id,
-                name: currentUser.name,
-                instrument: currentUser.instrument,
-                avatar: currentUser.avatar,
-                isOnline: true,
-              },
-            ]
-          : [],
+    for (const project of projectsResponse.projects) {
+      const songsResponse = await listProjectSongs(project.id);
+      const songs = songsResponse.songs.map(mapProjectSongSummaryToSong);
+      mappedProjects.push({
+        id: String(project.id),
+        name: project.name,
+        description: project.description ?? "",
+        songs,
+        recentActivity: [],
+        unreadCount: 0,
       });
     }
 
-    if (mappedBands.length > 0) {
-      return mappedBands;
-    }
-  } catch {
-    // Fall back to mock data when API is not fully ready.
+    mappedBands.push({
+      id: String(band.id),
+      name: band.name,
+      avatarColor: "#7c3aed",
+      projects: mappedProjects,
+      members: currentUser
+        ? [
+            {
+              id: currentUser.id,
+              name: currentUser.name,
+              instrument: currentUser.instrument,
+              avatar: currentUser.avatar,
+              isOnline: true,
+            },
+          ]
+        : [],
+    });
   }
 
-  return MOCK_BANDS;
+  return mappedBands;
 }
 
 export default function App() {
@@ -176,6 +168,12 @@ export default function App() {
   const [bands, setBands] = useState<Band[]>([]);
   const [identityUserId, setIdentityUserId] = useState<number | null>(null);
   const [isClaimed, setIsClaimed] = useState(false);
+
+  const refreshBands = useCallback(async (currentUser: User) => {
+    const loadedBands = await loadBandHierarchy(currentUser);
+    setBands(loadedBands);
+    return loadedBands;
+  }, []);
 
   const bootstrap = useCallback(async () => {
     try {
@@ -191,23 +189,14 @@ export default function App() {
       setUser(mappedUser);
       setIdentityUserId(identity.user.id);
       setIsClaimed(identity.user.is_claimed);
-      const loadedBands = await loadBandHierarchy(mappedUser);
-      setBands(loadedBands);
+      await refreshBands(mappedUser);
     } catch {
-      const fallbackUser: User = {
-        id: "guest-1",
-        name: "Guest Musician",
-        email: "guest@dechord.local",
-        instrument: "Bass",
-        avatar: "GM",
-      };
-      setUser(fallbackUser);
+      setUser(null);
+      setBands([]);
       setIdentityUserId(null);
       setIsClaimed(false);
-      const loadedBands = await loadBandHierarchy(fallbackUser);
-      setBands(loadedBands);
     }
-  }, []);
+  }, [refreshBands]);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -286,6 +275,11 @@ export default function App() {
           user={user}
           bands={bands}
           isClaimed={isClaimed}
+          onCreateBand={async ({ name }) => {
+            if (!user) return;
+            await createBand({ name });
+            await refreshBands(user);
+          }}
           onClaimAccount={() => {
             if (identityUserId === null || typeof window === "undefined") return;
             const username = window.prompt("Choose a username");
@@ -305,7 +299,11 @@ export default function App() {
               }
             })();
           }}
-          onSelectBand={(band) => setRoute({ page: "project", band, project: band.projects[0] })}
+          onSelectBand={(band) => {
+            const firstProject = band.projects[0];
+            if (!firstProject) return;
+            setRoute({ page: "project", band, project: firstProject });
+          }}
           onSignOut={() => {
             setRoute({ page: "landing" });
           }}
