@@ -34,4 +34,4 @@
 <task>[x] Dispatch subagent to send Telegram summary after verification. (Telegram sent via ops/scripts/send-telegram-summary.sh)</task>
 
 <phase>Enforcement</phase>
-<task>[ ] Enforce subagent-only commit/plan cross-linking via subprocess updates to keep the main context lean. (commit: pending)</task>
+<task>[x] Enforce subagent-only commit/plan cross-linking via subprocess updates to keep the main context lean. (commit: https://github.com/gulasz101/DeChord/commit/797ed99)</task>
