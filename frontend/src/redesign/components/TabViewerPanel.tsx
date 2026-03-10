@@ -9,6 +9,17 @@ interface TabViewerPanelProps {
   isPlaying: boolean;
 }
 
+interface AlphaTabApiLike {
+  timePosition: number;
+  scrollToCursor?: () => void;
+  destroy?: () => void;
+  renderFinished: { on: (cb: () => void) => void };
+}
+
+interface AlphaTabModuleLike {
+  AlphaTabApi?: new (container: HTMLElement, settings: ReturnType<typeof createSettings>) => AlphaTabApiLike;
+}
+
 function createSettings(tabSourceUrl: string, scrollElement: string | HTMLElement) {
   return {
     file: tabSourceUrl,
@@ -44,7 +55,7 @@ function createSettings(tabSourceUrl: string, scrollElement: string | HTMLElemen
 export function TabViewerPanel({ tabSourceUrl, currentTime, isPlaying }: TabViewerPanelProps) {
   const scrollHostRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const alphaTabRef = useRef<any>(null);
+  const alphaTabRef = useRef<AlphaTabApiLike | null>(null);
   const renderReadyRef = useRef(false);
   const currentTimeRef = useRef(currentTime);
   const isPlayingRef = useRef(isPlaying);
@@ -68,7 +79,7 @@ export function TabViewerPanel({ tabSourceUrl, currentTime, isPlaying }: TabView
     async function init() {
       if (!tabSourceUrl || !containerRef.current) return;
       try {
-        const mod: any = await import("@coderline/alphatab");
+        const mod = await import("@coderline/alphatab") as AlphaTabModuleLike;
         if (disposed || !containerRef.current) return;
         const AlphaTabApi = mod.AlphaTabApi;
         if (!AlphaTabApi) return;

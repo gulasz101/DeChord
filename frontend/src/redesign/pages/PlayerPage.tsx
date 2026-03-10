@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import type { Band, Project, Song, User } from "../lib/types";
 import { Fretboard } from "../components/Fretboard";
 import { ChordTimeline } from "../components/ChordTimeline";
@@ -17,6 +17,7 @@ interface PlayerPageProps {
 type SidePanel = "none" | "stems" | "comments";
 
 export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProps) {
+  const playbackIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState(0.8);
@@ -79,12 +80,22 @@ export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProp
           return next;
         });
       }, 100);
-      (window as any).__dechordInterval = interval;
+      playbackIntervalRef.current = interval;
     } else {
       setPlaying(false);
-      clearInterval((window as any).__dechordInterval);
+      if (playbackIntervalRef.current) {
+        clearInterval(playbackIntervalRef.current);
+        playbackIntervalRef.current = null;
+      }
     }
   }, [playing, song.duration, song.chords, loopStart, loopEnd]);
+
+  useEffect(() => () => {
+    if (playbackIntervalRef.current) {
+      clearInterval(playbackIntervalRef.current);
+      playbackIntervalRef.current = null;
+    }
+  }, []);
 
   const handleChordClick = useCallback((index: number) => {
     if (loopStart === null) {
@@ -186,7 +197,15 @@ export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProp
                   <span className="text-[10px]" style={{ color: "#7a7a90" }}>{activeStemKeys.size} of {activeStemCount} active</span>
                 </div>
                 <StemMixer stems={song.stems} activeStemKeys={activeStemKeys} selectedVersions={selectedVersions}
-                  onToggleStem={(key) => setActiveStemKeys((prev) => { const next = new Set(prev); next.has(key) ? next.delete(key) : next.add(key); return next; })}
+                  onToggleStem={(key) => setActiveStemKeys((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(key)) {
+                      next.delete(key);
+                    } else {
+                      next.add(key);
+                    }
+                    return next;
+                  })}
                   onSelectVersion={(key, id) => setSelectedVersions((prev) => ({ ...prev, [key]: id }))} />
               </>
             )}

@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 
 export interface LoopPoints {
   start: number;
@@ -63,22 +63,33 @@ export function useAudioPlayer(src: string | null, stemSources: StemSource[] = [
   const [playbackRate, setPlaybackRateState] = useState(1);
   const [loop, setLoop] = useState<LoopPoints | null>(null);
 
-  const sources = stemSources.length > 0
-    ? stemSources.map((s) => ({ url: s.url, enabled: s.enabled }))
-    : src
-      ? [{ url: src, enabled: true }]
-      : [];
+  const sources = useMemo(
+    () => (stemSources.length > 0
+      ? stemSources.map((s) => ({ url: s.url, enabled: s.enabled }))
+      : src
+        ? [{ url: src, enabled: true }]
+        : []),
+    [stemSources, src],
+  );
+  const enabledFlags = useMemo(() => sources.map((s) => s.enabled), [sources]);
+  const sourceConfigSignature = useMemo(
+    () => sources.map((s) => `${s.url}:${s.enabled ? 1 : 0}`).join("|"),
+    [sources],
+  );
+  const enabledSignature = useMemo(
+    () => enabledFlags.map((enabled) => (enabled ? "1" : "0")).join(""),
+    [enabledFlags],
+  );
 
   useEffect(() => {
     if (sources.length === 0) return;
     const audios = sources.map((source) => {
-      const audio = new Audio(source.url);
-      audio.playbackRate = playbackRate;
-      return audio;
+      return new Audio(source.url);
     });
-    applyVolumeToAudios(audios, sources.map((s) => s.enabled), volume);
     audioRefs.current = audios;
-    setCurrentTime(0);
+    queueMicrotask(() => {
+      setCurrentTime(0);
+    });
 
     const primary = audios.find((_a, idx) => sources[idx].enabled) ?? audios[0];
     primary.addEventListener("loadedmetadata", () => {
@@ -96,15 +107,15 @@ export function useAudioPlayer(src: string | null, stemSources: StemSource[] = [
       audioRefs.current = [];
       cancelAnimationFrame(rafRef.current);
     };
-  }, [sources.map((s) => `${s.url}:${s.enabled ? 1 : 0}`).join("|")]);
+  }, [sourceConfigSignature, sources]);
 
   useEffect(() => {
     applyVolumeToAudios(
       audioRefs.current,
-      sources.map((s) => s.enabled),
+      enabledFlags,
       volume,
     );
-  }, [volume, sources.map((s) => (s.enabled ? "1" : "0")).join("")]);
+  }, [volume, enabledFlags, enabledSignature]);
 
   useEffect(() => {
     setPlaybackRateForAudios(audioRefs.current, playbackRate);
@@ -119,7 +130,7 @@ export function useAudioPlayer(src: string | null, stemSources: StemSource[] = [
     const tick = () => {
       const audios = audioRefs.current;
       if (audios.length === 0) return;
-      const primary = audios.find((_a, idx) => sources[idx]?.enabled) ?? audios[0];
+      const primary = audios.find((_a, idx) => enabledFlags[idx]) ?? audios[0];
       setCurrentTime(primary.currentTime);
 
       if (loop && primary.currentTime >= loop.end) {
@@ -131,7 +142,7 @@ export function useAudioPlayer(src: string | null, stemSources: StemSource[] = [
 
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [playing, loop, sources.map((s) => (s.enabled ? "1" : "0")).join("")]);
+  }, [playing, loop, enabledFlags, enabledSignature]);
 
   const play = useCallback(() => {
     const audios = audioRefs.current;
@@ -155,19 +166,19 @@ export function useAudioPlayer(src: string | null, stemSources: StemSource[] = [
   const seek = useCallback((time: number) => {
     const audios = audioRefs.current;
     if (audios.length === 0) return;
-    const primary = audios.find((_a, idx) => sources[idx]?.enabled) ?? audios[0];
+    const primary = audios.find((_a, idx) => enabledFlags[idx]) ?? audios[0];
     const clamped = seekAudios(audios, time, primary.duration || 0);
     setCurrentTime(clamped);
-  }, [sources.map((s) => (s.enabled ? "1" : "0")).join("")]);
+  }, [enabledFlags]);
 
   const seekRelative = useCallback((delta: number) => {
     const audios = audioRefs.current;
     if (audios.length === 0) return;
-    const primary = audios.find((_a, idx) => sources[idx]?.enabled) ?? audios[0];
+    const primary = audios.find((_a, idx) => enabledFlags[idx]) ?? audios[0];
     const next = Math.max(0, Math.min(primary.duration || 0, primary.currentTime + delta));
     const clamped = seekAudios(audios, next, primary.duration || 0);
     setCurrentTime(clamped);
-  }, [sources.map((s) => (s.enabled ? "1" : "0")).join("")]);
+  }, [enabledFlags]);
 
   const setVolume = useCallback((v: number) => {
     setVolumeState(v);

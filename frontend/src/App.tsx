@@ -208,7 +208,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    void bootstrap();
+    const handle = window.setTimeout(() => {
+      void bootstrap();
+    }, 0);
+    return () => {
+      window.clearTimeout(handle);
+    };
   }, [bootstrap]);
 
   const loadSongDetails = useCallback(

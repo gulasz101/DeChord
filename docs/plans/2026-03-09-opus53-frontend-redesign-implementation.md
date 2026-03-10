@@ -20,7 +20,7 @@
 - [x] Task 6: Replace frontend app routing/layout to Opus 5-3 navigation hierarchy.
 - [x] Task 7: Refactor Song Detail and Player pages to dedicated-route model with live data.
 - [x] Task 8: Wire stem download actions + claim-account UX in frontend.
-- [ ] Task 9: Add/adjust frontend tests for new route and workflow behavior.
+- [x] Task 9: Add/adjust frontend tests for new route and workflow behavior.
 - [x] Task 10: Run full verification and reset workflow (`make reset`) before handoff.
 - [x] Task 11: Prepare handoff summary and send Telegram notification.
 
