@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import {
   claimIdentity,
   createBand,
+  createProject,
   getSong,
+  uploadAudio,
   regenerateSongStems,
   regenerateSongTabs,
   getStemDownloadUrl,
@@ -24,7 +26,7 @@ import { PlayerPage } from "./redesign/pages/PlayerPage";
 type Route =
   | { page: "landing" }
   | { page: "bands" }
-  | { page: "project"; band: Band; project: Project }
+  | { page: "project"; band: Band; project: Project | null }
   | { page: "songs"; band: Band; project: Project }
   | { page: "song-detail"; band: Band; project: Project; song: Song }
   | { page: "player"; band: Band; project: Project; song: Song };
@@ -262,6 +264,14 @@ export default function App() {
     setRoute({ page: "song-detail", band: route.band, project: route.project, song: detailed });
   }, [loadSongDetails, route]);
 
+  const findBandInHierarchy = useCallback((loadedBands: Band[], bandId: string) => {
+    return loadedBands.find((band) => band.id === bandId) ?? null;
+  }, []);
+
+  const findProjectInBand = useCallback((band: Band | null, projectId: string) => {
+    return band?.projects.find((project) => project.id === projectId) ?? null;
+  }, []);
+
   if (!user) {
     return <LandingPage onGetStarted={() => setRoute({ page: "bands" })} onSignIn={() => setRoute({ page: "bands" })} />;
   }
@@ -301,8 +311,7 @@ export default function App() {
           }}
           onSelectBand={(band) => {
             const firstProject = band.projects[0];
-            if (!firstProject) return;
-            setRoute({ page: "project", band, project: firstProject });
+            setRoute({ page: "project", band, project: firstProject ?? null });
           }}
           onSignOut={() => {
             setRoute({ page: "landing" });
@@ -316,7 +325,19 @@ export default function App() {
           band={route.band}
           project={route.project}
           onSelectProject={(project) => setRoute({ page: "project", band: route.band, project })}
-          onOpenSongs={() => setRoute({ page: "songs", band: route.band, project: route.project })}
+          onCreateProject={async ({ name, description }) => {
+            if (!user) return;
+            const created = await createProject(Number(route.band.id), { name, description });
+            const loadedBands = await refreshBands(user);
+            const refreshedBand = findBandInHierarchy(loadedBands, route.band.id);
+            const refreshedProject = findProjectInBand(refreshedBand, String(created.project.id));
+            if (!refreshedBand) return;
+            setRoute({ page: "project", band: refreshedBand, project: refreshedProject });
+          }}
+          onOpenSongs={() => {
+            if (!route.project) return;
+            setRoute({ page: "songs", band: route.band, project: route.project });
+          }}
           onBack={goBack}
         />
       );
@@ -326,6 +347,15 @@ export default function App() {
           user={user}
           band={route.band}
           project={route.project}
+          onUploadSong={async (file, processMode, tabGenerationQuality) => {
+            if (!user) return;
+            await uploadAudio(file, processMode, tabGenerationQuality, Number(route.project.id));
+            const loadedBands = await refreshBands(user);
+            const refreshedBand = findBandInHierarchy(loadedBands, route.band.id);
+            const refreshedProject = findProjectInBand(refreshedBand, route.project.id);
+            if (!refreshedBand || !refreshedProject) return;
+            setRoute({ page: "songs", band: refreshedBand, project: refreshedProject });
+          }}
           onSelectSong={(song) => {
             void (async () => {
               const detailed = await loadSongDetails(song);

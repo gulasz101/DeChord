@@ -1,11 +1,13 @@
 import { useState } from "react";
 import type { Band, Project, Song, User } from "../lib/types";
+import type { ProcessMode, TabGenerationQuality } from "../../lib/types";
 
 interface SongLibraryPageProps {
   user: User;
   band: Band;
   project: Project;
   onSelectSong: (s: Song) => void;
+  onUploadSong?: (file: File, processMode: ProcessMode, tabGenerationQuality: TabGenerationQuality) => Promise<void> | void;
   onBack: () => void;
 }
 
@@ -17,8 +19,26 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> =
   needs_review: { bg: "rgba(124, 58, 237, 0.15)", text: "#a78bfa", dot: "#8b5cf6" },
 };
 
-export function SongLibraryPage({ user, band, project, onSelectSong, onBack }: SongLibraryPageProps) {
+export function SongLibraryPage({ user, band, project, onSelectSong, onUploadSong, onBack }: SongLibraryPageProps) {
   const [showUpload, setShowUpload] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [processMode, setProcessMode] = useState<ProcessMode>("analysis_and_stems");
+  const [tabGenerationQuality, setTabGenerationQuality] = useState<TabGenerationQuality>("standard");
+  const [isUploading, setIsUploading] = useState(false);
+
+  const startUpload = async () => {
+    if (!selectedFile || !onUploadSong || isUploading) return;
+    setIsUploading(true);
+    try {
+      await onUploadSong(selectedFile, processMode, tabGenerationQuality);
+      setSelectedFile(null);
+      setProcessMode("analysis_and_stems");
+      setTabGenerationQuality("standard");
+      setShowUpload(false);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <div className="me-mesh min-h-screen" style={{ background: "linear-gradient(160deg, #0a0e27 0%, #111638 40%, #0a0e27 100%)" }}>
@@ -52,28 +72,79 @@ export function SongLibraryPage({ user, band, project, onSelectSong, onBack }: S
           <div className="mb-6 border p-6" style={{ borderRadius: "4px", borderColor: "rgba(124, 58, 237, 0.2)", background: "rgba(124, 58, 237, 0.05)", backdropFilter: "blur(12px)" }}>
             <h3 className="mb-3 text-sm font-semibold" style={{ fontFamily: "Playfair Display, serif", color: "#a78bfa", fontSize: "0.7rem" }}>Upload a Song</h3>
             <div className="flex items-center gap-4">
-              <div className="flex-1 rounded-xl border-2 border-dashed p-8 text-center" style={{ borderColor: "rgba(192, 192, 192, 0.15)" }}>
-                <p className="text-sm" style={{ color: "#c0c0c0" }}>Drop an audio file here or click to browse</p>
-                <p className="mt-1 text-xs" style={{ color: "#5a5a6e" }}>MP3, WAV, FLAC — up to 50MB</p>
-              </div>
+              <label className="flex-1 rounded-xl border-2 border-dashed p-8 text-center" style={{ borderColor: "rgba(192, 192, 192, 0.15)" }}>
+                <span className="text-sm" style={{ color: "#c0c0c0" }}>Drop an audio file here or click to browse</span>
+                <span className="mt-1 block text-xs" style={{ color: "#5a5a6e" }}>MP3, WAV, FLAC — up to 50MB</span>
+                <span className="mt-3 block text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: "#a78bfa" }}>
+                  {selectedFile ? selectedFile.name : "Choose File"}
+                </span>
+                <input
+                  aria-label="Song File"
+                  type="file"
+                  accept="audio/*"
+                  className="sr-only"
+                  onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+                />
+              </label>
             </div>
             <div className="mt-4 flex items-center gap-4">
               <label className="text-xs font-medium" style={{ color: "#c0c0c0" }}>Process Mode:</label>
-              <select className="rounded-lg border px-3 py-2 text-xs" style={{ background: "rgba(10, 14, 39, 0.6)", borderColor: "rgba(192, 192, 192, 0.12)", color: "#e2e2f0" }}>
-                <option>Analyze + Split Stems</option>
-                <option>Analyze Only</option>
+              <select
+                aria-label="Process Mode"
+                value={processMode}
+                onChange={(event) => setProcessMode(event.target.value as ProcessMode)}
+                className="rounded-lg border px-3 py-2 text-xs"
+                style={{ background: "rgba(10, 14, 39, 0.6)", borderColor: "rgba(192, 192, 192, 0.12)", color: "#e2e2f0" }}
+              >
+                <option value="analysis_and_stems">Analyze + Split Stems</option>
+                <option value="analysis_only">Analyze Only</option>
               </select>
               <label className="text-xs font-medium" style={{ color: "#c0c0c0" }}>Tab Quality:</label>
-              <select className="rounded-lg border px-3 py-2 text-xs" style={{ background: "rgba(10, 14, 39, 0.6)", borderColor: "rgba(192, 192, 192, 0.12)", color: "#e2e2f0" }}>
-                <option>Standard</option>
-                <option>High Accuracy</option>
-                <option>High Accuracy Aggressive</option>
+              <select
+                aria-label="Tab Quality"
+                value={tabGenerationQuality}
+                onChange={(event) => setTabGenerationQuality(event.target.value as TabGenerationQuality)}
+                className="rounded-lg border px-3 py-2 text-xs"
+                style={{ background: "rgba(10, 14, 39, 0.6)", borderColor: "rgba(192, 192, 192, 0.12)", color: "#e2e2f0" }}
+              >
+                <option value="standard">Standard</option>
+                <option value="high_accuracy">High Accuracy</option>
+                <option value="high_accuracy_aggressive">High Accuracy Aggressive</option>
               </select>
+            </div>
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={() => {
+                  setSelectedFile(null);
+                  setShowUpload(false);
+                }}
+                className="px-4 py-2 text-sm transition-colors hover:text-white"
+                style={{ color: "#7a7a90" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void startUpload()}
+                disabled={!selectedFile || isUploading}
+                className="px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ borderRadius: "3px", background: "linear-gradient(135deg, #14b8a6, #0f766e)" }}
+              >
+                Start Upload
+              </button>
             </div>
           </div>
         )}
 
         {/* Song list */}
+        {project.songs.length === 0 && !showUpload && (
+          <div className="mb-6 border border-dashed p-8 text-center" style={{ borderRadius: "4px", borderColor: "rgba(192, 192, 192, 0.12)", background: "rgba(255, 255, 255, 0.02)" }}>
+            <h2 className="text-xl" style={{ fontFamily: "Playfair Display, serif", color: "#e2e2f0" }}>No Songs Yet</h2>
+            <p className="mt-2 text-sm" style={{ color: "#7a7a90" }}>
+              Upload the first track for this project to start analysis, stem generation, and bass tab work.
+            </p>
+          </div>
+        )}
+
         <div className="space-y-3">
           {project.songs.map((song) => {
             const sc = STATUS_COLORS[song.status] ?? STATUS_COLORS.uploaded;

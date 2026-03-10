@@ -1,10 +1,12 @@
+import { useState } from "react";
 import type { Band, Project, User } from "../lib/types";
 
 interface ProjectHomePageProps {
   user: User;
   band: Band;
-  project: Project;
+  project: Project | null;
   onSelectProject: (p: Project) => void;
+  onCreateProject?: (payload: { name: string; description: string }) => Promise<void> | void;
   onOpenSongs: () => void;
   onBack: () => void;
 }
@@ -21,7 +23,26 @@ const ACTIVITY_ICONS: Record<string, string> = {
   stem_upload: "🎵", comment: "💬", status_change: "✅", song_added: "➕", comment_resolved: "☑️",
 };
 
-export function ProjectHomePage({ user, band, project, onSelectProject, onOpenSongs, onBack }: ProjectHomePageProps) {
+export function ProjectHomePage({ user, band, project, onSelectProject, onCreateProject, onOpenSongs, onBack }: ProjectHomePageProps) {
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [projectName, setProjectName] = useState("");
+  const [projectDescription, setProjectDescription] = useState("");
+  const [isSavingProject, setIsSavingProject] = useState(false);
+
+  const saveProject = async () => {
+    const trimmedName = projectName.trim();
+    if (!trimmedName || !onCreateProject || isSavingProject) return;
+    setIsSavingProject(true);
+    try {
+      await onCreateProject({ name: trimmedName, description: projectDescription.trim() });
+      setProjectName("");
+      setProjectDescription("");
+      setIsCreatingProject(false);
+    } finally {
+      setIsSavingProject(false);
+    }
+  };
+
   return (
     <div className="me-mesh min-h-screen" style={{ background: "linear-gradient(160deg, #0a0e27 0%, #111638 40%, #0a0e27 100%)" }}>
       {/* Header */}
@@ -40,12 +61,21 @@ export function ProjectHomePage({ user, band, project, onSelectProject, onOpenSo
       <div className="relative z-10 mx-auto flex max-w-6xl gap-8 px-8 pt-8">
         {/* Sidebar — project list */}
         <aside className="w-56 shrink-0 border p-4" style={{ borderRadius: "4px", background: "rgba(255, 255, 255, 0.02)", borderColor: "rgba(192, 192, 192, 0.06)", backdropFilter: "blur(12px)" }}>
-          <h3 className="mb-3 text-xs font-medium" style={{ fontFamily: "Playfair Display, serif", color: "#7a7a90" }}>Projects</h3>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-xs font-medium" style={{ fontFamily: "Playfair Display, serif", color: "#7a7a90" }}>Projects</h3>
+            <button
+              onClick={() => setIsCreatingProject(true)}
+              className="text-[10px] font-semibold uppercase tracking-[0.18em] transition-colors hover:text-white"
+              style={{ color: "#a78bfa" }}
+            >
+              New
+            </button>
+          </div>
           <div className="space-y-1">
             {band.projects.map((p) => (
               <button key={p.id} onClick={() => onSelectProject(p)}
                 className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition-colors"
-                style={{ background: p.id === project.id ? "rgba(124, 58, 237, 0.15)" : "transparent", color: p.id === project.id ? "#a78bfa" : "#c0c0c0" }}>
+                style={{ background: p.id === project?.id ? "rgba(124, 58, 237, 0.15)" : "transparent", color: p.id === project?.id ? "#a78bfa" : "#c0c0c0" }}>
                 <span>{p.name}</span>
                 {p.unreadCount > 0 && (
                   <span className="flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold text-white" style={{ background: "#7c3aed" }}>
@@ -76,66 +106,130 @@ export function ProjectHomePage({ user, band, project, onSelectProject, onOpenSo
 
         {/* Main content */}
         <main className="flex-1">
-          <div className="mb-6 flex items-end justify-between">
-            <div>
-              <h1 className="text-3xl" style={{ fontFamily: "Playfair Display, serif", color: "#e2e2f0" }}>{project.name}</h1>
-              <p className="mt-1 text-sm" style={{ color: "#7a7a90" }}>{project.description}</p>
-            </div>
-            <button onClick={onOpenSongs} className="px-6 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 hover:shadow-purple-500/20" style={{ borderRadius: "3px", background: "linear-gradient(135deg, #7c3aed, #5b21b6)" }}>
-              Song Library →
-            </button>
-          </div>
-
-          {/* Stats row */}
-          <div className="mb-8 grid grid-cols-4 gap-3">
-            {[
-              { label: "Songs", value: project.songs.length },
-              { label: "Ready", value: project.songs.filter((s) => s.status === "ready").length },
-              { label: "Processing", value: project.songs.filter((s) => s.status === "processing").length },
-              { label: "Unread", value: project.unreadCount },
-            ].map((s) => (
-              <div key={s.label} className="border p-4" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.06)", background: "rgba(255, 255, 255, 0.02)" }}>
-                <div className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "transparent", backgroundImage: "linear-gradient(135deg, #7c3aed, #14b8a6)", backgroundClip: "text", WebkitBackgroundClip: "text" }}>{s.value}</div>
-                <div className="text-xs" style={{ color: "#7a7a90" }}>{s.label}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Recent activity */}
-          <h2 className="mb-4 text-lg" style={{ fontFamily: "Playfair Display, serif", color: "#e2e2f0" }}>Recent Activity</h2>
-          <div className="space-y-2">
-            {project.recentActivity.map((a) => (
-              <div key={a.id} className="flex items-start gap-3 border-l-2 border p-4" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.05)", borderLeftColor: "rgba(124, 58, 237, 0.4)", background: "rgba(255, 255, 255, 0.02)" }}>
-                <span className="mt-0.5 text-lg">{ACTIVITY_ICONS[a.type] ?? "📌"}</span>
-                <div className="flex-1">
-                  <div className="text-sm" style={{ color: "#e2e2f0" }}>
-                    <span className="font-semibold">{a.authorName}</span>{" "}
-                    <span style={{ color: "#c0c0c0" }}>{a.message}</span>
+          {!project ? (
+            <section className="border p-8" style={{ borderRadius: "4px", borderColor: "rgba(124, 58, 237, 0.2)", background: "rgba(255, 255, 255, 0.03)" }}>
+              <h1 className="text-3xl" style={{ fontFamily: "Playfair Display, serif", color: "#e2e2f0" }}>Create Your First Project</h1>
+              <p className="mt-2 max-w-xl text-sm" style={{ color: "#7a7a90" }}>
+                Projects keep songs, stems, and bass tabs grouped under a band. Start by naming the first one.
+              </p>
+              {!isCreatingProject ? (
+                <button
+                  onClick={() => setIsCreatingProject(true)}
+                  className="mt-5 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+                  style={{ borderRadius: "3px", background: "linear-gradient(135deg, #7c3aed, #5b21b6)" }}
+                >
+                  Create Project
+                </button>
+              ) : (
+                <div className="mt-6 space-y-4">
+                  <label className="block text-xs font-medium uppercase tracking-[0.18em]" style={{ color: "#a78bfa" }}>
+                    Project Name
+                    <input
+                      aria-label="Project Name"
+                      value={projectName}
+                      onChange={(event) => setProjectName(event.target.value)}
+                      className="mt-2 w-full border px-3 py-3 text-sm"
+                      style={{ borderRadius: "3px", background: "rgba(10, 14, 39, 0.7)", borderColor: "rgba(192, 192, 192, 0.12)", color: "#e2e2f0" }}
+                    />
+                  </label>
+                  <label className="block text-xs font-medium uppercase tracking-[0.18em]" style={{ color: "#7a7a90" }}>
+                    Description
+                    <textarea
+                      aria-label="Project Description"
+                      value={projectDescription}
+                      onChange={(event) => setProjectDescription(event.target.value)}
+                      className="mt-2 min-h-28 w-full border px-3 py-3 text-sm"
+                      style={{ borderRadius: "3px", background: "rgba(10, 14, 39, 0.7)", borderColor: "rgba(192, 192, 192, 0.12)", color: "#e2e2f0" }}
+                    />
+                  </label>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setProjectName("");
+                        setProjectDescription("");
+                        setIsCreatingProject(false);
+                      }}
+                      className="px-4 py-2 text-sm transition-colors hover:text-white"
+                      style={{ color: "#7a7a90" }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => void saveProject()}
+                      disabled={!projectName.trim() || isSavingProject}
+                      className="px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                      style={{ borderRadius: "3px", background: "linear-gradient(135deg, #14b8a6, #0f766e)" }}
+                    >
+                      Save Project
+                    </button>
                   </div>
-                  {a.songTitle && <div className="mt-0.5 text-xs" style={{ color: "#7a7a90" }}>in {a.songTitle}</div>}
                 </div>
+              )}
+            </section>
+          ) : (
+            <>
+              <div className="mb-6 flex items-end justify-between">
+                <div>
+                  <h1 className="text-3xl" style={{ fontFamily: "Playfair Display, serif", color: "#e2e2f0" }}>{project.name}</h1>
+                  <p className="mt-1 text-sm" style={{ color: "#7a7a90" }}>{project.description}</p>
+                </div>
+                <button onClick={onOpenSongs} className="px-6 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 hover:shadow-purple-500/20" style={{ borderRadius: "3px", background: "linear-gradient(135deg, #7c3aed, #5b21b6)" }}>
+                  Song Library →
+                </button>
               </div>
-            ))}
-          </div>
 
-          {/* Song status overview */}
-          <h2 className="mb-4 mt-8 text-lg" style={{ fontFamily: "Playfair Display, serif", color: "#e2e2f0" }}>Songs Overview</h2>
-          <div className="space-y-2">
-            {project.songs.map((s) => {
-              const sc = STATUS_COLORS[s.status] ?? STATUS_COLORS.uploaded;
-              return (
-                <div key={s.id} className="flex items-center gap-4 border p-4" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.05)", background: "rgba(255, 255, 255, 0.02)" }}>
-                  <div className="flex-1">
-                    <div className="text-sm font-semibold" style={{ color: "#e2e2f0" }}>{s.title}</div>
-                    <div className="text-xs" style={{ color: "#7a7a90" }}>{s.artist} · {s.key} · {s.tempo} BPM</div>
+              {/* Stats row */}
+              <div className="mb-8 grid grid-cols-4 gap-3">
+                {[
+                  { label: "Songs", value: project.songs.length },
+                  { label: "Ready", value: project.songs.filter((s) => s.status === "ready").length },
+                  { label: "Processing", value: project.songs.filter((s) => s.status === "processing").length },
+                  { label: "Unread", value: project.unreadCount },
+                ].map((s) => (
+                  <div key={s.label} className="border p-4" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.06)", background: "rgba(255, 255, 255, 0.02)" }}>
+                    <div className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "transparent", backgroundImage: "linear-gradient(135deg, #7c3aed, #14b8a6)", backgroundClip: "text", WebkitBackgroundClip: "text" }}>{s.value}</div>
+                    <div className="text-xs" style={{ color: "#7a7a90" }}>{s.label}</div>
                   </div>
-                  <span className="px-3 py-1 text-xs font-medium" style={{ borderRadius: "2px", background: sc.bg, color: sc.text }}>{s.status}</span>
-                  {s.stems.filter((st) => !st.isArchived).length > 0 && <span className="text-xs" style={{ color: "#7a7a90" }}>{s.stems.filter((st) => !st.isArchived).length} stems</span>}
-                  {s.notes.length > 0 && <span className="text-xs" style={{ color: "#7a7a90" }}>{s.notes.filter((n) => !n.resolved).length} open comments</span>}
-                </div>
-              );
-            })}
-          </div>
+                ))}
+              </div>
+
+              {/* Recent activity */}
+              <h2 className="mb-4 text-lg" style={{ fontFamily: "Playfair Display, serif", color: "#e2e2f0" }}>Recent Activity</h2>
+              <div className="space-y-2">
+                {project.recentActivity.map((a) => (
+                  <div key={a.id} className="flex items-start gap-3 border-l-2 border p-4" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.05)", borderLeftColor: "rgba(124, 58, 237, 0.4)", background: "rgba(255, 255, 255, 0.02)" }}>
+                    <span className="mt-0.5 text-lg">{ACTIVITY_ICONS[a.type] ?? "📌"}</span>
+                    <div className="flex-1">
+                      <div className="text-sm" style={{ color: "#e2e2f0" }}>
+                        <span className="font-semibold">{a.authorName}</span>{" "}
+                        <span style={{ color: "#c0c0c0" }}>{a.message}</span>
+                      </div>
+                      {a.songTitle && <div className="mt-0.5 text-xs" style={{ color: "#7a7a90" }}>in {a.songTitle}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Song status overview */}
+              <h2 className="mb-4 mt-8 text-lg" style={{ fontFamily: "Playfair Display, serif", color: "#e2e2f0" }}>Songs Overview</h2>
+              <div className="space-y-2">
+                {project.songs.map((s) => {
+                  const sc = STATUS_COLORS[s.status] ?? STATUS_COLORS.uploaded;
+                  return (
+                    <div key={s.id} className="flex items-center gap-4 border p-4" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.05)", background: "rgba(255, 255, 255, 0.02)" }}>
+                      <div className="flex-1">
+                        <div className="text-sm font-semibold" style={{ color: "#e2e2f0" }}>{s.title}</div>
+                        <div className="text-xs" style={{ color: "#7a7a90" }}>{s.artist} · {s.key} · {s.tempo} BPM</div>
+                      </div>
+                      <span className="px-3 py-1 text-xs font-medium" style={{ borderRadius: "2px", background: sc.bg, color: sc.text }}>{s.status}</span>
+                      {s.stems.filter((st) => !st.isArchived).length > 0 && <span className="text-xs" style={{ color: "#7a7a90" }}>{s.stems.filter((st) => !st.isArchived).length} stems</span>}
+                      {s.notes.length > 0 && <span className="text-xs" style={{ color: "#7a7a90" }}>{s.notes.filter((n) => !n.resolved).length} open comments</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </main>
       </div>
     </div>

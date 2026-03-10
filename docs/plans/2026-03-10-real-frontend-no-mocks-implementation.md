@@ -18,7 +18,7 @@
 - [x] Task 4: Add frontend app integration tests proving no mock fallback and first-band inline creation.
 - [x] Task 5: Implement real API-only bootstrapping and the inline first-band flow.
 - [x] Task 6: Add project creation and project-scoped upload frontend tests.
-- [ ] Task 7: Implement inline create-project and real song upload flows.
+- [x] Task 7: Implement inline create-project and real song upload flows.
 - [ ] Task 8: Verify, run `make reset`, finalize plan state, and notify.
 
 ## Notes
