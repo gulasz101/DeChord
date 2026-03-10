@@ -6,6 +6,7 @@ import { resolvePlaybackSources } from "../lib/playbackSources";
 
 const {
   claimIdentityMock,
+  uploadAudioMock,
   regenerateSongStemsMock,
   regenerateSongTabsMock,
   getSongMock,
@@ -24,6 +25,10 @@ const {
       username: "bassbot",
       is_claimed: true,
     },
+  }),
+  uploadAudioMock: vi.fn().mockResolvedValue({
+    job_id: "job-77",
+    song_id: 77,
   }),
   regenerateSongStemsMock: vi.fn().mockResolvedValue({
     stems: [{ stem_key: "bass", relative_path: "stems/30/bass.wav", mime_type: "audio/x-wav", duration: 48 }],
@@ -88,6 +93,7 @@ vi.mock("../lib/api", async (importOriginal) => {
     getSong: getSongMock,
     listSongStems: listSongStemsMock,
     claimIdentity: claimIdentityMock,
+    uploadAudio: uploadAudioMock,
     regenerateSongStems: regenerateSongStemsMock,
     regenerateSongTabs: regenerateSongTabsMock,
     createBand: createBandMock,
@@ -98,6 +104,15 @@ vi.mock("../lib/api", async (importOriginal) => {
 describe("App integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    listBandsMock.mockResolvedValue({
+      bands: [{ id: 10, name: "Default Band", owner_user_id: 1, created_at: "2026-03-09", project_count: 1 }],
+    });
+    listBandProjectsMock.mockResolvedValue({
+      projects: [{ id: 20, band_id: 10, name: "Default Project", description: "", created_at: "2026-03-09", song_count: 1 }],
+    });
+    listProjectSongsMock.mockResolvedValue({
+      songs: [{ id: 30, project_id: 20, title: "The Trooper", original_filename: "demo.mp3", created_at: "2026-03-09", key: "Em", tempo: 160, duration: 48 }],
+    });
   });
 
   it("renders opus landing shell", () => {
@@ -149,6 +164,69 @@ describe("App integration", () => {
 
     await waitFor(() => {
       expect(createBandMock).toHaveBeenCalledWith({ name: "My Band" });
+    });
+  });
+
+  it("creates a project from the inline empty-project panel", async () => {
+    listBandsMock.mockResolvedValueOnce({
+      bands: [{ id: 11, name: "My Band", owner_user_id: 1, created_at: "2026-03-10", project_count: 0 }],
+    });
+    listBandProjectsMock.mockResolvedValueOnce({ projects: [] }).mockResolvedValueOnce({
+      projects: [{ id: 21, band_id: 11, name: "Debut", description: "", created_at: "2026-03-10", song_count: 0 }],
+    });
+    listProjectSongsMock.mockResolvedValueOnce({ songs: [] });
+
+    render(<App />);
+    fireEvent.click(screen.getByText("Get Started Free"));
+
+    await waitFor(() => {
+      expect(screen.getByText("My Band")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("My Band"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Create Your First Project")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Create Project"));
+    fireEvent.change(screen.getByLabelText("Project Name"), { target: { value: "Debut" } });
+    fireEvent.click(screen.getByText("Save Project"));
+
+    await waitFor(() => {
+      expect(createProjectMock).toHaveBeenCalledWith(11, { name: "Debut", description: "" });
+    });
+  });
+
+  it("uploads a song into the selected project", async () => {
+    listProjectSongsMock.mockResolvedValueOnce({ songs: [] }).mockResolvedValueOnce({
+      songs: [{ id: 77, project_id: 20, title: "New Song", original_filename: "new-song.mp3", created_at: "2026-03-10", key: null, tempo: null, duration: null }],
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    await waitFor(() => {
+      expect(screen.getByText("Default Band")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Default Band"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library →")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    await waitFor(() => {
+      expect(screen.getByText("+ Upload Song")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("+ Upload Song"));
+    const file = new File(["bass"], "new-song.mp3", { type: "audio/mpeg" });
+    fireEvent.change(screen.getByLabelText("Song File"), { target: { files: [file] } });
+    fireEvent.click(screen.getByText("Start Upload"));
+
+    await waitFor(() => {
+      expect(uploadAudioMock).toHaveBeenCalledWith(file, "analysis_and_stems", "standard", 20);
     });
   });
 
