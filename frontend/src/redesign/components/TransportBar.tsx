@@ -14,6 +14,8 @@ interface TransportBarProps {
   onTogglePlay: () => void;
   onSeek: (time: number) => void;
   onSeekRelative: (delta: number) => void;
+  onNoteLaneClick?: (time: number) => void;
+  onNoteMarkerClick?: (noteId: number) => void;
   onVolumeChange: (v: number) => void;
   onSpeedChange: (s: number) => void;
   onClearLoop: () => void;
@@ -91,7 +93,14 @@ function CommentDot({ marker, left, isOwn, onMarkerClick }: CommentDotProps) {
 
 const SPEED_OPTIONS = Array.from({ length: 17 }, (_, i) => 40 + i * 10);
 
-export function TransportBar({ currentTime, duration, playing, volume, speedPercent, loopActive, loopLabel, noteMarkers, currentUserId, onTogglePlay, onSeek, onSeekRelative, onVolumeChange, onSpeedChange, onClearLoop, onCommentLaneClick, onMarkerClick }: TransportBarProps) {
+export function TransportBar({ currentTime, duration, playing, volume, speedPercent, loopActive, loopLabel, noteMarkers, currentUserId, onTogglePlay, onSeek, onSeekRelative, onNoteLaneClick, onNoteMarkerClick, onVolumeChange, onSpeedChange, onClearLoop, onCommentLaneClick, onMarkerClick }: TransportBarProps) {
+  const clampTimeFromClientX = (target: HTMLDivElement, clientX: number) => {
+    const rect = target.getBoundingClientRect();
+    if (rect.width <= 0) return 0;
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return (duration || 0) * ratio;
+  };
+
   return (
     <div className="border px-4 py-3" style={{ borderRadius: "4px", borderColor: "rgba(192, 192, 192, 0.06)", background: "rgba(17, 22, 56, 0.7)", backdropFilter: "blur(16px)" }}>
       <div className="flex items-center gap-3">

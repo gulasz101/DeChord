@@ -9,12 +9,14 @@ interface ChordTimelineProps {
   loopEnd: number | null;
   noteChordIndexes?: Set<number>;
   onChordClick: (index: number) => void;
+  onChordNoteRequest?: (index: number) => void;
+  onChordNoteEdit?: (index: number) => void;
   onSeek: (time: number) => void;
 }
 
 const WINDOW_RADIUS = 3; // Show 3 chords before and after current
 
-export function ChordTimeline({ chords, currentIndex, currentTime, loopStart, loopEnd, noteChordIndexes, onChordClick }: ChordTimelineProps) {
+export function ChordTimeline({ chords, currentIndex, currentTime, loopStart, loopEnd, noteChordIndexes, onChordClick, onChordNoteRequest, onChordNoteEdit }: ChordTimelineProps) {
   const activeRef = useRef<HTMLDivElement>(null);
   const [showAll, setShowAll] = useState(false);
 
@@ -68,7 +70,7 @@ export function ChordTimeline({ chords, currentIndex, currentTime, loopStart, lo
     else if (inLoop) { bg = "rgba(124, 58, 237, 0.15)"; textColor = "#a78bfa"; }
 
     return (
-      <div key={i} ref={isCurrent ? activeRef : undefined} onClick={() => onChordClick(i)}
+      <div key={i} ref={isCurrent ? activeRef : undefined} onClick={() => onChordClick(i)} onDoubleClick={() => onChordNoteRequest?.(i)}
         style={{ borderRadius: "4px", background: bg, color: textColor }}
         className={`relative cursor-pointer select-none overflow-hidden font-mono transition-colors hover:brightness-110 ${
           big ? "h-14 min-w-[80px] flex-1 text-base" : "h-10 min-w-[48px] flex-1 text-sm"
@@ -81,7 +83,16 @@ export function ChordTimeline({ chords, currentIndex, currentTime, loopStart, lo
           {big && <span className="text-[10px] opacity-60">{((chord.end - chord.start)).toFixed(1)}s</span>}
         </div>
         {hasNote && (
-          <div className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full" style={{ background: "#a78bfa" }} />
+          <button
+            type="button"
+            title="Edit chord note"
+            className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full"
+            style={{ background: "#a78bfa" }}
+            onClick={(event) => {
+              event.stopPropagation();
+              onChordNoteEdit?.(i);
+            }}
+          />
         )}
         {loopStart === i && <div className="absolute bottom-0 left-0 top-0 w-1" style={{ background: "#7c3aed" }} />}
         {loopEnd === i && <div className="absolute bottom-0 right-0 top-0 w-1" style={{ background: "#ef4444" }} />}

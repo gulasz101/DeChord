@@ -11,6 +11,7 @@ import { ToastCueLayer } from "../components/ToastCueLayer";
 import { useAudioPlayer } from "../../hooks/useAudioPlayer";
 import { getTabFileUrl } from "../../lib/api";
 import { resolvePlaybackSources } from "../../lib/playbackSources";
+import { NoteEditorModal } from "../../components/NoteEditorModal";
 
 interface PlayerPageProps {
   user: User;
@@ -22,8 +23,9 @@ interface PlayerPageProps {
     text: string;
     timestamp_sec?: number;
     chord_index?: number;
+    toast_duration_sec?: number;
   }) => void | Promise<void>;
-  onUpdateNote?: (noteId: number, payload: { text?: string }) => void | Promise<void>;
+  onUpdateNote?: (noteId: number, payload: { text?: string; toast_duration_sec?: number }) => void | Promise<void>;
   onDeleteNote?: (noteId: number) => void | Promise<void>;
   onSavePlaybackPrefs?: (prefs: PlaybackPrefs) => void | Promise<void>;
   onBack: () => void;
@@ -36,6 +38,12 @@ interface PlayerPageProps {
 }
 
 type SidePanel = "none" | "stems" | "comments";
+type NoteModalState =
+  | { kind: "create-time"; timestampSec: number }
+  | { kind: "edit-time"; noteId: number }
+  | { kind: "create-chord"; chordIndex: number }
+  | { kind: "edit-chord"; noteId: number }
+  | null;
 
 const DEFAULT_PLAYBACK_PREFS = {
   speedPercent: 100,
@@ -82,6 +90,7 @@ export function PlayerPage({
   const [exitingToastIds, setExitingToastIds] = useState<Set<number>>(new Set());
   const firedNoteIds = useRef<Set<number>>(new Set());
   const prevTimestamp = useRef<number>(0);
+  const [noteModal, setNoteModal] = useState<NoteModalState>(null);
 
   // Stem mixer state
   const [activeStemKeys, setActiveStemKeys] = useState<Set<string>>(() => {
@@ -161,6 +170,14 @@ export function PlayerPage({
           text: n.text,
           toastDurationSec: n.toastDurationSec,
         })),
+    [song.notes],
+  );
+  const noteById = useMemo(
+    () => Object.fromEntries(song.notes.map((note) => [note.id, note])),
+    [song.notes],
+  );
+  const chordNoteByIndex = useMemo(
+    () => new Map(song.notes.filter((note) => note.type === "chord" && note.chordIndex !== null).map((note) => [note.chordIndex!, note])),
     [song.notes],
   );
 
@@ -444,6 +461,72 @@ export function PlayerPage({
     }
   }, []);
 
+  const saveModalNote = useCallback(async (payload: { text: string; toastDurationSec?: number }) => {
+    if (noteModal === null) return;
+
+    if (noteModal.kind === "create-time") {
+      await onCreateNote?.({
+        type: "time",
+        text: payload.text,
+        timestamp_sec: noteModal.timestampSec,
+        toast_duration_sec: payload.toastDurationSec,
+      });
+    }
+
+    if (noteModal.kind === "create-chord") {
+      await onCreateNote?.({
+        type: "chord",
+        text: payload.text,
+        chord_index: noteModal.chordIndex,
+      });
+    }
+
+    if (noteModal.kind === "edit-time" || noteModal.kind === "edit-chord") {
+      await onUpdateNote?.(noteModal.noteId, {
+        text: payload.text,
+        toast_duration_sec: payload.toastDurationSec,
+      });
+    }
+
+    setNoteModal(null);
+  }, [noteModal, onCreateNote, onUpdateNote]);
+
+  const deleteModalNote = useCallback(async () => {
+    if (noteModal === null) return;
+    if (noteModal.kind !== "edit-time" && noteModal.kind !== "edit-chord") return;
+    await onDeleteNote?.(noteModal.noteId);
+    setNoteModal(null);
+  }, [noteModal, onDeleteNote]);
+
+  const modalConfig = useMemo(() => {
+    if (noteModal === null) return null;
+    if (noteModal.kind === "create-time") {
+      return {
+        open: true,
+        mode: "time" as const,
+        title: "Add Timed Note",
+        initialText: "",
+        initialToastDurationSec: 2,
+      };
+    }
+    if (noteModal.kind === "create-chord") {
+      return {
+        open: true,
+        mode: "chord" as const,
+        title: "Add Chord Note",
+        initialText: "",
+      };
+    }
+    const note = noteById[noteModal.noteId];
+    return {
+      open: true,
+      mode: note?.type === "time" ? "time" as const : "chord" as const,
+      title: note?.type === "time" ? "Edit Timed Note" : "Edit Chord Note",
+      initialText: note?.text ?? "",
+      initialToastDurationSec: note?.toastDurationSec ?? 2,
+    };
+  }, [noteById, noteModal]);
+
   // Prominent toggle button style helper
   const btnStyle = (active: boolean, activeColor: string) => ({
     background: active ? `${activeColor}22` : "rgba(255,255,255,0.03)",
@@ -504,7 +587,21 @@ export function PlayerPage({
         {/* Player content */}
         <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
           {/* Chord Timeline */}
-          <ChordTimeline chords={song.chords} currentIndex={currentIndex} currentTime={player.currentTime} loopStart={loopStart} loopEnd={loopEnd} noteChordIndexes={noteChordIndexes} onChordClick={handleChordClick} onSeek={player.seek} />
+          <ChordTimeline
+            chords={song.chords}
+            currentIndex={currentIndex}
+            currentTime={player.currentTime}
+            loopStart={loopStart}
+            loopEnd={loopEnd}
+            noteChordIndexes={noteChordIndexes}
+            onChordClick={handleChordClick}
+            onChordNoteRequest={(index) => setNoteModal({ kind: "create-chord", chordIndex: index })}
+            onChordNoteEdit={(index) => {
+              const note = chordNoteByIndex.get(index);
+              if (note) setNoteModal({ kind: "edit-chord", noteId: note.id });
+            }}
+            onSeek={player.seek}
+          />
 
           {/* Fretboard — keep D5 color-changing */}
           <Fretboard chordLabel={currentChord?.label ?? null} nextChordLabel={nextChord?.label ?? null} />
@@ -727,6 +824,8 @@ export function PlayerPage({
             setLoopEnd(null);
             player.setLoop(null);
           }}
+          onNoteLaneClick={(time) => setNoteModal({ kind: "create-time", timestampSec: time })}
+          onNoteMarkerClick={(noteId) => setNoteModal({ kind: "edit-time", noteId })}
           onCommentLaneClick={handleCommentLaneClick}
           onMarkerClick={handleMarkerClick}
         />
@@ -746,6 +845,19 @@ export function PlayerPage({
           onClose={() => setModal({ open: false })}
         />
       )}
+
+      {modalConfig ? (
+        <NoteEditorModal
+          open={modalConfig.open}
+          mode={modalConfig.mode}
+          title={modalConfig.title}
+          initialText={modalConfig.initialText}
+          initialToastDurationSec={modalConfig.initialToastDurationSec}
+          onDelete={noteModal && (noteModal.kind === "edit-time" || noteModal.kind === "edit-chord") ? deleteModalNote : undefined}
+          onClose={() => setNoteModal(null)}
+          onSave={saveModalNote}
+        />
+      ) : null}
     </div>
   );
 }

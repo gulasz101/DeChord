@@ -23,6 +23,8 @@
 - [x] Task 9: Restore note/comment CRUD in the Opus 5-3 player flow.
 - [x] Task 10: Re-run verification/reset after note CRUD restoration.
 - [x] Task 11: Compare the current Opus 5-3 shell against the old MVP and report any remaining parity gaps.
+- [x] Task 12: Restore direct timeline-based note interactions in the Opus 5-3 player.
+- [ ] Task 13: Re-run verification/reset after direct timeline interaction restoration.
 
 ## Implementation Notes
 

@@ -137,7 +137,10 @@ const {
   deleteSongNoteMock: vi.fn().mockResolvedValue(undefined),
   playerPagePropsSpy: vi.fn(),
   savePlaybackPrefsMock: vi.fn().mockResolvedValue({ speed_percent: 120, volume: 1, loop_start_index: null, loop_end_index: null }),
-  createSongNoteMock: vi.fn().mockResolvedValue({ id: 77, type: "time", text: "Watch the Em push", timestamp_sec: 0, chord_index: null, toast_duration_sec: null }),
+  createSongNoteMock: vi.fn()
+    .mockResolvedValueOnce({ id: 77, type: "time", text: "Watch the Em push", timestamp_sec: 0, chord_index: null, toast_duration_sec: null })
+    .mockResolvedValueOnce({ id: 78, type: "time", text: "Hit the pocket here", timestamp_sec: 12, chord_index: null, toast_duration_sec: 2 })
+    .mockResolvedValueOnce({ id: 79, type: "chord", text: "Mute the release", timestamp_sec: null, chord_index: 0, toast_duration_sec: null }),
   updateSongNoteMock: vi.fn().mockResolvedValue({ id: 90, text: "Lock this transition tighter", toast_duration_sec: null }),
   deleteSongNoteMock: vi.fn().mockResolvedValue(undefined),
 }));
@@ -1351,6 +1354,78 @@ describe("App integration", () => {
     await waitFor(() => {
       expect(deleteSongNoteMock).toHaveBeenCalledWith(90);
       expect(screen.queryByText("Lock this transition tighter")).toBeNull();
+    });
+  });
+
+  it("supports direct timeline note interactions in the redesign player", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    await waitFor(() => {
+      expect(screen.getByText("Your Bands")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Default Band"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library →")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("The Trooper"));
+    await waitFor(() => {
+      expect(screen.getByText("▶ Open Player")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("▶ Open Player"));
+    await waitFor(() => {
+      expect(screen.getByText("Tab Viewer")).toBeTruthy();
+    });
+
+    const noteLane = screen.getByTitle("Click to add/edit timed note");
+    Object.defineProperty(noteLane, "getBoundingClientRect", {
+      value: () => ({ left: 0, width: 200 }),
+    });
+    fireEvent.click(noteLane, { clientX: 50 });
+
+    await waitFor(() => {
+      expect(screen.getByText("Add Timed Note")).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText("Add your reminder..."), { target: { value: "Hit the pocket here" } });
+    fireEvent.click(screen.getByText("Save Note"));
+
+    await waitFor(() => {
+      expect(createSongNoteMock).toHaveBeenCalledWith(30, expect.objectContaining({
+        type: "time",
+        text: "Hit the pocket here",
+      }));
+    });
+
+    const chordBlock = screen.getAllByText("Em").find((node) => node.className.includes("font-semibold")) as HTMLElement;
+    fireEvent.doubleClick(chordBlock);
+
+    await waitFor(() => {
+      expect(screen.getByText("Add Chord Note")).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText("Add your reminder..."), { target: { value: "Mute the release" } });
+    fireEvent.click(screen.getByText("Save Note"));
+
+    await waitFor(() => {
+      expect(createSongNoteMock).toHaveBeenCalledWith(30, expect.objectContaining({
+        type: "chord",
+        text: "Mute the release",
+        chord_index: 0,
+      }));
+    });
+
+    fireEvent.click(screen.getAllByTitle("Edit note")[0]);
+    await waitFor(() => {
+      expect(screen.getByText("Edit Timed Note")).toBeTruthy();
     });
   });
 

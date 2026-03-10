@@ -927,6 +927,7 @@ export default function App() {
       text: string;
       timestamp_sec?: number;
       chord_index?: number;
+      toast_duration_sec?: number;
     },
   ) => {
     if (!user) return;
@@ -944,14 +945,18 @@ export default function App() {
   const handleUpdateNote = useCallback(async (
     routeSong: Song,
     noteId: number,
-    payload: { text?: string },
+    payload: { text?: string; toast_duration_sec?: number },
   ) => {
     await updateSongNote(noteId, payload);
     updateSongEverywhere(routeSong.id, (song) => ({
       ...song,
       notes: song.notes.map((note) => (
         note.id === noteId
-          ? { ...note, text: payload.text ?? note.text }
+          ? {
+              ...note,
+              text: payload.text ?? note.text,
+              toastDurationSec: payload.toast_duration_sec ?? note.toastDurationSec ?? null,
+            }
           : note
       )),
     }));
