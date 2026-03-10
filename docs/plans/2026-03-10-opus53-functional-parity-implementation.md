@@ -14,7 +14,7 @@
 
 - [x] Task 1: Add backend song-scoped stem upload API and persistence.
 - [x] Task 2: Extend frontend API/types for manual stem upload.
-- [ ] Task 3: Restore song upload flow in `SongLibraryPage` with progress and warnings.
+- [x] Task 3: Restore song upload flow in `SongLibraryPage` with progress and warnings.
 - [ ] Task 4: Add Opus 5-3 stem upload UI in `SongDetailPage`.
 - [ ] Task 5: Restore real player functionality behind `PlayerPage`.
 - [ ] Task 6: Wire redesigned routes through `App.tsx` and refresh flows.

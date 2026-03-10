@@ -7,6 +7,7 @@ import { resolvePlaybackSources } from "../lib/playbackSources";
 const {
   claimIdentityMock,
   uploadAudioMock,
+  pollUntilCompleteMock,
   uploadSongStemMock,
   getJobStatusMock,
   getResultMock,
@@ -40,6 +41,10 @@ const {
   uploadAudioMock: vi.fn().mockResolvedValue({
     job_id: "job-77",
     song_id: 77,
+  }),
+  pollUntilCompleteMock: vi.fn().mockImplementation(async (_jobId, onProgress) => {
+    onProgress?.({ status: "processing", message: "Splitting stems...", progress_pct: 48, stage_progress_pct: 12, stems_status: "failed", stems_error: "lameenc missing" });
+    return { song_id: 31, key: "Am", tempo: 132, duration: 55, chords: [] };
   }),
   uploadSongStemMock: vi.fn().mockResolvedValue({
     stems: [{ stem_key: "bass", relative_path: "stems/30/bass-di.wav", mime_type: "audio/x-wav", duration: 48 }],
@@ -225,6 +230,7 @@ vi.mock("../lib/api", async (importOriginal) => {
     getSong: getSongMock,
     getSongTabs: getSongTabsMock,
     listSongStems: listSongStemsMock,
+    pollUntilComplete: pollUntilCompleteMock,
     claimIdentity: claimIdentityMock,
     uploadAudio: uploadAudioMock,
     uploadSongStem: uploadSongStemMock,
@@ -1143,6 +1149,36 @@ describe("App integration", () => {
       });
     });
     promptSpy.mockRestore();
+  });
+
+
+  it("uploads a song from the opus 5-3 library flow", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    await waitFor(() => {
+      expect(screen.getByText("Your Bands")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Default Band"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library →")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("+ Upload Song"));
+    const input = screen.getByLabelText("Upload Song File") as HTMLInputElement;
+    const file = new File([new Uint8Array([1, 2, 3])], "fresh-demo.mp3", { type: "audio/mpeg" });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(uploadAudioMock).toHaveBeenCalledWith(file, "analysis_and_stems", "standard");
+      expect(pollUntilCompleteMock).toHaveBeenCalled();
+    });
   });
 
   it("falls back to single-track playback when no stems", () => {

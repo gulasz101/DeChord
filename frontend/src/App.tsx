@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   claimIdentity,
   createBand,
@@ -9,6 +9,7 @@ import {
   getProjectActivity,
   getJobStatus,
   getResult,
+  pollUntilComplete,
   getSong,
   getSongTabs,
   listBandMembers,
@@ -28,7 +29,7 @@ import {
   updateSongNote,
   updateProject,
 } from "./lib/api";
-import type { ProcessMode, TabGenerationQuality } from "./lib/types";
+import type { JobStatus, ProcessMode, TabGenerationQuality } from "./lib/types";
 import type { Band, Project, Song, StemInfo, User, SongNote, Chord } from "./redesign/lib/types";
 import { LandingPage } from "./redesign/pages/LandingPage";
 import { BandSelectPage } from "./redesign/pages/BandSelectPage";
@@ -37,6 +38,7 @@ import { ProcessingJourneyPage } from "./redesign/pages/ProcessingJourneyPage";
 import { SongLibraryPage } from "./redesign/pages/SongLibraryPage";
 import { SongDetailPage } from "./redesign/pages/SongDetailPage";
 import { PlayerPage } from "./redesign/pages/PlayerPage";
+import { deriveStemWarning } from "./lib/uploadWarnings";
 
 type Route =
   | { page: "landing" }
@@ -447,6 +449,10 @@ export default function App() {
   const [isClaimed, setIsClaimed] = useState(false);
   const [showArchivedBands, setShowArchivedBands] = useState(false);
   const [showArchivedProjects, setShowArchivedProjects] = useState(false);
+  const [songUploadLoading, setSongUploadLoading] = useState(false);
+  const [songUploadStatus, setSongUploadStatus] = useState<Pick<JobStatus, "message" | "progress_pct" | "stage_progress_pct"> | null>(null);
+  const [songUploadWarning, setSongUploadWarning] = useState<string | null>(null);
+  const [songUploadError, setSongUploadError] = useState<string | null>(null);
 
   const refreshBands = useCallback(async (includeArchived = false) => {
     const loadedBands = await loadBandHierarchy(includeArchived);
@@ -794,6 +800,56 @@ export default function App() {
     user,
   ]);
 
+  const handleSongUpload = useCallback(async (
+    band: Band,
+    project: Project,
+    file: File,
+    processMode: ProcessMode,
+    tabGenerationQuality: TabGenerationQuality,
+  ) => {
+    if (!user) return;
+    setSongUploadLoading(true);
+    setSongUploadStatus(null);
+    setSongUploadWarning(null);
+    setSongUploadError(null);
+
+    try {
+      const upload = await uploadAudio(file, processMode, tabGenerationQuality);
+      const analysisResult = await pollUntilComplete(upload.job_id, (status) => {
+        setSongUploadStatus({
+          message: status.message ?? status.progress ?? "Processing...",
+          progress_pct: status.progress_pct ?? 0,
+          stage_progress_pct: status.stage_progress_pct ?? 0,
+        });
+        const warning = deriveStemWarning(status);
+        if (warning) setSongUploadWarning(warning);
+      });
+
+      const refreshedBands = await loadBandHierarchy(user);
+      setBands(refreshedBands);
+      const refreshedBand = refreshedBands.find((candidate) => candidate.id === band.id) ?? band;
+      const refreshedProject = refreshedBand.projects.find((candidate) => candidate.id === project.id) ?? project;
+      const uploadedSongId = String(analysisResult.song_id ?? upload.song_id);
+      const refreshedSong = refreshedProject.songs.find((candidate) => candidate.id === uploadedSongId)
+        ?? mapProjectSongSummaryToSong({
+          id: Number(uploadedSongId),
+          project_id: Number(refreshedProject.id),
+          title: file.name.replace(/\.[^.]+$/, "") || "Untitled",
+          original_filename: file.name,
+          created_at: new Date().toISOString(),
+          key: analysisResult.key,
+          tempo: analysisResult.tempo,
+          duration: analysisResult.duration,
+        });
+      const detailedSong = await loadSongDetails(refreshedSong);
+      setRoute({ page: "song-detail", band: refreshedBand, project: refreshedProject, song: detailedSong });
+    } catch (error) {
+      setSongUploadError(error instanceof Error ? error.message : "Upload failed");
+    } finally {
+      setSongUploadLoading(false);
+    }
+  }, [loadSongDetails, user]);
+
   if (!user) {
     return <LandingPage onGetStarted={() => setRoute({ page: "bands" })} onSignIn={() => setRoute({ page: "bands" })} />;
   }
@@ -926,6 +982,10 @@ export default function App() {
               },
             });
           }}
+          uploadLoading={songUploadLoading}
+          uploadStatus={songUploadStatus}
+          uploadWarning={songUploadWarning}
+          uploadError={songUploadError}
           onSelectSong={(song) => {
             void (async () => {
               const detailed = await loadSongDetails(song);
