@@ -134,13 +134,31 @@ class SongTabRegenerateRequest(BaseModel):
     source_stem_key: str = Field(min_length=1, max_length=64)
 
 
+class BandCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+
+
+class ProjectCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+    description: str | None = Field(default=None, max_length=512)
+
+
 def _row_to_dict(row) -> dict:
     return row.asdict() if hasattr(row, "asdict") else dict(row)
 
 
-async def _create_song_record(filename: str | None, mime_type: str | None, audio_blob: bytes) -> int:
+async def _create_song_record(
+    filename: str | None,
+    mime_type: str | None,
+    audio_blob: bytes,
+    *,
+    project_id: int | None = None,
+) -> int:
     user = await get_default_user()
-    project = await get_default_project()
+    resolved_project_id = project_id
+    if resolved_project_id is None:
+        project = await get_default_project()
+        resolved_project_id = int(project["id"])
     title = Path(filename or "Untitled").stem or "Untitled"
     rs = await execute(
         """
@@ -148,7 +166,7 @@ async def _create_song_record(filename: str | None, mime_type: str | None, audio
         VALUES (?, ?, ?, ?, ?, ?)
         RETURNING id
         """,
-        [user["id"], project["id"], title, filename, mime_type, audio_blob],
+        [user["id"], resolved_project_id, title, filename, mime_type, audio_blob],
     )
     return int(rs.rows[0][0])
 
@@ -664,6 +682,66 @@ async def claim_identity(payload: IdentityClaimRequest):
     return {"user": claimed}
 
 
+@app.post("/api/bands")
+async def create_band(payload: BandCreateRequest):
+    user = await get_default_user()
+    created = await execute(
+        """
+        INSERT INTO bands (name, owner_user_id)
+        VALUES (?, ?)
+        RETURNING id, name, owner_user_id, created_at
+        """,
+        [payload.name.strip(), user["id"]],
+    )
+    row = created.rows[0]
+    band_id = int(row[0])
+    await execute(
+        """
+        INSERT INTO band_memberships (band_id, user_id, role)
+        VALUES (?, ?, 'owner')
+        ON CONFLICT(band_id, user_id) DO UPDATE SET
+            role = 'owner',
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        [band_id, user["id"]],
+    )
+    return {
+        "band": {
+            "id": band_id,
+            "name": row[1],
+            "owner_user_id": int(row[2]),
+            "created_at": row[3],
+            "project_count": 0,
+        }
+    }
+
+
+@app.post("/api/bands/{band_id}/projects")
+async def create_project(band_id: int, payload: ProjectCreateRequest):
+    band_rs = await execute("SELECT id FROM bands WHERE id = ? LIMIT 1", [band_id])
+    if not band_rs.rows:
+        raise HTTPException(404, "Band not found")
+    created = await execute(
+        """
+        INSERT INTO projects (band_id, name, description)
+        VALUES (?, ?, ?)
+        RETURNING id, band_id, name, description, created_at
+        """,
+        [band_id, payload.name.strip(), payload.description],
+    )
+    row = created.rows[0]
+    return {
+        "project": {
+            "id": int(row[0]),
+            "band_id": int(row[1]),
+            "name": row[2],
+            "description": row[3],
+            "created_at": row[4],
+            "song_count": 0,
+        }
+    }
+
+
 def _parse_time_signature(time_signature: str) -> tuple[int, int]:
     match = re.match(r"^\s*(\d+)\s*/\s*(\d+)\s*$", time_signature or "")
     if not match:
@@ -820,6 +898,7 @@ async def analyze(
     process_mode: ProcessMode = Form("analysis_only"),
     tabGenerationQuality: Literal["standard", "high_accuracy", "high_accuracy_aggressive"] = Form("standard"),
     onset_recovery: bool | None = Form(None),
+    project_id: int | None = Form(None),
 ):
     job_id = uuid.uuid4().hex[:12]
     ext = Path(file.filename).suffix if file.filename else ".mp3"
@@ -829,7 +908,12 @@ async def analyze(
     with open(audio_path, "wb") as f:
         f.write(content)
 
-    song_id = await _create_song_record(file.filename, file.content_type, content)
+    song_id = await _create_song_record(
+        file.filename,
+        file.content_type,
+        content,
+        project_id=project_id,
+    )
 
     jobs[job_id] = {
         "status": "queued",

@@ -12,8 +12,8 @@
 
 ## Execution Checklist
 
-- [ ] Task 1: Add backend tests for band creation, project creation, and project-scoped upload.
-- [ ] Task 2: Implement backend create-band, create-project, and project-scoped upload behavior.
+- [x] Task 1: Add backend tests for band creation, project creation, and project-scoped upload.
+- [x] Task 2: Implement backend create-band, create-project, and project-scoped upload behavior.
 - [ ] Task 3: Add frontend API/type tests for the new real-data flows.
 - [ ] Task 4: Add frontend page and app integration tests proving no mock fallback and inline creation flows.
 - [ ] Task 5: Implement real API-only bootstrapping and empty states in `App.tsx`.

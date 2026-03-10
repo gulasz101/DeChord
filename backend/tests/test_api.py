@@ -101,6 +101,52 @@ def test_identity_claim_sets_username_and_password_hash(tmp_path, monkeypatch):
     assert claim_payload["user"]["username"] == "bassbot"
 
 
+def test_create_band_creates_owned_band_and_membership(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+    band_name = f"My Band {tmp_path.name}"
+
+    response = client.post("/api/bands", json={"name": band_name})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["band"]["name"] == band_name
+
+    membership_rs = asyncio.run(
+        main.execute(
+            """
+            SELECT role
+            FROM band_memberships
+            WHERE band_id = ? AND user_id = 1
+            """,
+            [payload["band"]["id"]],
+        )
+    )
+    assert membership_rs.rows[0][0] == "owner"
+
+
+def test_create_project_creates_project_under_selected_band(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+    band_name = f"My Band {tmp_path.name}"
+
+    created_band = client.post("/api/bands", json={"name": band_name})
+    band_id = created_band.json()["band"]["id"]
+
+    response = client.post(f"/api/bands/{band_id}/projects", json={"name": "Album Prep", "description": "Spring set"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["project"]["band_id"] == band_id
+    assert payload["project"]["name"] == "Album Prep"
+    assert payload["project"]["description"] == "Spring set"
+
+    project_rs = asyncio.run(
+        main.execute("SELECT band_id, name, description FROM projects WHERE id = ?", [payload["project"]["id"]])
+    )
+    assert tuple(project_rs.rows[0]) == (band_id, "Album Prep", "Spring set")
+
+
 def test_list_bands_projects_and_project_songs(tmp_path, monkeypatch):
     client = _build_client(tmp_path, monkeypatch)
 
@@ -125,6 +171,37 @@ def test_list_bands_projects_and_project_songs(tmp_path, monkeypatch):
     assert songs_response.status_code == 200
     songs = songs_response.json()["songs"]
     assert any(song["id"] == created_song_id for song in songs)
+
+
+def test_analyze_persists_song_in_requested_project(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    band_name = f"My Band {tmp_path.name}"
+
+    created_band = client.post("/api/bands", json={"name": band_name})
+    band_id = created_band.json()["band"]["id"]
+    created_project = client.post(
+        f"/api/bands/{band_id}/projects",
+        json={"name": "Project B", "description": ""},
+    )
+    project_id = created_project.json()["project"]["id"]
+
+    files = {"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")}
+    response = client.post(
+        "/api/analyze",
+        files=files,
+        data={"process_mode": "analysis_only", "project_id": str(project_id)},
+    )
+
+    assert response.status_code == 200
+    song_id = response.json()["song_id"]
+
+    song = client.get(f"/api/songs/{song_id}")
+    assert song.status_code == 200
+    assert song.json()["song"]["id"] == song_id
+
+    project_songs = client.get(f"/api/projects/{project_id}/songs")
+    assert project_songs.status_code == 200
+    assert [row["id"] for row in project_songs.json()["songs"]] == [song_id]
 
 
 def test_stem_download_endpoints_support_single_and_zip(tmp_path, monkeypatch):
