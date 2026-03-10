@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Band, Project, Song, User } from "../lib/types";
 
 interface SongDetailPageProps {
@@ -10,7 +10,7 @@ interface SongDetailPageProps {
   onBack: () => void;
   onDownloadStem?: (stemId: string) => void;
   onDownloadAllStems?: () => void;
-  onUploadStem?: (payload: { stemKey: string; file: File }) => Promise<void> | void;
+  onUploadStem?: (payload: { stemKey: string; file: File } | { file: File; stemName: string; description: string }) => Promise<void> | void;
   onGenerateStems?: () => Promise<void> | void;
   onGenerateBassTab?: (sourceStemKey: string) => Promise<void> | void;
   onCreateNote?: (payload: { type: "general"; text: string }) => Promise<void> | void;
@@ -18,6 +18,8 @@ interface SongDetailPageProps {
   onEditNote?: (noteId: number, payload: { text: string }) => Promise<void> | void;
   onResolveNote?: (noteId: number, resolved: boolean) => Promise<void> | void;
   onDeleteNote?: (noteId: number) => Promise<void> | void;
+  uploadStemLoading?: boolean;
+  uploadStemError?: string | null;
 }
 
 const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
@@ -45,9 +47,12 @@ export function SongDetailPage({
   onEditNote,
   onResolveNote,
   onDeleteNote,
+  uploadStemLoading = false,
+  uploadStemError = null,
 }: SongDetailPageProps) {
   const [showResolved, setShowResolved] = useState(false);
   const [openPanel, setOpenPanel] = useState<"upload" | "stems" | "tabs" | null>(null);
+  const [showStemUpload, setShowStemUpload] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -56,6 +61,10 @@ export function SongDetailPage({
   const [editingText, setEditingText] = useState("");
   const [replyingToId, setReplyingToId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState("");
+  const [stemName, setStemName] = useState("");
+  const [stemDescription, setStemDescription] = useState("");
+  const [stemFile, setStemFile] = useState<File | null>(null);
+  const stemFileInputRef = useRef<HTMLInputElement | null>(null);
   const activeStems = song.stems.filter((s) => !s.isArchived);
   const archivedStems = song.stems.filter((s) => s.isArchived);
   const openComments = song.notes.filter((n) => !n.resolved);
@@ -103,9 +112,17 @@ export function SongDetailPage({
     }
   }
 
+  const submitStemUpload = () => {
+    if (!onUploadStem || !stemFile || !stemName.trim()) return;
+    onUploadStem({
+      file: stemFile,
+      stemName: stemName.trim(),
+      description: stemDescription.trim(),
+    });
+  };
+
   return (
     <div className="me-mesh min-h-screen" style={{ background: "linear-gradient(160deg, #0a0e27 0%, #111638 40%, #0a0e27 100%)" }}>
-      {/* Header */}
       <nav className="relative z-10 flex items-center justify-between border-b px-8 py-4" style={{ borderColor: "rgba(192, 192, 192, 0.06)" }}>
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="text-sm transition-colors hover:text-purple-300" style={{ color: "#c0c0c0" }}>← Song Library</button>
@@ -116,7 +133,6 @@ export function SongDetailPage({
       </nav>
 
       <main className="relative z-10 mx-auto max-w-5xl px-8 pt-8">
-        {/* Song header */}
         <div className="mb-8 flex items-start justify-between">
           <div>
             <div className="mb-2 flex items-center gap-3">
@@ -139,7 +155,6 @@ export function SongDetailPage({
         </div>
 
         <div className="grid grid-cols-3 gap-8">
-          {/* Stems column */}
           <div className="col-span-2">
             <h2 className="mb-4 text-lg" style={{ fontFamily: "Playfair Display, serif", color: "#e2e2f0" }}>Stems</h2>
             {activeStems.length === 0 ? (
@@ -187,7 +202,6 @@ export function SongDetailPage({
               </div>
             )}
 
-            {/* Upload actions */}
             <div className="mt-6 flex gap-3">
               <button
                 onClick={onDownloadAllStems}
@@ -197,7 +211,7 @@ export function SongDetailPage({
                 Download All Stems
               </button>
               <button
-                onClick={() => togglePanel("upload")}
+                onClick={() => { togglePanel("upload"); setShowStemUpload((value) => !value); }}
                 className="border px-5 py-2.5 text-sm font-medium transition-all hover:bg-white/5 hover:border-purple-500/30"
                 style={{ borderRadius: "3px", borderColor: openPanel === "upload" ? "rgba(20, 184, 166, 0.35)" : "rgba(192, 192, 192, 0.1)", color: openPanel === "upload" ? "#14b8a6" : "#c0c0c0" }}
               >
@@ -306,6 +320,42 @@ export function SongDetailPage({
               </div>
             )}
 
+            {showStemUpload && (
+              <div className="mt-4 border p-5" style={{ borderRadius: "4px", borderColor: "rgba(124, 58, 237, 0.2)", background: "rgba(124, 58, 237, 0.05)", backdropFilter: "blur(12px)" }}>
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold" style={{ fontFamily: "Playfair Display, serif", color: "#e8e8f0" }}>Attach a Manual Stem</h3>
+                    <p className="mt-1 text-xs" style={{ color: "#7a7a90" }}>Upload a song-specific stem without leaving the Opus 5-3 detail flow.</p>
+                  </div>
+                  {uploadStemLoading ? <span className="text-xs font-semibold" style={{ color: "#a78bfa" }}>Saving stem...</span> : null}
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="block text-xs font-medium" style={{ color: "#c0c0c0" }}>
+                    <span className="mb-1 block">Stem Name</span>
+                    <input aria-label="Stem Name" value={stemName} onChange={(event) => setStemName(event.target.value)} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ background: "rgba(10, 14, 39, 0.6)", borderColor: "rgba(192, 192, 192, 0.12)", color: "#e2e2f0" }} />
+                  </label>
+                  <label className="block text-xs font-medium" style={{ color: "#c0c0c0" }}>
+                    <span className="mb-1 block">Stem Description</span>
+                    <input aria-label="Stem Description" value={stemDescription} onChange={(event) => setStemDescription(event.target.value)} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ background: "rgba(10, 14, 39, 0.6)", borderColor: "rgba(192, 192, 192, 0.12)", color: "#e2e2f0" }} />
+                  </label>
+                </div>
+                <div className="mt-4 flex items-center gap-3">
+                  <button type="button" onClick={() => stemFileInputRef.current?.click()} className="rounded-lg border px-4 py-2 text-sm transition-all hover:bg-white/5" style={{ borderColor: "rgba(192, 192, 192, 0.12)", color: "#c0c0c0" }}>
+                    {stemFile ? stemFile.name : "Choose Stem File"}
+                  </button>
+                  <input ref={stemFileInputRef} aria-label="Stem Upload File" type="file" accept="audio/*,.wav,.mp3,.flac,.m4a,.aac" className="hidden" onChange={(event) => setStemFile(event.target.files?.[0] ?? null)} />
+                  <button type="button" onClick={submitStemUpload} disabled={!stemFile || !stemName.trim() || uploadStemLoading} className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-50" style={{ background: "linear-gradient(135deg, #7c3aed, #5b21b6)" }}>
+                    Save Stem
+                  </button>
+                </div>
+                {uploadStemError ? (
+                  <div className="mt-3 rounded border px-4 py-3 text-sm" style={{ borderColor: "rgba(239, 68, 68, 0.22)", background: "rgba(239, 68, 68, 0.08)", color: "#ffb3b3" }}>
+                    {uploadStemError}
+                  </div>
+                ) : null}
+              </div>
+            )}
+
             {openPanel === "stems" && (
               <div className="mt-4 border p-4" style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.2)", background: "rgba(20, 184, 166, 0.06)" }}>
                 <h3 className="text-sm font-semibold" style={{ color: "#e2e2f0" }}>Regenerate System Stems</h3>
@@ -394,7 +444,6 @@ export function SongDetailPage({
             )}
           </div>
 
-          {/* Comments column */}
           <div>
             <h2 className="mb-4 text-lg" style={{ fontFamily: "Playfair Display, serif", color: "#e2e2f0" }}>Comments</h2>
             <div className="mb-4 border p-4" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.05)", background: "rgba(255, 255, 255, 0.02)" }}>
