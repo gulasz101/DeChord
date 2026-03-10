@@ -19,7 +19,7 @@
 - [x] Task 5: Restore real player functionality behind `PlayerPage`.
 - [x] Task 6: Wire redesigned routes through `App.tsx` and refresh flows.
 - [x] Task 7: Verify, reset, finalize plan status, and notify.
-- [ ] Task 8: Re-run verification/reset after the player parity follow-up.
+- [x] Task 8: Re-run verification/reset after the player parity follow-up.
 
 ## Implementation Notes
 
