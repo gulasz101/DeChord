@@ -30,5 +30,5 @@
 <task>[x] Run `make reset` (required before final verification/handoff). (commit: https://github.com/gulasz101/DeChord/commit/308838e)</task>
 <task>[x] Update this plan’s tasks to `[x]` as completed. (commit: https://github.com/gulasz101/DeChord/commit/02a02b8)</task>
 <task>[x] Commit with message referencing this plan path, the touched task, tool `opencode`, and model `gpt-5.1-codex-max`. (commit: https://github.com/gulasz101/DeChord/commit/308838e)</task>
-<task>[ ] Push to enable clickable commit link in the plan.</task>
+<task>[x] Push to enable clickable commit link in the plan.</task>
 <task>[ ] Dispatch subagent to send Telegram summary after verification.</task>
