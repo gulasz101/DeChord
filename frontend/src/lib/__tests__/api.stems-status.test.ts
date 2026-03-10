@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { getStemDownloadUrl, getStemsZipDownloadUrl, listSongStems, uploadAudio } from "../api";
+import { getStemDownloadUrl, getStemsZipDownloadUrl, listSongStems, regenerateSongStems, uploadAudio } from "../api";
 
 describe("api stems/status contract", () => {
   it("sends process_mode and default tabGenerationQuality on upload analyze request", async () => {
@@ -106,5 +106,27 @@ describe("api stems/status contract", () => {
   it("builds per-stem and zip download urls", () => {
     expect(getStemDownloadUrl(7, "bass")).toBe("/api/songs/7/stems/bass/download");
     expect(getStemsZipDownloadUrl(7)).toBe("/api/songs/7/stems/download");
+  });
+
+  it("posts to regenerate song stems", async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        stems: [
+          { stem_key: "bass", relative_path: "stems/7/bass.wav", mime_type: "audio/x-wav", duration: 1.2 },
+        ],
+      }),
+    });
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      const res = await regenerateSongStems(7);
+
+      expect(fetchMock).toHaveBeenCalledWith("/api/songs/7/stems/regenerate", { method: "POST" });
+      expect(res.stems[0].stem_key).toBe("bass");
+    } finally {
+      (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
+    }
   });
 });

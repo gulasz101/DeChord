@@ -391,11 +391,13 @@ async def _regenerate_song_tabs(song_id: int, source_stem_key: str) -> dict:
     drums_path = stems_by_key.get("drums")
     if drums_path is None:
         raise HTTPException(422, "Drums stem missing; cannot build rhythm grid.")
+    analysis_stems = dict(stems_by_key)
+    analysis_stems["bass"] = stems_by_key[source_stem_key]
 
     analysis_output_dir = STEMS_DIR / str(song_id) / "analysis"
     analysis_output_dir.mkdir(parents=True, exist_ok=True)
     analysis_stem_result = build_bass_analysis_stem(
-        stems=stems_by_key,
+        stems=analysis_stems,
         output_dir=analysis_output_dir,
         analysis_config=_get_uploaded_stems_analysis_config("standard"),
         source_audio_path=None,

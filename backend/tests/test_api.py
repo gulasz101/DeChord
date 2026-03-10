@@ -1275,3 +1275,76 @@ def test_regenerate_song_tabs_requires_drums_stem_for_rhythm_grid(tmp_path, monk
 
     assert response.status_code == 422
     assert response.json()["detail"] == "Drums stem missing; cannot build rhythm grid."
+
+
+def test_regenerate_song_tabs_uses_selected_non_bass_stem_as_analysis_source(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+    from app.services.alphatex_exporter import SyncPoint
+    from app.services.rhythm_grid import Bar
+    from app.services.tab_pipeline import TabPipelineResult
+
+    inserted = asyncio.run(
+        main.execute(
+            """
+            INSERT INTO songs (user_id, title, original_filename, mime_type, audio_blob)
+            VALUES (1, 'Demo Song', 'demo.mp3', 'audio/mpeg', x'00')
+            RETURNING id
+            """
+        )
+    )
+    song_id = int(inserted.rows[0][0])
+
+    stem_dir = tmp_path / "stems" / str(song_id)
+    stem_dir.mkdir(parents=True, exist_ok=True)
+    guitar = stem_dir / "guitar.wav"
+    drums = stem_dir / "drums.wav"
+    guitar.write_bytes(b"guitar-audio")
+    drums.write_bytes(b"drums-audio")
+    for stem_key, path in (("guitar", guitar), ("drums", drums)):
+        asyncio.run(
+            main.execute(
+                """
+                INSERT INTO song_stems (song_id, stem_key, relative_path, mime_type, duration)
+                VALUES (?, ?, ?, 'audio/x-wav', 2.0)
+                """,
+                [song_id, stem_key, str(path)],
+            )
+        )
+
+    captured: dict[str, object] = {}
+
+    def fake_build_bass_analysis_stem(*, stems, output_dir, source_audio_path=None, analysis_config=None, separate_fn=None):
+        captured["bass_path"] = str(stems["bass"])
+        captured["drums_path"] = str(stems["drums"])
+        analysis_path = output_dir / "bass_analysis.wav"
+        analysis_path.parent.mkdir(parents=True, exist_ok=True)
+        analysis_path.write_bytes(b"analysis-bass")
+        return main.BassAnalysisStemResult(
+            path=analysis_path,
+            source_model="test-model",
+            diagnostics={"selected_model": "test-model"},
+        )
+
+    def fake_run(*_args, **_kwargs):
+        return TabPipelineResult(
+            alphatex="\\tempo 120\n\\sync(0 0 0 0)",
+            tempo_used=120.0,
+            bars=[Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])],
+            sync_points=[SyncPoint(bar_index=0, millisecond_offset=0)],
+            midi_bytes=b"MThd\x00\x00\x00\x06",
+            fingered_notes=[],
+            debug_info={"rhythm_source": "madmom"},
+        )
+
+    monkeypatch.setattr(main, "build_bass_analysis_stem", fake_build_bass_analysis_stem)
+    monkeypatch.setattr(main.tab_pipeline, "run", fake_run)
+
+    response = client.post(
+        f"/api/songs/{song_id}/tabs/regenerate",
+        json={"source_stem_key": "guitar"},
+    )
+
+    assert response.status_code == 200
+    assert captured["bass_path"].endswith("guitar.wav")
+    assert captured["drums_path"].endswith("drums.wav")

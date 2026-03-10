@@ -14,9 +14,9 @@
 - [x] Task 2: Define the minimal backend API contracts for song-scoped generation.
 - [x] Task 3: Add backend tests for the new generation endpoints.
 - [x] Task 4: Implement backend generation endpoints and persistence updates.
-- [ ] Task 5: Extend frontend API/types for generation flows and job/result handling.
-- [ ] Task 6: Add Opus 5-3 song detail generation panels and source selection UX.
-- [ ] Task 7: Wire `App.tsx` route refresh and progress handling for generation actions.
+- [x] Task 5: Extend frontend API/types for generation flows and job/result handling.
+- [x] Task 6: Add Opus 5-3 song detail generation panels and source selection UX.
+- [x] Task 7: Wire `App.tsx` route refresh and progress handling for generation actions.
 - [ ] Task 8: Verify flows end-to-end, run `make reset`, finalize plan state, and notify.
 
 ## Notes

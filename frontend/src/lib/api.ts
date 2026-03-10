@@ -6,6 +6,7 @@ import type {
   SongsListResponse,
   SongStemsResponse,
   SongTabsResponse,
+  SongTabRegeneratePayload,
   SongNote,
   PlaybackPrefs,
   ProcessMode,
@@ -112,6 +113,27 @@ export async function listSongStems(songId: number): Promise<SongStemsResponse> 
 export async function getSongTabs(songId: number): Promise<SongTabsResponse> {
   const res = await fetch(`${BASE}/api/songs/${songId}/tabs`);
   if (!res.ok) throw new Error("Failed to fetch tabs metadata");
+  return res.json();
+}
+
+export async function regenerateSongStems(songId: number): Promise<SongStemsResponse> {
+  const res = await fetch(`${BASE}/api/songs/${songId}/stems/regenerate`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error("Failed to regenerate stems");
+  return res.json();
+}
+
+export async function regenerateSongTabs(
+  songId: number,
+  payload: SongTabRegeneratePayload,
+): Promise<SongTabsResponse> {
+  const res = await fetch(`${BASE}/api/songs/${songId}/tabs/regenerate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Failed to regenerate tabs");
   return res.json();
 }
 

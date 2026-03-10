@@ -105,6 +105,7 @@ export interface SongStemsResponse {
 
 export interface SongTabMeta {
   id: number;
+  source_stem_key: string;
   source_midi_id: number;
   tab_format: string;
   tuning: string;
@@ -118,6 +119,10 @@ export interface SongTabMeta {
 
 export interface SongTabsResponse {
   tab: SongTabMeta | null;
+}
+
+export interface SongTabRegeneratePayload {
+  source_stem_key: string;
 }
 
 export interface IdentityUser {

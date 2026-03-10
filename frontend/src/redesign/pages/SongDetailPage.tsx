@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Band, Project, Song, User } from "../lib/types";
 
 interface SongDetailPageProps {
@@ -10,6 +10,8 @@ interface SongDetailPageProps {
   onBack: () => void;
   onDownloadStem?: (stemId: string) => void;
   onDownloadAllStems?: () => void;
+  onGenerateStems?: () => Promise<void> | void;
+  onGenerateBassTab?: (sourceStemKey: string) => Promise<void> | void;
 }
 
 const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
@@ -29,13 +31,40 @@ export function SongDetailPage({
   onBack,
   onDownloadStem,
   onDownloadAllStems,
+  onGenerateStems,
+  onGenerateBassTab,
 }: SongDetailPageProps) {
   const [showResolved, setShowResolved] = useState(false);
+  const [openPanel, setOpenPanel] = useState<"stems" | "tabs" | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const activeStems = song.stems.filter((s) => !s.isArchived);
   const archivedStems = song.stems.filter((s) => s.isArchived);
   const openComments = song.notes.filter((n) => !n.resolved);
   const resolvedComments = song.notes.filter((n) => n.resolved);
   const ss = STATUS_STYLES[song.status] ?? STATUS_STYLES.uploaded;
+  const tabEligibleStems = activeStems.filter((stem) => stem.stemKey !== "drums");
+  const defaultTabStemKey = tabEligibleStems.find((stem) => stem.stemKey === "bass")?.stemKey ?? tabEligibleStems[0]?.stemKey ?? "";
+  const [selectedTabStemKey, setSelectedTabStemKey] = useState(defaultTabStemKey);
+
+  useEffect(() => {
+    setSelectedTabStemKey(defaultTabStemKey);
+  }, [defaultTabStemKey]);
+
+  async function runAction(action: () => Promise<void>, successMessage: string) {
+    setActionError(null);
+    setActionSuccess(null);
+    setIsSubmitting(true);
+    try {
+      await action();
+      setActionSuccess(successMessage);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Action failed");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <div className="me-mesh min-h-screen" style={{ background: "linear-gradient(160deg, #0a0e27 0%, #111638 40%, #0a0e27 100%)" }}>
@@ -130,13 +159,116 @@ export function SongDetailPage({
               <button className="border px-5 py-2.5 text-sm font-medium transition-all hover:bg-white/5 hover:border-purple-500/30" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}>
                 Upload Stem
               </button>
-              <button className="border px-5 py-2.5 text-sm font-medium transition-all hover:bg-white/5 hover:border-purple-500/30" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}>
+              <button
+                onClick={() => {
+                  setOpenPanel(openPanel === "stems" ? null : "stems");
+                  setActionError(null);
+                  setActionSuccess(null);
+                }}
+                className="border px-5 py-2.5 text-sm font-medium transition-all hover:bg-white/5 hover:border-purple-500/30"
+                style={{ borderRadius: "3px", borderColor: openPanel === "stems" ? "rgba(20, 184, 166, 0.35)" : "rgba(192, 192, 192, 0.1)", color: openPanel === "stems" ? "#14b8a6" : "#c0c0c0" }}
+              >
                 Generate Stems
               </button>
-              <button className="border px-5 py-2.5 text-sm font-medium transition-all hover:bg-white/5 hover:border-purple-500/30" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}>
+              <button
+                onClick={() => {
+                  setOpenPanel(openPanel === "tabs" ? null : "tabs");
+                  setActionError(null);
+                  setActionSuccess(null);
+                }}
+                className="border px-5 py-2.5 text-sm font-medium transition-all hover:bg-white/5 hover:border-purple-500/30"
+                style={{ borderRadius: "3px", borderColor: openPanel === "tabs" ? "rgba(20, 184, 166, 0.35)" : "rgba(192, 192, 192, 0.1)", color: openPanel === "tabs" ? "#14b8a6" : "#c0c0c0" }}
+              >
                 Generate Bass Tab
               </button>
             </div>
+
+            {openPanel === "stems" && (
+              <div className="mt-4 border p-4" style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.2)", background: "rgba(20, 184, 166, 0.06)" }}>
+                <h3 className="text-sm font-semibold" style={{ color: "#e2e2f0" }}>Regenerate System Stems</h3>
+                <p className="mt-2 text-sm" style={{ color: "#c0c0c0" }}>
+                  This regenerates system stems from the original uploaded mix. Existing stem records are refreshed in place.
+                </p>
+                {actionError && <p className="mt-3 text-sm" style={{ color: "#ef4444" }}>{actionError}</p>}
+                {actionSuccess && <p className="mt-3 text-sm" style={{ color: "#14b8a6" }}>{actionSuccess}</p>}
+                <div className="mt-4 flex gap-3">
+                  <button
+                    onClick={() => void runAction(async () => { await onGenerateStems?.(); }, "Stems regenerated.")}
+                    disabled={isSubmitting}
+                    className="border px-4 py-2 text-sm font-medium transition-all disabled:opacity-60"
+                    style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.35)", color: "#14b8a6" }}
+                  >
+                    {isSubmitting ? "Generating..." : "Confirm Stem Generation"}
+                  </button>
+                  <button
+                    onClick={() => setOpenPanel(null)}
+                    disabled={isSubmitting}
+                    className="border px-4 py-2 text-sm font-medium transition-all disabled:opacity-60"
+                    style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {openPanel === "tabs" && (
+              <div className="mt-4 border p-4" style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.2)", background: "rgba(20, 184, 166, 0.06)" }}>
+                <h3 className="text-sm font-semibold" style={{ color: "#e2e2f0" }}>Generate Bass Tab</h3>
+                <p className="mt-2 text-sm" style={{ color: "#c0c0c0" }}>
+                  Choose the stem to use as the bass-tab source. Bass is selected by default when available.
+                </p>
+                <div className="mt-4 space-y-2">
+                  {tabEligibleStems.length === 0 ? (
+                    <p className="text-sm" style={{ color: "#ef4444" }}>No eligible stems available for tab generation.</p>
+                  ) : (
+                    tabEligibleStems.map((stem) => (
+                      <label key={stem.id} className="flex items-center gap-3 border px-3 py-2 text-sm" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.08)", color: "#e2e2f0" }}>
+                        <input
+                          type="radio"
+                          name="tab-source-stem"
+                          aria-label={stem.label}
+                          value={stem.stemKey}
+                          checked={selectedTabStemKey === stem.stemKey}
+                          onChange={() => setSelectedTabStemKey(stem.stemKey)}
+                        />
+                        <span>{stem.label}</span>
+                        <span style={{ color: "#7a7a90" }}>{stem.description}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+                {actionError && <p className="mt-3 text-sm" style={{ color: "#ef4444" }}>{actionError}</p>}
+                {actionSuccess && <p className="mt-3 text-sm" style={{ color: "#14b8a6" }}>{actionSuccess}</p>}
+                <div className="mt-4 flex gap-3">
+                  <button
+                    onClick={() => {
+                      const selectedStem = tabEligibleStems.find((stem) => stem.stemKey === selectedTabStemKey);
+                      void runAction(
+                        async () => {
+                          if (!selectedStem) throw new Error("Select a source stem");
+                          await onGenerateBassTab?.(selectedStem.stemKey);
+                        },
+                        `Bass tab regenerated from ${tabEligibleStems.find((stem) => stem.stemKey === selectedTabStemKey)?.label ?? selectedTabStemKey}.`,
+                      );
+                    }}
+                    disabled={isSubmitting || !selectedTabStemKey}
+                    className="border px-4 py-2 text-sm font-medium transition-all disabled:opacity-60"
+                    style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.35)", color: "#14b8a6" }}
+                  >
+                    {isSubmitting ? "Generating..." : "Confirm Tab Generation"}
+                  </button>
+                  <button
+                    onClick={() => setOpenPanel(null)}
+                    disabled={isSubmitting}
+                    className="border px-4 py-2 text-sm font-medium transition-all disabled:opacity-60"
+                    style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Comments column */}

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import {
   claimIdentity,
   getSong,
+  regenerateSongStems,
+  regenerateSongTabs,
   getStemDownloadUrl,
   getStemsZipDownloadUrl,
   listBandProjects,
@@ -265,6 +267,12 @@ export default function App() {
     }
   }, [route]);
 
+  const refreshSongDetailRoute = useCallback(async () => {
+    if (route.page !== "song-detail") return;
+    const detailed = await loadSongDetails(route.song);
+    setRoute({ page: "song-detail", band: route.band, project: route.project, song: detailed });
+  }, [loadSongDetails, route]);
+
   if (!user) {
     return <LandingPage onGetStarted={() => setRoute({ page: "bands" })} onSignIn={() => setRoute({ page: "bands" })} />;
   }
@@ -345,6 +353,18 @@ export default function App() {
             const songId = Number(route.song.id);
             if (Number.isNaN(songId) || typeof window === "undefined") return;
             window.location.assign(getStemsZipDownloadUrl(songId));
+          }}
+          onGenerateStems={async () => {
+            const songId = Number(route.song.id);
+            if (Number.isNaN(songId)) return;
+            await regenerateSongStems(songId);
+            await refreshSongDetailRoute();
+          }}
+          onGenerateBassTab={async (sourceStemKey) => {
+            const songId = Number(route.song.id);
+            if (Number.isNaN(songId)) return;
+            await regenerateSongTabs(songId, { source_stem_key: sourceStemKey });
+            await refreshSongDetailRoute();
           }}
           onOpenPlayer={() => setRoute({ page: "player", band: route.band, project: route.project, song: route.song })}
           onBack={goBack}

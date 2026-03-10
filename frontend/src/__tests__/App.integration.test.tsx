@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import App from "../App";
 import { resolvePlaybackSources } from "../lib/playbackSources";
 
-const { claimIdentityMock } = vi.hoisted(() => ({
+const { claimIdentityMock, regenerateSongStemsMock, regenerateSongTabsMock, getSongMock, listSongStemsMock } = vi.hoisted(() => ({
   claimIdentityMock: vi.fn().mockResolvedValue({
     user: {
       id: 1,
@@ -13,6 +13,33 @@ const { claimIdentityMock } = vi.hoisted(() => ({
       username: "bassbot",
       is_claimed: true,
     },
+  }),
+  regenerateSongStemsMock: vi.fn().mockResolvedValue({
+    stems: [{ stem_key: "bass", relative_path: "stems/30/bass.wav", mime_type: "audio/x-wav", duration: 48 }],
+  }),
+  regenerateSongTabsMock: vi.fn().mockResolvedValue({
+    tab: {
+      id: 1,
+      source_stem_key: "bass",
+      source_midi_id: 1,
+      tab_format: "alphatex",
+      tuning: "E1,A1,D2,G2",
+      strings: 4,
+      generator_version: "v2-rhythm-grid",
+      status: "complete",
+      error_message: null,
+      created_at: "2026-03-10",
+      updated_at: "2026-03-10",
+    },
+  }),
+  getSongMock: vi.fn().mockResolvedValue({
+    song: { id: 30, title: "The Trooper", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-09" },
+    analysis: { key: "Em", tempo: 160, duration: 48, chords: [] },
+    notes: [],
+    playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+  }),
+  listSongStemsMock: vi.fn().mockResolvedValue({
+    stems: [{ stem_key: "bass", relative_path: "stems/30/bass.wav", mime_type: "audio/x-wav", duration: 48 }],
   }),
 }));
 
@@ -38,14 +65,11 @@ vi.mock("../lib/api", async (importOriginal) => {
     listProjectSongs: vi.fn().mockResolvedValue({
       songs: [{ id: 30, project_id: 20, title: "The Trooper", original_filename: "demo.mp3", created_at: "2026-03-09", key: "Em", tempo: 160, duration: 48 }],
     }),
-    getSong: vi.fn().mockResolvedValue({
-      song: { id: 30, title: "The Trooper", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-09" },
-      analysis: { key: "Em", tempo: 160, duration: 48, chords: [] },
-      notes: [],
-      playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
-    }),
-    listSongStems: vi.fn().mockResolvedValue({ stems: [] }),
+    getSong: getSongMock,
+    listSongStems: listSongStemsMock,
     claimIdentity: claimIdentityMock,
+    regenerateSongStems: regenerateSongStemsMock,
+    regenerateSongTabs: regenerateSongTabsMock,
   };
 });
 
@@ -119,5 +143,40 @@ describe("App integration", () => {
     expect(resolved.stemSources).toHaveLength(1);
     expect(resolved.stemSources[0].url).toBe("/api/audio/5/stems/drums");
     expect(resolved.audioSrc).toBe("/api/audio/5");
+  });
+
+  it("regenerates stems from song detail and refreshes the song route", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    await waitFor(() => {
+      expect(screen.getByText("Your Bands")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Default Band"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library →")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    await waitFor(() => {
+      expect(screen.getByText("The Trooper")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("The Trooper"));
+    await waitFor(() => {
+      expect(screen.getByText("Generate Stems")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Generate Stems"));
+    fireEvent.click(screen.getByText("Confirm Stem Generation"));
+
+    await waitFor(() => {
+      expect(regenerateSongStemsMock).toHaveBeenCalledWith(30);
+    });
+    await waitFor(() => {
+      expect(getSongMock.mock.calls.length).toBeGreaterThan(1);
+      expect(listSongStemsMock.mock.calls.length).toBeGreaterThan(1);
+    });
   });
 });
