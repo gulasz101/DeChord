@@ -7,11 +7,13 @@ import { resolvePlaybackSources } from "../lib/playbackSources";
 const {
   claimIdentityMock,
   uploadAudioMock,
+  uploadSongStemMock,
   getJobStatusMock,
   getResultMock,
   regenerateSongStemsMock,
   regenerateSongTabsMock,
   getSongMock,
+  getSongTabsMock,
   listSongStemsMock,
   listBandsMock,
   listBandProjectsMock,
@@ -31,6 +33,9 @@ const {
   uploadAudioMock: vi.fn().mockResolvedValue({
     job_id: "job-77",
     song_id: 77,
+  }),
+  uploadSongStemMock: vi.fn().mockResolvedValue({
+    stems: [{ stem_key: "bass", relative_path: "stems/30/bass-di.wav", mime_type: "audio/x-wav", duration: 48 }],
   }),
   getJobStatusMock: vi.fn().mockResolvedValue({
     status: "complete",
@@ -69,6 +74,23 @@ const {
     analysis: { key: "Em", tempo: 160, duration: 48, chords: [] },
     notes: [],
     playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+  }),
+  getSongTabsMock: vi.fn().mockResolvedValue({
+    tab: {
+      id: 1,
+      source_stem_key: "bass",
+      source_midi_id: 1,
+      source_type: "user",
+      source_display_name: "Bass DI",
+      tab_format: "alphatex",
+      tuning: "E1,A1,D2,G2",
+      strings: 4,
+      generator_version: "v2-rhythm-grid",
+      status: "complete",
+      error_message: null,
+      created_at: "2026-03-10",
+      updated_at: "2026-03-10",
+    },
   }),
   listSongStemsMock: vi.fn().mockResolvedValue({
     stems: [{ stem_key: "bass", relative_path: "stems/30/bass.wav", mime_type: "audio/x-wav", duration: 48 }],
@@ -109,9 +131,11 @@ vi.mock("../lib/api", async (importOriginal) => {
     getJobStatus: getJobStatusMock,
     getResult: getResultMock,
     getSong: getSongMock,
+    getSongTabs: getSongTabsMock,
     listSongStems: listSongStemsMock,
     claimIdentity: claimIdentityMock,
     uploadAudio: uploadAudioMock,
+    uploadSongStem: uploadSongStemMock,
     regenerateSongStems: regenerateSongStemsMock,
     regenerateSongTabs: regenerateSongTabsMock,
     createBand: createBandMock,
@@ -123,11 +147,13 @@ describe("App integration", () => {
   beforeEach(() => {
     claimIdentityMock.mockReset();
     uploadAudioMock.mockReset();
+    uploadSongStemMock.mockReset();
     getJobStatusMock.mockReset();
     getResultMock.mockReset();
     regenerateSongStemsMock.mockReset();
     regenerateSongTabsMock.mockReset();
     getSongMock.mockReset();
+    getSongTabsMock.mockReset();
     listSongStemsMock.mockReset();
     listBandsMock.mockReset();
     listBandProjectsMock.mockReset();
@@ -148,6 +174,9 @@ describe("App integration", () => {
       job_id: "job-77",
       song_id: 77,
     });
+    uploadSongStemMock.mockResolvedValue({
+      stems: [{ stem_key: "bass", relative_path: "stems/30/bass-di.wav", mime_type: "audio/x-wav", duration: 48 }],
+    });
     listBandsMock.mockResolvedValue({
       bands: [{ id: 10, name: "Default Band", owner_user_id: 1, created_at: "2026-03-09", project_count: 1 }],
     });
@@ -162,6 +191,23 @@ describe("App integration", () => {
       analysis: { key: "Em", tempo: 160, duration: 48, chords: [] },
       notes: [],
       playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+    });
+    getSongTabsMock.mockResolvedValue({
+      tab: {
+        id: 1,
+        source_stem_key: "bass",
+        source_midi_id: 1,
+        source_type: "user",
+        source_display_name: "Bass DI",
+        tab_format: "alphatex",
+        tuning: "E1,A1,D2,G2",
+        strings: 4,
+        generator_version: "v2-rhythm-grid",
+        status: "complete",
+        error_message: null,
+        created_at: "2026-03-10",
+        updated_at: "2026-03-10",
+      },
     });
     listSongStemsMock.mockResolvedValue({
       stems: [{ stem_key: "bass", relative_path: "stems/30/bass.wav", mime_type: "audio/x-wav", duration: 48 }],
@@ -329,8 +375,25 @@ describe("App integration", () => {
     getSongMock.mockResolvedValueOnce({
       song: { id: 77, title: "New Song", original_filename: "new-song.mp3", mime_type: "audio/mpeg", created_at: "2026-03-10" },
       analysis: { key: "Em", tempo: 120, duration: 42, chords: [] },
-      notes: [],
+      notes: [{ id: 91, type: "time", timestamp_sec: 12.5, chord_index: null, text: "Bring the bass forward" }],
       playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+    });
+    getSongTabsMock.mockResolvedValueOnce({
+      tab: {
+        id: 4,
+        source_stem_key: "bass",
+        source_midi_id: 8,
+        source_type: "user",
+        source_display_name: "Uploaded Bass Stem",
+        tab_format: "alphatex",
+        tuning: "E1,A1,D2,G2",
+        strings: 4,
+        generator_version: "v2-rhythm-grid",
+        status: "complete",
+        error_message: null,
+        created_at: "2026-03-10",
+        updated_at: "2026-03-10",
+      },
     });
     listSongStemsMock.mockResolvedValueOnce({
       stems: [{ stem_key: "bass", relative_path: "stems/77/bass.wav", mime_type: "audio/x-wav", duration: 42 }],
@@ -397,6 +460,9 @@ describe("App integration", () => {
     expect(getResultMock).toHaveBeenCalledWith("job-77");
     expect(screen.getByText("Generate Stems")).toBeTruthy();
     expect(screen.getByText("New Song")).toBeTruthy();
+    expect(screen.getByText("Generated from Uploaded Bass Stem.")).toBeTruthy();
+    expect(screen.getByText("Bring the bass forward")).toBeTruthy();
+    expect(getSongTabsMock).toHaveBeenCalledWith(77);
   });
 
   it("stops polling and stays in the library after leaving processing journey", async () => {
@@ -534,5 +600,118 @@ describe("App integration", () => {
       expect(getSongMock.mock.calls.length).toBeGreaterThan(1);
       expect(listSongStemsMock.mock.calls.length).toBeGreaterThan(1);
     });
+  });
+
+  it("hydrates song-detail tab metadata and refreshes the active route after upload and tab regeneration", async () => {
+    getSongTabsMock
+      .mockResolvedValueOnce({
+        tab: {
+          id: 1,
+          source_stem_key: "bass",
+          source_midi_id: 1,
+          source_type: "user",
+          source_display_name: "Bass DI",
+          tab_format: "alphatex",
+          tuning: "E1,A1,D2,G2",
+          strings: 4,
+          generator_version: "v2-rhythm-grid",
+          status: "complete",
+          error_message: null,
+          created_at: "2026-03-10",
+          updated_at: "2026-03-10",
+        },
+      })
+      .mockResolvedValueOnce({
+        tab: {
+          id: 2,
+          source_stem_key: "bass",
+          source_midi_id: 2,
+          source_type: "user",
+          source_display_name: "Uploaded Bass DI",
+          tab_format: "alphatex",
+          tuning: "E1,A1,D2,G2",
+          strings: 4,
+          generator_version: "v2-rhythm-grid",
+          status: "complete",
+          error_message: null,
+          created_at: "2026-03-10",
+          updated_at: "2026-03-11",
+        },
+      })
+      .mockResolvedValueOnce({
+        tab: {
+          id: 3,
+          source_stem_key: "bass",
+          source_midi_id: 3,
+          source_type: "system",
+          source_display_name: "Regenerated Bass Stem",
+          tab_format: "alphatex",
+          tuning: "E1,A1,D2,G2",
+          strings: 4,
+          generator_version: "v2-rhythm-grid",
+          status: "complete",
+          error_message: null,
+          created_at: "2026-03-10",
+          updated_at: "2026-03-12",
+        },
+      });
+
+    listSongStemsMock
+      .mockResolvedValueOnce({
+        stems: [{ stem_key: "bass", relative_path: "stems/30/bass.wav", mime_type: "audio/x-wav", duration: 48 }],
+      })
+      .mockResolvedValueOnce({
+        stems: [{ stem_key: "bass", relative_path: "stems/30/bass-di.wav", mime_type: "audio/x-wav", duration: 48 }],
+      })
+      .mockResolvedValueOnce({
+        stems: [{ stem_key: "bass", relative_path: "stems/30/bass-regenerated.wav", mime_type: "audio/x-wav", duration: 48 }],
+      });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    await waitFor(() => {
+      expect(screen.getByText("Your Bands")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Default Band"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library →")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    await waitFor(() => {
+      expect(screen.getByText("The Trooper")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("The Trooper"));
+    await waitFor(() => {
+      expect(screen.getByText("Generated from Bass DI.")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Upload Stem"));
+    const file = new File(["bass"], "bass-di.wav", { type: "audio/wav" });
+    fireEvent.change(screen.getByLabelText("Stem File"), { target: { files: [file] } });
+    fireEvent.click(screen.getByText("Confirm Stem Upload"));
+
+    await waitFor(() => {
+      expect(uploadSongStemMock).toHaveBeenCalledWith(30, { stemKey: "bass", file });
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Generated from Uploaded Bass DI.")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Generate Bass Tab"));
+    fireEvent.click(screen.getByText("Confirm Tab Generation"));
+
+    await waitFor(() => {
+      expect(regenerateSongTabsMock).toHaveBeenCalledWith(30, { source_stem_key: "bass" });
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Generated from Regenerated Bass Stem.")).toBeTruthy();
+    });
+
+    expect(screen.getByText("The Trooper")).toBeTruthy();
+    expect(getSongTabsMock).toHaveBeenCalledTimes(3);
   });
 });

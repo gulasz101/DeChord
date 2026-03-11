@@ -6,7 +6,9 @@ import {
   getJobStatus,
   getResult,
   getSong,
+  getSongTabs,
   uploadAudio,
+  uploadSongStem,
   regenerateSongStems,
   regenerateSongTabs,
   getStemDownloadUrl,
@@ -120,6 +122,22 @@ function mapStem(stem: { stem_key: string; relative_path: string; mime_type: str
   };
 }
 
+function mapSongTab(tab: Awaited<ReturnType<typeof getSongTabs>>["tab"]): Song["tab"] {
+  if (!tab) {
+    return null;
+  }
+
+  return {
+    sourceStemKey: tab.source_stem_key,
+    sourceDisplayName: tab.source_display_name ?? null,
+    sourceType: tab.source_type === "user" ? "User" : "System",
+    status: tab.status,
+    generatorVersion: tab.generator_version,
+    updatedAt: tab.updated_at,
+    errorMessage: tab.error_message,
+  };
+}
+
 function mapNote(note: {
   id: number;
   type: "time" | "chord";
@@ -152,6 +170,7 @@ function mergeSongWithDetails(
   song: Song,
   songDetail: Awaited<ReturnType<typeof getSong>>,
   stemsDetail: Awaited<ReturnType<typeof listSongStems>>,
+  tabsDetail: Awaited<ReturnType<typeof getSongTabs>>,
   user: User,
 ): Song {
   return {
@@ -163,6 +182,7 @@ function mergeSongWithDetails(
     status: mapChordStatus(Boolean(songDetail.analysis)),
     chords: (songDetail.analysis?.chords ?? []).map(mapChord),
     stems: stemsDetail.stems.map(mapStem),
+    tab: mapSongTab(tabsDetail.tab),
     notes: songDetail.notes.map((n) => mapNote(n, user)),
     updatedAt: songDetail.song.created_at,
   };
@@ -316,12 +336,13 @@ export default function App() {
       if (Number.isNaN(songId) || !user) return song;
 
       try {
-        const [songDetail, stemsDetail] = await Promise.all([
+        const [songDetail, stemsDetail, tabsDetail] = await Promise.all([
           getSong(songId),
           listSongStems(songId),
+          getSongTabs(songId),
         ]);
         return {
-          ...mergeSongWithDetails(song, songDetail, stemsDetail, user),
+          ...mergeSongWithDetails(song, songDetail, stemsDetail, tabsDetail, user),
         };
       } catch {
         return song;
@@ -357,8 +378,14 @@ export default function App() {
 
   const refreshSongDetailRoute = useCallback(async () => {
     if (route.page !== "song-detail") return;
-    const detailed = await loadSongDetails(route.song);
-    setRoute({ page: "song-detail", band: route.band, project: route.project, song: detailed });
+    const currentSong = route.song;
+    const detailed = await loadSongDetails(currentSong);
+    setRoute((current) => {
+      if (current.page !== "song-detail" || current.song.id !== currentSong.id) {
+        return current;
+      }
+      return { page: "song-detail", band: current.band, project: current.project, song: detailed };
+    });
   }, [loadSongDetails, route]);
 
   const findBandInHierarchy = useCallback((loadedBands: Band[], bandId: string) => {
@@ -428,25 +455,21 @@ export default function App() {
           const refreshedBand = findBandInHierarchy(loadedBands, processingRoute.band.id) ?? processingRoute.band;
           const refreshedProject = findProjectInBand(refreshedBand, processingRoute.project.id) ?? processingRoute.project;
           const summarySong = refreshedProject.songs.find((song) => song.id === String(result.song_id));
-          const [songDetail, stemsDetail] = await Promise.all([
-            getSong(result.song_id),
-            listSongStems(result.song_id),
-          ]);
-          if (cancelled) return;
-
           const baseSong = summarySong ?? mapSongMetaToSong({
-            id: songDetail.song.id,
+            id: result.song_id,
             project_id: Number(refreshedProject.id),
-            title: songDetail.song.title,
-            original_filename: songDetail.song.original_filename,
-            created_at: songDetail.song.created_at,
+            title: processingRoute.journey.songTitle ?? processingRoute.uploadFilename,
+            original_filename: processingRoute.uploadFilename,
+            created_at: new Date().toISOString(),
           });
+          const detailedSong = await loadSongDetails(baseSong);
+          if (cancelled) return;
 
           setRoute({
             page: "song-detail",
             band: refreshedBand,
             project: refreshedProject,
-            song: mergeSongWithDetails(baseSong, songDetail, stemsDetail, user),
+            song: detailedSong,
           });
           return;
         }
@@ -472,6 +495,7 @@ export default function App() {
   }, [
     findBandInHierarchy,
     findProjectInBand,
+    loadSongDetails,
     refreshBands,
     route.page,
     route.page === "processing-journey" ? route.jobId : null,
@@ -633,6 +657,12 @@ export default function App() {
             const songId = Number(route.song.id);
             if (Number.isNaN(songId)) return;
             await regenerateSongStems(songId);
+            await refreshSongDetailRoute();
+          }}
+          onUploadStem={async ({ stemKey, file }) => {
+            const songId = Number(route.song.id);
+            if (Number.isNaN(songId)) return;
+            await uploadSongStem(songId, { stemKey, file });
             await refreshSongDetailRoute();
           }}
           onGenerateBassTab={async (sourceStemKey) => {
