@@ -22,7 +22,7 @@
   <task>[x] Task 7: Implement and verify the real-player slice.</task>
   <task>[x] Task 8: Plan the notes-and-rehearsal slice in detail.</task>
   <task>[x] Task 9: Implement and verify the notes-and-rehearsal slice.</task>
-  <task>[ ] Task 10: Plan the collaboration slice in detail.</task>
+  <task>[x] Task 10: Plan the collaboration slice in detail.</task>
   <task>[ ] Task 11: Implement and verify the collaboration slice.</task>
   <task>[ ] Task 12: Plan the hardening-and-finish slice in detail.</task>
   <task>[ ] Task 13: Implement and verify the hardening-and-finish slice.</task>
@@ -75,10 +75,10 @@ Use this section as the durable landing zone for each slice's linked docs, statu
 
 ### Slice 5: Collaboration
 
-- Status: Planned, not started.
-- Design doc: `docs/plans/2026-03-10-collaboration-design.md` (to create)
-- Implementation doc: `docs/plans/2026-03-10-collaboration-implementation.md` (to create)
-- Verification notes: Not recorded yet.
+- Status: Planned in detail; implementation not started.
+- Design doc: `docs/plans/2026-03-10-collaboration-design.md`
+- Implementation doc: `docs/plans/2026-03-10-collaboration-implementation.md` (includes XML `<phase>` / `<task>` tracking for execution and an explicit collaboration quality gate)
+- Verification notes: Planning only so far. The approved slice is truthful collaboration basics first: real member lists, real project activity, real unread counts, and an explicit placeholder presence strategy. Invites, permissions, role-management, live presence, and broader social features remain deferred until a later slice.
 - Commit links: Not recorded yet.
 
 ### Slice 6: Hardening and Finish
