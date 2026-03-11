@@ -130,6 +130,12 @@ def check_stem_runtime_ready(
         ) from exc
 
 
+def _is_missing_stem_runtime_error(exc: Exception) -> bool:
+    return isinstance(exc, RuntimeError) and str(exc).startswith(
+        "Stem runtime dependency missing:"
+    )
+
+
 def _detect_device() -> str:
     """Auto-detect best available compute device."""
     if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
@@ -1054,13 +1060,22 @@ def split_to_stems(
         try:
             separated = runner(audio_path, output_dir, report)
         except ModuleNotFoundError as exc:
-            raise RuntimeError(
-                f"Stem runtime dependency missing: {exc}. Run `cd backend && uv sync`."
-            ) from exc
+            if separate_fn is None and engine == "demucs":
+                if on_progress:
+                    on_progress(2.0, f"Demucs unavailable ({exc}). Using fallback stem extraction...")
+                separated = _split_with_ffmpeg_fallback(audio_path, output_dir, report)
+            else:
+                raise RuntimeError(
+                    f"Stem runtime dependency missing: {exc}. Run `cd backend && uv sync`."
+                ) from exc
         except Exception as exc:
             if separate_fn is not None:
                 raise
-            if fallback_on_error:
+            if engine == "demucs" and _is_missing_stem_runtime_error(exc):
+                if on_progress:
+                    on_progress(2.0, f"Demucs unavailable ({exc}). Using fallback stem extraction...")
+                separated = _split_with_ffmpeg_fallback(audio_path, output_dir, report)
+            elif fallback_on_error:
                 if on_progress:
                     on_progress(2.0, f"Demucs unavailable ({exc}). Using fallback stem extraction...")
                 separated = _split_with_ffmpeg_fallback(audio_path, output_dir, report)

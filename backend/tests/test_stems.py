@@ -72,6 +72,34 @@ def test_split_to_stems_wraps_missing_dependency_error(tmp_path: Path):
         )
 
 
+def test_split_to_stems_auto_falls_back_on_wrapped_missing_demucs_dependency(tmp_path: Path, monkeypatch):
+    audio_path = tmp_path / "track.wav"
+    audio_path.write_bytes(b"fake-audio")
+    out_dir = tmp_path / "stems"
+
+    def fake_demucs(_input_audio: str, _output_dir: Path, _progress_callback):
+        raise RuntimeError(
+            "Stem runtime dependency missing: No module named 'demucs'. Run `cd backend && uv sync`."
+        )
+
+    def fake_fallback(input_audio: str, output_dir: Path, progress_callback):
+        assert input_audio == str(audio_path)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        bass = output_dir / "bass.wav"
+        bass.write_bytes(b"bass")
+        progress_callback(1.0, "Fallback stem split complete")
+        return {"bass": bass}
+
+    monkeypatch.setattr(stems_mod, "_separate_with_demucs", fake_demucs)
+    monkeypatch.setattr(stems_mod, "_split_with_ffmpeg_fallback", fake_fallback)
+    monkeypatch.delenv("DECHORD_STEM_FALLBACK_ON_ERROR", raising=False)
+    monkeypatch.delenv("DECHORD_STEM_ENGINE", raising=False)
+
+    stems = split_to_stems(audio_path=str(audio_path), output_dir=out_dir)
+
+    assert [stem.stem_key for stem in stems] == ["bass"]
+
+
 def test_split_to_stems_falls_back_when_demucs_runner_fails(tmp_path: Path, monkeypatch):
     audio_path = tmp_path / "track.wav"
     audio_path.write_bytes(b"fake-audio")
