@@ -56,6 +56,8 @@ type Route =
   | { page: "song-detail"; band: Band; project: Project; song: Song }
   | { page: "player"; band: Band; project: Project; song: Song };
 
+type ProcessingJourneyRoute = Extract<Route, { page: "processing-journey" }>;
+
 function avatarFromName(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   const first = parts[0]?.[0] ?? "U";
@@ -182,7 +184,7 @@ function mapSongMetaToSong(raw: {
 }
 
 function mapJobStatusToJourney(
-  currentJourney: Route & { page: "processing-journey" }["journey"],
+  currentJourney: ProcessingJourneyRoute["journey"],
   uploadFilename: string,
   status: {
     status: "queued" | "processing" | "complete" | "error";

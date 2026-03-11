@@ -96,10 +96,17 @@ export interface SongsListResponse {
 }
 
 export interface StemInfo {
+  id?: number;
   stem_key: string;
+  source_type?: "system" | "user";
+  display_name?: string;
+  version_label?: string;
+  uploaded_by_name?: string | null;
+  is_archived?: boolean;
   relative_path: string;
   mime_type: string | null;
   duration: number | null;
+  created_at?: string;
 }
 
 export interface SongStemsResponse {
@@ -110,6 +117,8 @@ export interface SongTabMeta {
   id: number;
   source_stem_key: string;
   source_midi_id: number;
+  source_type?: "system" | "user";
+  source_display_name?: string | null;
   tab_format: string;
   tuning: string;
   strings: number;

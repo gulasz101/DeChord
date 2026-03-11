@@ -128,6 +128,22 @@ export async function listSongStems(songId: number): Promise<SongStemsResponse> 
   return res.json();
 }
 
+export async function uploadSongStem(
+  songId: number,
+  payload: { stemKey: string; file: File },
+): Promise<SongStemsResponse> {
+  const form = new FormData();
+  form.append("stem_key", payload.stemKey);
+  form.append("file", payload.file);
+
+  const res = await fetch(`${BASE}/api/songs/${songId}/stems/upload`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) throw new Error("Failed to upload stem");
+  return res.json();
+}
+
 export async function getSongTabs(songId: number): Promise<SongTabsResponse> {
   const res = await fetch(`${BASE}/api/songs/${songId}/tabs`);
   if (!res.ok) throw new Error("Failed to fetch tabs metadata");
