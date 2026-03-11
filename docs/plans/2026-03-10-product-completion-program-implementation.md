@@ -10,22 +10,24 @@
 
 ---
 
-## Execution Checklist
+## XML Tracking
 
-- [x] Task 1: Create the master gap matrix and baseline verification record.
-- [ ] Task 2: Plan the processing-journey slice in detail.
-- [ ] Task 3: Implement and verify the processing-journey slice.
-- [ ] Task 4: Plan the song-detail-completeness slice in detail.
-- [ ] Task 5: Implement and verify the song-detail-completeness slice.
-- [ ] Task 6: Plan the real-player slice in detail.
-- [ ] Task 7: Implement and verify the real-player slice.
-- [ ] Task 8: Plan the notes-and-rehearsal slice in detail.
-- [ ] Task 9: Implement and verify the notes-and-rehearsal slice.
-- [ ] Task 10: Plan the collaboration slice in detail.
-- [ ] Task 11: Implement and verify the collaboration slice.
-- [ ] Task 12: Plan the hardening-and-finish slice in detail.
-- [ ] Task 13: Implement and verify the hardening-and-finish slice.
-- [ ] Task 14: Run full reset-based verification, update the plan records, and prepare handoff.
+<phase id="product-completion-program" status="in_progress">
+  <task>[x] Task 1: Create the master gap matrix and baseline verification record.</task>
+  <task>[x] Task 2: Plan the processing-journey slice in detail.</task>
+  <task>[ ] Task 3: Implement and verify the processing-journey slice.</task>
+  <task>[ ] Task 4: Plan the song-detail-completeness slice in detail.</task>
+  <task>[ ] Task 5: Implement and verify the song-detail-completeness slice.</task>
+  <task>[ ] Task 6: Plan the real-player slice in detail.</task>
+  <task>[ ] Task 7: Implement and verify the real-player slice.</task>
+  <task>[ ] Task 8: Plan the notes-and-rehearsal slice in detail.</task>
+  <task>[ ] Task 9: Implement and verify the notes-and-rehearsal slice.</task>
+  <task>[ ] Task 10: Plan the collaboration slice in detail.</task>
+  <task>[ ] Task 11: Implement and verify the collaboration slice.</task>
+  <task>[ ] Task 12: Plan the hardening-and-finish slice in detail.</task>
+  <task>[ ] Task 13: Implement and verify the hardening-and-finish slice.</task>
+  <task>[ ] Task 14: Run full reset-based verification, update the plan records, and prepare handoff.</task>
+</phase>
 
 ## Program Rules
 
@@ -41,9 +43,9 @@ Use this section as the durable landing zone for each slice's linked docs, statu
 
 ### Slice 1: Processing Journey
 
-- Status: Planned, not started.
-- Design doc: `docs/plans/2026-03-10-processing-journey-design.md` (to create)
-- Implementation doc: `docs/plans/2026-03-10-processing-journey-implementation.md` (to create)
+- Status: Planned in detail; child design and implementation docs are ready.
+- Design doc: `docs/plans/2026-03-10-processing-journey-design.md`
+- Implementation doc: `docs/plans/2026-03-10-processing-journey-implementation.md` (includes XML `<phase>` / `<task>` tracking for execution)
 - Verification notes: Not recorded yet.
 - Commit links: Not recorded yet.
 
