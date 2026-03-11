@@ -1,3 +1,5 @@
+import type { JobStage } from "../../lib/types";
+
 export interface Chord {
   start: number;
   end: number;
@@ -90,4 +92,15 @@ export interface User {
   email: string;
   instrument: string;
   avatar: string;
+}
+
+export interface ProcessingJourney {
+  songTitle: string | null;
+  uploadFilename: string;
+  status: "queued" | "processing" | "complete" | "error";
+  stage: JobStage | null;
+  progressPct: number;
+  stageHistory: JobStage[];
+  message: string | null;
+  error: string | null;
 }
