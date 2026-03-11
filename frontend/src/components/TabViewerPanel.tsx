@@ -5,7 +5,6 @@ interface TabViewerPanelProps {
   tabSourceUrl: string | null;
   currentTime: number;
   isPlaying: boolean;
-  onSyncTime?: (currentTime: number) => void;
 }
 
 interface AlphaTabApiLike {
@@ -19,7 +18,7 @@ interface AlphaTabModuleLike {
   AlphaTabApi?: new (container: HTMLElement, settings: ReturnType<typeof createTabViewerSettings>) => AlphaTabApiLike;
 }
 
-export function TabViewerPanel({ tabSourceUrl, currentTime, isPlaying, onSyncTime }: TabViewerPanelProps) {
+export function TabViewerPanel({ tabSourceUrl, currentTime, isPlaying }: TabViewerPanelProps) {
   const scrollHostRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const alphaTabRef = useRef<AlphaTabApiLike | null>(null);
@@ -33,7 +32,6 @@ export function TabViewerPanel({ tabSourceUrl, currentTime, isPlaying, onSyncTim
   }, [currentTime, isPlaying]);
 
   useEffect(() => {
-    onSyncTime?.(currentTime);
     const api = alphaTabRef.current;
     if (!api || !renderReadyRef.current) return;
     try {
@@ -44,7 +42,7 @@ export function TabViewerPanel({ tabSourceUrl, currentTime, isPlaying, onSyncTim
     } catch {
       // Keep the app usable even if alphaTab state sync fails transiently.
     }
-  }, [currentTime, isPlaying, onSyncTime]);
+  }, [currentTime, isPlaying]);
 
   useEffect(() => {
     let disposed = false;

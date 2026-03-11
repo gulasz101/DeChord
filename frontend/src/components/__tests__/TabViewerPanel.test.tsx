@@ -1,7 +1,45 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const alphaTabState = vi.hoisted(() => {
+  const instances: Array<{
+    timePosition: number;
+    scrollToCursor: ReturnType<typeof vi.fn>;
+    destroy: ReturnType<typeof vi.fn>;
+    renderFinished: { on: (cb: () => void) => void };
+  }> = [];
+  const settings: unknown[] = [];
+
+  class AlphaTabApi {
+    timePosition = 0;
+    scrollToCursor = vi.fn();
+    destroy = vi.fn();
+    renderFinished = {
+      on: (cb: () => void) => {
+        cb();
+      },
+    };
+
+    constructor(_container: HTMLElement, config: unknown) {
+      settings.push(config);
+      instances.push(this);
+    }
+  }
+
+  return { AlphaTabApi, instances, settings };
+});
+
+vi.mock("@coderline/alphatab", () => ({
+  AlphaTabApi: alphaTabState.AlphaTabApi,
+}));
+
 import { TabViewerPanel } from "../TabViewerPanel";
 import { createTabViewerSettings, findCurrentBarIndex, getDisplayWindowForBar } from "../tabViewer";
+
+afterEach(() => {
+  alphaTabState.instances.length = 0;
+  alphaTabState.settings.length = 0;
+});
 
 describe("TabViewerPanel", () => {
   it("shows fallback message when tab url is unavailable", () => {
@@ -9,20 +47,30 @@ describe("TabViewerPanel", () => {
     expect(screen.getByText("Tabs are not available for this song yet.")).toBeTruthy();
   });
 
-  it("renders panel and syncs with playback time", () => {
-    const onSyncTime = vi.fn();
+  it("loads a real tab asset url and follows the shared transport clock", async () => {
     const { rerender } = render(
-      <TabViewerPanel tabSourceUrl="/api/songs/2/tabs/file" currentTime={0} isPlaying={false} onSyncTime={onSyncTime} />,
+      <TabViewerPanel tabSourceUrl="/api/songs/2/tabs/file" currentTime={0} isPlaying={false} />,
     );
     expect(screen.getByText("Tab Viewer")).toBeTruthy();
     const hostClass = screen.getByTestId("tab-viewer-scrollhost").className;
     expect(hostClass).toContain("overflow-x-auto");
     expect(hostClass).toContain("bg-white");
 
+    await waitFor(() => {
+      expect(alphaTabState.settings).toHaveLength(1);
+    });
+
+    expect(alphaTabState.settings[0]).toMatchObject({ file: "/api/songs/2/tabs/file" });
+    expect(alphaTabState.instances[0]?.timePosition).toBe(0);
+
     rerender(
-      <TabViewerPanel tabSourceUrl="/api/songs/2/tabs/file" currentTime={12.5} isPlaying={true} onSyncTime={onSyncTime} />,
+      <TabViewerPanel tabSourceUrl="/api/songs/2/tabs/file" currentTime={12.5} isPlaying={true} />,
     );
-    expect(onSyncTime).toHaveBeenCalledWith(12.5);
+
+    await waitFor(() => {
+      expect(alphaTabState.instances[0]?.timePosition).toBe(12500);
+    });
+    expect(alphaTabState.instances[0]?.scrollToCursor).toHaveBeenCalled();
   });
 
   it("maps playback ticks to the active bar", () => {
