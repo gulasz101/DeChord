@@ -108,17 +108,30 @@ function mapProjectSongSummaryToSong(raw: {
   };
 }
 
-function mapStem(stem: { stem_key: string; relative_path: string; mime_type: string | null; duration: number | null }, index: number): StemInfo {
+function mapStem(stem: {
+  stem_key: string;
+  source_type?: "system" | "user";
+  display_name?: string;
+  version_label?: string;
+  uploaded_by_name?: string | null;
+  is_archived?: boolean;
+  relative_path: string;
+  mime_type: string | null;
+  duration: number | null;
+  created_at?: string;
+}, index: number): StemInfo {
+  const parsedVersion = stem.version_label ? Number.parseInt(stem.version_label.replace(/\D+/g, ""), 10) : Number.NaN;
+  const sourceType = stem.source_type === "user" ? "User" : "System";
   return {
     id: `${stem.stem_key}-${index + 1}`,
     stemKey: stem.stem_key,
-    label: stem.stem_key.charAt(0).toUpperCase() + stem.stem_key.slice(1),
-    uploaderName: "System",
-    sourceType: "System",
+    label: stem.display_name?.trim() || stem.stem_key.charAt(0).toUpperCase() + stem.stem_key.slice(1),
+    uploaderName: stem.uploaded_by_name ?? (sourceType === "System" ? "System" : null),
+    sourceType,
     description: stem.relative_path,
-    version: 1,
-    isArchived: false,
-    createdAt: new Date().toISOString(),
+    version: Number.isFinite(parsedVersion) ? parsedVersion : index + 1,
+    isArchived: stem.is_archived ?? false,
+    createdAt: stem.created_at ?? new Date().toISOString(),
   };
 }
 

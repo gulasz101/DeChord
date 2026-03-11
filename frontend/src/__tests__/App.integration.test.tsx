@@ -602,15 +602,15 @@ describe("App integration", () => {
     });
   });
 
-  it("hydrates song-detail tab metadata and refreshes the active route after upload and tab regeneration", async () => {
+  it("hydrates uploaded stem provenance from song-detail refresh without changing tab provenance until tab regeneration", async () => {
     getSongTabsMock
       .mockResolvedValueOnce({
         tab: {
           id: 1,
           source_stem_key: "bass",
           source_midi_id: 1,
-          source_type: "user",
-          source_display_name: "Bass DI",
+          source_type: "system",
+          source_display_name: "Bass Stem",
           tab_format: "alphatex",
           tuning: "E1,A1,D2,G2",
           strings: 4,
@@ -626,8 +626,8 @@ describe("App integration", () => {
           id: 2,
           source_stem_key: "bass",
           source_midi_id: 2,
-          source_type: "user",
-          source_display_name: "Uploaded Bass DI",
+          source_type: "system",
+          source_display_name: "Bass Stem",
           tab_format: "alphatex",
           tuning: "E1,A1,D2,G2",
           strings: 4,
@@ -661,7 +661,19 @@ describe("App integration", () => {
         stems: [{ stem_key: "bass", relative_path: "stems/30/bass.wav", mime_type: "audio/x-wav", duration: 48 }],
       })
       .mockResolvedValueOnce({
-        stems: [{ stem_key: "bass", relative_path: "stems/30/bass-di.wav", mime_type: "audio/x-wav", duration: 48 }],
+        stems: [{
+          id: 22,
+          stem_key: "bass",
+          source_type: "user",
+          display_name: "Bass DI",
+          version_label: "manual-2",
+          uploaded_by_name: "Groove Bassline",
+          is_archived: false,
+          relative_path: "stems/30/bass-di.wav",
+          mime_type: "audio/x-wav",
+          duration: 48,
+          created_at: "2026-03-11T10:00:00Z",
+        }],
       })
       .mockResolvedValueOnce({
         stems: [{ stem_key: "bass", relative_path: "stems/30/bass-regenerated.wav", mime_type: "audio/x-wav", duration: 48 }],
@@ -686,7 +698,7 @@ describe("App integration", () => {
 
     fireEvent.click(screen.getByText("The Trooper"));
     await waitFor(() => {
-      expect(screen.getByText("Generated from Bass DI.")).toBeTruthy();
+      expect(screen.getByText("Generated from Bass Stem.")).toBeTruthy();
     });
 
     fireEvent.click(screen.getByText("Upload Stem"));
@@ -698,7 +710,11 @@ describe("App integration", () => {
       expect(uploadSongStemMock).toHaveBeenCalledWith(30, { stemKey: "bass", file });
     });
     await waitFor(() => {
-      expect(screen.getByText("Generated from Uploaded Bass DI.")).toBeTruthy();
+      expect(screen.getByText("Bass DI")).toBeTruthy();
+      expect(screen.getByText("User")).toBeTruthy();
+      expect(screen.getByText("stems/30/bass-di.wav - by Groove Bassline")).toBeTruthy();
+      expect(screen.getByText("Generated from Bass Stem.")).toBeTruthy();
+      expect(screen.getByText("Provenance: System")).toBeTruthy();
     });
 
     fireEvent.click(screen.getByText("Generate Bass Tab"));
