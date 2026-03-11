@@ -412,6 +412,18 @@ export default function App() {
     });
   }, [loadSongDetails, route]);
 
+  const refreshPlayerRoute = useCallback(async () => {
+    if (route.page !== "player") return;
+    const currentSong = route.song;
+    const detailed = await loadSongDetails(currentSong);
+    setRoute((current) => {
+      if (current.page !== "player" || current.song.id !== currentSong.id) {
+        return current;
+      }
+      return { page: "player", band: current.band, project: current.project, song: detailed };
+    });
+  }, [loadSongDetails, route]);
+
   const openPlayerForSong = useCallback(async (band: Band, project: Project, song: Song) => {
     const detailed = await loadSongDetails(song);
 
@@ -748,6 +760,29 @@ export default function App() {
           band={route.band}
           project={route.project}
           song={route.song}
+          onCreateNote={async ({ type, text, timestampSec, chordIndex }) => {
+            const songId = Number(route.song.id);
+            if (Number.isNaN(songId)) return;
+            await createSongNote(songId, {
+              type,
+              text,
+              timestamp_sec: timestampSec,
+              chord_index: chordIndex,
+            });
+            await refreshPlayerRoute();
+          }}
+          onEditNote={async (noteId, payload) => {
+            await updateSongNote(noteId, { text: payload.text });
+            await refreshPlayerRoute();
+          }}
+          onResolveNote={async (noteId, resolved) => {
+            await resolveSongNote(noteId, resolved);
+            await refreshPlayerRoute();
+          }}
+          onDeleteNote={async (noteId) => {
+            await deleteSongNote(noteId);
+            await refreshPlayerRoute();
+          }}
           onBack={goBack}
         />
       );

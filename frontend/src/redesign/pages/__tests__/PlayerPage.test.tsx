@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Band, Project, Song, User } from "../../lib/types";
 
@@ -251,5 +251,184 @@ describe("PlayerPage", () => {
       volume: 1,
       loop: null,
     });
+  });
+
+  it("creates a time note from the current transport and a chord note from the current chord", async () => {
+    const onCreateNote = vi.fn();
+    const playerSong: Song = {
+      ...song,
+      chords: [
+        { start: 0, end: 8, label: "C", section: "Verse" },
+        { start: 8, end: 16, label: "F", section: "Verse" },
+        { start: 16, end: 24, label: "G", section: "Verse" },
+      ],
+    };
+
+    transportStore.update({ currentTime: 18.5 });
+
+    render(
+      <PlayerPage
+        user={user}
+        band={band}
+        project={project}
+        song={playerSong}
+        onBack={() => {}}
+        onCreateNote={onCreateNote}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /comments/i }));
+    fireEvent.change(screen.getByLabelText(/note text/i), { target: { value: "Bass pickup drifts" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /note at current time/i }));
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(onCreateNote).toHaveBeenCalledWith({
+        type: "time",
+        text: "Bass pickup drifts",
+        timestampSec: 18.5,
+      });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /note on current chord/i }));
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(onCreateNote).toHaveBeenLastCalledWith({
+        type: "chord",
+        text: "Bass pickup drifts",
+        chordIndex: 2,
+      });
+    });
+  });
+
+  it("exposes player note edit resolve reopen and delete actions", async () => {
+    const onEditNote = vi.fn();
+    const onResolveNote = vi.fn();
+    const onDeleteNote = vi.fn();
+    const notedSong: Song = {
+      ...song,
+      notes: [
+        {
+          id: 11,
+          type: "time",
+          timestampSec: 9.5,
+          chordIndex: null,
+          text: "Verse entry drifts",
+          toastDurationSec: null,
+          authorName: "Wojtek",
+          authorAvatar: "WG",
+          resolved: false,
+          createdAt: "2026-03-10T10:00:00Z",
+          updatedAt: "2026-03-10T10:00:00Z",
+        },
+        {
+          id: 12,
+          type: "chord",
+          timestampSec: null,
+          chordIndex: 1,
+          text: "Lock the chorus push",
+          toastDurationSec: null,
+          authorName: "Wojtek",
+          authorAvatar: "WG",
+          resolved: true,
+          createdAt: "2026-03-10T10:05:00Z",
+          updatedAt: "2026-03-10T10:08:00Z",
+        },
+      ],
+    };
+
+    render(
+      <PlayerPage
+        user={user}
+        band={band}
+        project={project}
+        song={notedSong}
+        onBack={() => {}}
+        onEditNote={onEditNote}
+        onResolveNote={onResolveNote}
+        onDeleteNote={onDeleteNote}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /comments/i }));
+    fireEvent.click(screen.getByRole("button", { name: /edit note 11/i }));
+    fireEvent.change(screen.getByLabelText(/edit note text/i), { target: { value: "Verse entry is rushing" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /save note 11/i }));
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(onEditNote).toHaveBeenCalledWith(11, { text: "Verse entry is rushing" });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /resolve note 11/i }));
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(onResolveNote).toHaveBeenCalledWith(11, true);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /show resolved/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /reopen note 12/i }));
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(onResolveNote).toHaveBeenCalledWith(12, false);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /delete note 12/i }));
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(onDeleteNote).toHaveBeenCalledWith(12);
+    });
+  });
+
+  it("suppresses note mutation actions when no handlers are wired", () => {
+    const notedSong: Song = {
+      ...song,
+      notes: [
+        {
+          id: 11,
+          type: "time",
+          timestampSec: 9.5,
+          chordIndex: null,
+          text: "Verse entry drifts",
+          toastDurationSec: null,
+          authorName: "Wojtek",
+          authorAvatar: "WG",
+          resolved: false,
+          createdAt: "2026-03-10T10:00:00Z",
+          updatedAt: "2026-03-10T10:00:00Z",
+        },
+      ],
+    };
+
+    render(
+      <PlayerPage
+        user={user}
+        band={band}
+        project={project}
+        song={notedSong}
+        onBack={() => {}}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /comments/i }));
+
+    expect((screen.getByRole("button", { name: /note at current time/i }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /note on current chord/i }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole("button", { name: /edit note 11/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /resolve note 11/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /delete note 11/i })).toBeNull();
   });
 });

@@ -124,16 +124,53 @@ const {
 }));
 
 vi.mock("../redesign/pages/PlayerPage", () => ({
-  PlayerPage: ({ song }: { song: { id: string; stems: Array<unknown>; chords: Array<unknown>; tab?: { sourceStemKey?: string | null } | null } }) => {
+  PlayerPage: ({
+    song,
+    onCreateNote,
+    onEditNote,
+    onResolveNote,
+    onDeleteNote,
+  }: {
+    song: {
+      id: string;
+      stems: Array<unknown>;
+      chords: Array<unknown>;
+      tab?: { sourceStemKey?: string | null } | null;
+      notes?: Array<{ id: number; text: string; resolved: boolean }>;
+    };
+    onCreateNote?: (payload: { type: "time" | "chord"; text: string; timestampSec?: number; chordIndex?: number }) => Promise<void> | void;
+    onEditNote?: (noteId: number, payload: { text: string }) => Promise<void> | void;
+    onResolveNote?: (noteId: number, resolved: boolean) => Promise<void> | void;
+    onDeleteNote?: (noteId: number) => Promise<void> | void;
+  }) => {
     playerPagePropsSpy(song);
+    const openNotes = song.notes?.filter((note) => !note.resolved) ?? [];
+    const resolvedNotes = song.notes?.filter((note) => note.resolved) ?? [];
     return (
-      <div
-        data-testid="player-page"
-        data-song-id={song.id}
-        data-stem-count={String(song.stems.length)}
-        data-chord-count={String(song.chords.length)}
-        data-tab-source-stem-key={song.tab?.sourceStemKey ?? ""}
-      />
+      <div>
+        <div
+          data-testid="player-page"
+          data-song-id={song.id}
+          data-stem-count={String(song.stems.length)}
+          data-chord-count={String(song.chords.length)}
+          data-tab-source-stem-key={song.tab?.sourceStemKey ?? ""}
+        />
+        <span>Player open notes: {openNotes.length}</span>
+        <span>Player resolved notes: {resolvedNotes.length}</span>
+        {song.notes?.map((note) => <span key={note.id}>{note.text}</span>)}
+        <button type="button" onClick={() => void onCreateNote?.({ type: "time", text: "Player time note", timestampSec: 18.5 })}>
+          Mock player create note
+        </button>
+        <button type="button" onClick={() => void onEditNote?.(11, { text: "Player note edited" })}>
+          Mock player edit note
+        </button>
+        <button type="button" onClick={() => void onResolveNote?.(11, true)}>
+          Mock player resolve note
+        </button>
+        <button type="button" onClick={() => void onDeleteNote?.(11)}>
+          Mock player delete note
+        </button>
+      </div>
     );
   },
 }));
@@ -1247,5 +1284,245 @@ describe("App integration", () => {
     });
 
     expect(getSongMock).toHaveBeenCalledTimes(5);
+  });
+
+  it("routes player note mutations through App and refreshes the active player route after each success", async () => {
+    getSongMock
+      .mockResolvedValueOnce({
+        song: { id: 30, title: "The Trooper", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-09" },
+        analysis: { key: "Em", tempo: 160, duration: 48, chords: [{ start: 0, end: 2, label: "Em" }] },
+        notes: [
+          {
+            id: 11,
+            type: "chord",
+            timestamp_sec: null,
+            chord_index: 0,
+            text: "Lock verse entry",
+            toast_duration_sec: null,
+            resolved: false,
+            author_name: "Wojtek",
+            author_avatar: "WG",
+            created_at: "2026-03-10T10:00:00Z",
+            updated_at: "2026-03-10T10:00:00Z",
+          },
+        ],
+        playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+      })
+      .mockResolvedValueOnce({
+        song: { id: 30, title: "The Trooper", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-09" },
+        analysis: { key: "Em", tempo: 160, duration: 48, chords: [{ start: 0, end: 2, label: "Em" }] },
+        notes: [
+          {
+            id: 11,
+            type: "chord",
+            timestamp_sec: null,
+            chord_index: 0,
+            text: "Lock verse entry",
+            toast_duration_sec: null,
+            resolved: false,
+            author_name: "Wojtek",
+            author_avatar: "WG",
+            created_at: "2026-03-10T10:00:00Z",
+            updated_at: "2026-03-10T10:00:00Z",
+          },
+        ],
+        playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+      })
+      .mockResolvedValueOnce({
+        song: { id: 30, title: "The Trooper", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-09" },
+        analysis: { key: "Em", tempo: 160, duration: 48, chords: [{ start: 0, end: 2, label: "Em" }] },
+        notes: [
+          {
+            id: 11,
+            type: "chord",
+            timestamp_sec: null,
+            chord_index: 0,
+            text: "Lock verse entry",
+            toast_duration_sec: null,
+            resolved: false,
+            author_name: "Wojtek",
+            author_avatar: "WG",
+            created_at: "2026-03-10T10:00:00Z",
+            updated_at: "2026-03-10T10:00:00Z",
+          },
+          {
+            id: 301,
+            type: "time",
+            timestamp_sec: 18.5,
+            chord_index: null,
+            text: "Player time note",
+            toast_duration_sec: null,
+            resolved: false,
+            author_name: "Wojtek",
+            author_avatar: "WG",
+            created_at: "2026-03-10T10:10:00Z",
+            updated_at: "2026-03-10T10:10:00Z",
+          },
+        ],
+        playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+      })
+      .mockResolvedValueOnce({
+        song: { id: 30, title: "The Trooper", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-09" },
+        analysis: { key: "Em", tempo: 160, duration: 48, chords: [{ start: 0, end: 2, label: "Em" }] },
+        notes: [
+          {
+            id: 11,
+            type: "chord",
+            timestamp_sec: null,
+            chord_index: 0,
+            text: "Player note edited",
+            toast_duration_sec: null,
+            resolved: false,
+            author_name: "Wojtek",
+            author_avatar: "WG",
+            created_at: "2026-03-10T10:00:00Z",
+            updated_at: "2026-03-10T10:20:00Z",
+          },
+          {
+            id: 301,
+            type: "time",
+            timestamp_sec: 18.5,
+            chord_index: null,
+            text: "Player time note",
+            toast_duration_sec: null,
+            resolved: false,
+            author_name: "Wojtek",
+            author_avatar: "WG",
+            created_at: "2026-03-10T10:10:00Z",
+            updated_at: "2026-03-10T10:10:00Z",
+          },
+        ],
+        playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+      })
+      .mockResolvedValueOnce({
+        song: { id: 30, title: "The Trooper", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-09" },
+        analysis: { key: "Em", tempo: 160, duration: 48, chords: [{ start: 0, end: 2, label: "Em" }] },
+        notes: [
+          {
+            id: 11,
+            type: "chord",
+            timestamp_sec: null,
+            chord_index: 0,
+            text: "Player note edited",
+            toast_duration_sec: null,
+            resolved: true,
+            author_name: "Wojtek",
+            author_avatar: "WG",
+            created_at: "2026-03-10T10:00:00Z",
+            updated_at: "2026-03-10T10:25:00Z",
+          },
+          {
+            id: 301,
+            type: "time",
+            timestamp_sec: 18.5,
+            chord_index: null,
+            text: "Player time note",
+            toast_duration_sec: null,
+            resolved: false,
+            author_name: "Wojtek",
+            author_avatar: "WG",
+            created_at: "2026-03-10T10:10:00Z",
+            updated_at: "2026-03-10T10:10:00Z",
+          },
+        ],
+        playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+      })
+      .mockResolvedValueOnce({
+        song: { id: 30, title: "The Trooper", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-09" },
+        analysis: { key: "Em", tempo: 160, duration: 48, chords: [{ start: 0, end: 2, label: "Em" }] },
+        notes: [
+          {
+            id: 301,
+            type: "time",
+            timestamp_sec: 18.5,
+            chord_index: null,
+            text: "Player time note",
+            toast_duration_sec: null,
+            resolved: false,
+            author_name: "Wojtek",
+            author_avatar: "WG",
+            created_at: "2026-03-10T10:10:00Z",
+            updated_at: "2026-03-10T10:10:00Z",
+          },
+        ],
+        playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+      });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    await waitFor(() => {
+      expect(screen.getByText("Your Bands")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Default Band"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library →")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    await waitFor(() => {
+      expect(screen.getByText("The Trooper")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("The Trooper"));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /open player/i })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /open player/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Player open notes: 1")).toBeTruthy();
+      expect(screen.getByText("Player resolved notes: 0")).toBeTruthy();
+      expect(screen.getByText("Lock verse entry")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /mock player create note/i }));
+
+    await waitFor(() => {
+      expect(createSongNoteMock).toHaveBeenCalledWith(30, {
+        type: "time",
+        text: "Player time note",
+        timestamp_sec: 18.5,
+        chord_index: undefined,
+      });
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Player open notes: 2")).toBeTruthy();
+      expect(screen.getByText("Player time note")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /mock player edit note/i }));
+
+    await waitFor(() => {
+      expect(updateSongNoteMock).toHaveBeenCalledWith(11, { text: "Player note edited" });
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Player note edited")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /mock player resolve note/i }));
+
+    await waitFor(() => {
+      expect(resolveSongNoteMock).toHaveBeenCalledWith(11, true);
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Player open notes: 1")).toBeTruthy();
+      expect(screen.getByText("Player resolved notes: 1")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /mock player delete note/i }));
+
+    await waitFor(() => {
+      expect(deleteSongNoteMock).toHaveBeenCalledWith(11);
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Player open notes: 1")).toBeTruthy();
+      expect(screen.getByText("Player resolved notes: 0")).toBeTruthy();
+      expect(screen.queryByText("Player note edited")).toBeNull();
+    });
+
+    expect(getSongMock).toHaveBeenCalledTimes(6);
   });
 });

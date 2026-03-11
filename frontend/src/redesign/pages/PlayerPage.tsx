@@ -15,6 +15,10 @@ interface PlayerPageProps {
   project: Project;
   song: Song;
   onBack: () => void;
+  onCreateNote?: (payload: { type: "time" | "chord"; text: string; timestampSec?: number; chordIndex?: number }) => Promise<void> | void;
+  onEditNote?: (noteId: number, payload: { text: string }) => Promise<void> | void;
+  onResolveNote?: (noteId: number, resolved: boolean) => Promise<void> | void;
+  onDeleteNote?: (noteId: number) => Promise<void> | void;
 }
 
 type SidePanel = "none" | "stems" | "comments";
@@ -26,11 +30,28 @@ const DEFAULT_PLAYBACK_PREFS = {
   loopEndIndex: null,
 } as const;
 
-export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProps) {
+export function PlayerPage({
+  user,
+  band,
+  project,
+  song,
+  onBack,
+  onCreateNote,
+  onEditNote,
+  onResolveNote,
+  onDeleteNote,
+}: PlayerPageProps) {
   const [sidePanel, setSidePanel] = useState<SidePanel>("none");
   const [showTabs, setShowTabs] = useState(true);
   const [loopStart, setLoopStart] = useState<number | null>(song.playbackPrefs?.loopStartIndex ?? null);
   const [loopEnd, setLoopEnd] = useState<number | null>(song.playbackPrefs?.loopEndIndex ?? null);
+  const [showResolved, setShowResolved] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [noteText, setNoteText] = useState("");
+  const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
+  const [editingText, setEditingText] = useState("");
 
   // Stem mixer state
   const [activeStemKeys, setActiveStemKeys] = useState<Set<string>>(() => {
@@ -80,6 +101,12 @@ export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProp
 
   const activeStemCount = song.stems.filter((s) => !s.isArchived).length;
   const openCommentCount = song.notes.filter((n) => !n.resolved).length;
+  const openComments = song.notes.filter((note) => !note.resolved);
+  const resolvedComments = song.notes.filter((note) => note.resolved);
+  const canCreateNotes = Boolean(onCreateNote);
+  const canEditNotes = Boolean(onEditNote);
+  const canResolveNotes = Boolean(onResolveNote);
+  const canDeleteNotes = Boolean(onDeleteNote);
 
   useEffect(() => {
     const prefs = song.playbackPrefs ?? DEFAULT_PLAYBACK_PREFS;
@@ -144,6 +171,25 @@ export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProp
     : undefined;
 
   const togglePanel = (panel: SidePanel) => setSidePanel((p) => p === panel ? "none" : panel);
+
+  const formatTimestamp = useCallback((seconds: number | null) => {
+    if (seconds === null || Number.isNaN(seconds)) return null;
+    return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
+  }, []);
+
+  const runAction = useCallback(async (action: () => Promise<void> | void, successMessage: string) => {
+    setActionError(null);
+    setActionSuccess(null);
+    setIsSubmitting(true);
+    try {
+      await action();
+      setActionSuccess(successMessage);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Action failed");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, []);
 
   // Prominent toggle button style helper
   const btnStyle = (active: boolean, activeColor: string) => ({
@@ -245,8 +291,62 @@ export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProp
                   <h3 className="text-sm" style={{ fontFamily: "Playfair Display, serif", color: "#e8e8f0" }}>Comments</h3>
                   <span className="text-[10px]" style={{ color: "#7a7a90" }}>{openCommentCount} open</span>
                 </div>
+                <div className="mb-4 border p-3" style={{ borderColor: "rgba(192, 192, 192, 0.05)", background: "rgba(255, 255, 255, 0.02)", borderRadius: "3px" }}>
+                  <label className="grid gap-1 text-[11px]" style={{ color: "#e8e8f0" }}>
+                    <span>Note Text</span>
+                    <textarea
+                      aria-label="Note Text"
+                      value={noteText}
+                      onChange={(event) => setNoteText(event.target.value)}
+                      rows={2}
+                      className="border px-2 py-1.5 text-xs"
+                      style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.12)", background: "rgba(10, 14, 39, 0.7)", color: "#e8e8f0" }}
+                    />
+                  </label>
+                  <div className="mt-2 flex flex-wrap gap-2 text-[10px]" style={{ color: "#7a7a90" }}>
+                    <span>Time {player.currentTime.toFixed(1)}s</span>
+                    <span>Chord #{currentIndex + 1}</span>
+                  </div>
+                  {actionError ? <p className="mt-2 text-[11px]" style={{ color: "#ef4444" }}>{actionError}</p> : null}
+                  {actionSuccess ? <p className="mt-2 text-[11px]" style={{ color: "#14b8a6" }}>{actionSuccess}</p> : null}
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const trimmedText = noteText.trim();
+                        void runAction(async () => {
+                          if (!onCreateNote) throw new Error("Note action unavailable");
+                          if (!trimmedText) throw new Error("Enter note text");
+                          await onCreateNote({ type: "time", text: trimmedText, timestampSec: player.currentTime });
+                        }, "Time note added.");
+                      }}
+                      disabled={isSubmitting || !canCreateNotes}
+                      className="border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide disabled:opacity-60"
+                      style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.35)", color: "#14b8a6" }}
+                    >
+                      Note at Current Time
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const trimmedText = noteText.trim();
+                        void runAction(async () => {
+                          if (!onCreateNote) throw new Error("Note action unavailable");
+                          if (!trimmedText) throw new Error("Enter note text");
+                          await onCreateNote({ type: "chord", text: trimmedText, chordIndex: currentIndex });
+                        }, "Chord note added.");
+                      }}
+                      disabled={isSubmitting || currentChord === null || !canCreateNotes}
+                      className="border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide disabled:opacity-60"
+                      style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.16)", color: "#c0c0c0" }}
+                    >
+                      Note on Current Chord
+                    </button>
+                  </div>
+                </div>
                 <div className="space-y-3">
-                  {song.notes.map((note) => (
+                  {openComments.length === 0 ? <p className="text-xs" style={{ color: "#7a7a90" }}>No open comments.</p> : null}
+                  {openComments.map((note) => (
                     <div key={note.id} className="border-l-2 border p-3" style={{ borderColor: "rgba(192, 192, 192, 0.04)", borderLeftColor: note.resolved ? "rgba(192, 192, 192, 0.1)" : "rgba(230, 57, 70, 0.5)", background: note.resolved ? "rgba(255, 255, 255, 0.01)" : "rgba(255, 255, 255, 0.02)", opacity: note.resolved ? 0.5 : 1, borderRadius: "3px" }}>
                       <div className="mb-1.5 flex items-center gap-2">
                         <div className="flex h-5 w-5 items-center justify-center text-[8px] font-bold text-white" style={{ background: "#1e1e3a", borderRadius: "2px" }}>{note.authorAvatar}</div>
@@ -254,12 +354,156 @@ export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProp
                         <span className="text-[10px]" style={{ color: "#4a4a5e" }}>
                           {note.type === "time" ? `${note.timestampSec?.toFixed(1)}s` : `chord #${(note.chordIndex ?? 0) + 1}`}
                         </span>
-                        {note.resolved && <span className="text-[10px]" style={{ color: "#14b8a6" }}>✓</span>}
                       </div>
-                      <p className="text-xs leading-relaxed" style={{ color: "#c0c0c0" }}>{note.text}</p>
+                      {editingNoteId === note.id ? (
+                        <div className="space-y-2">
+                          <label className="grid gap-1 text-[11px]" style={{ color: "#e8e8f0" }}>
+                            <span>Edit Note Text</span>
+                            <textarea
+                              aria-label="Edit Note Text"
+                              value={editingText}
+                              onChange={(event) => setEditingText(event.target.value)}
+                              rows={2}
+                              className="border px-2 py-1.5 text-xs"
+                              style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.12)", background: "rgba(10, 14, 39, 0.7)", color: "#e8e8f0" }}
+                            />
+                          </label>
+                          <div className="flex gap-2 text-[10px]">
+                            <button
+                              type="button"
+                              aria-label={`Save note ${note.id}`}
+                              onClick={() => {
+                                const trimmedText = editingText.trim();
+                                void runAction(async () => {
+                                  if (!trimmedText) throw new Error("Enter note text");
+                                  await onEditNote?.(note.id, { text: trimmedText });
+                                  setEditingNoteId(null);
+                                  setEditingText("");
+                                }, "Note updated.");
+                              }}
+                              disabled={isSubmitting}
+                              className="border px-2 py-1 disabled:opacity-60"
+                              style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.35)", color: "#14b8a6" }}
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingNoteId(null);
+                                setEditingText("");
+                                setActionError(null);
+                                setActionSuccess(null);
+                              }}
+                              disabled={isSubmitting}
+                              className="border px-2 py-1 disabled:opacity-60"
+                              style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs leading-relaxed" style={{ color: "#c0c0c0" }}>{note.text}</p>
+                      )}
+                      {canEditNotes || canResolveNotes || canDeleteNotes ? (
+                        <div className="mt-2 flex gap-2 text-[10px]">
+                          {canEditNotes ? (
+                            <button
+                              type="button"
+                              aria-label={`Edit note ${note.id}`}
+                              onClick={() => {
+                                setEditingNoteId(note.id);
+                                setEditingText(note.text);
+                                setActionError(null);
+                                setActionSuccess(null);
+                              }}
+                              className="border px-2 py-1"
+                              style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}
+                            >
+                              Edit
+                            </button>
+                          ) : null}
+                          {canResolveNotes ? (
+                            <button
+                              type="button"
+                              aria-label={`Resolve note ${note.id}`}
+                              onClick={() => void runAction(async () => { await onResolveNote(note.id, true); }, "Note resolved.")}
+                              disabled={isSubmitting}
+                              className="border px-2 py-1 disabled:opacity-60"
+                              style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.35)", color: "#14b8a6" }}
+                            >
+                              Resolve
+                            </button>
+                          ) : null}
+                          {canDeleteNotes ? (
+                            <button
+                              type="button"
+                              aria-label={`Delete note ${note.id}`}
+                              onClick={() => void runAction(async () => { await onDeleteNote(note.id); }, "Note deleted.")}
+                              disabled={isSubmitting}
+                              className="border px-2 py-1 disabled:opacity-60"
+                              style={{ borderRadius: "3px", borderColor: "rgba(239, 68, 68, 0.3)", color: "#ef4444" }}
+                            >
+                              Delete
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>
+                {resolvedComments.length > 0 ? (
+                  <div className="mt-4">
+                    <button type="button" onClick={() => setShowResolved((current) => !current)} className="text-[11px] font-medium" style={{ color: "#7a7a90" }}>
+                      {showResolved ? "Hide" : "Show"} resolved ({resolvedComments.length})
+                    </button>
+                    {showResolved ? (
+                      <div className="mt-2 space-y-2">
+                        {resolvedComments.map((note) => (
+                          <div key={note.id} className="border p-3 opacity-60" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.03)", background: "rgba(255, 255, 255, 0.01)" }}>
+                            <div className="mb-1 flex items-center gap-2">
+                              <span className="text-xs" style={{ color: "#7a7a90" }}>{note.authorName ?? "Unknown"}</span>
+                              <span className="text-[10px]" style={{ color: "#14b8a6" }}>✓ resolved</span>
+                              <span className="text-[10px]" style={{ color: "#4a4a5e" }}>
+                                {note.type === "time" ? `at ${formatTimestamp(note.timestampSec) ?? "0:00"}` : `chord #${(note.chordIndex ?? 0) + 1}`}
+                              </span>
+                            </div>
+                            <p className="text-xs" style={{ color: "#5a5a6e" }}>{note.text}</p>
+                            {canResolveNotes || canDeleteNotes ? (
+                              <div className="mt-2 flex gap-2 text-[10px]">
+                                {canResolveNotes ? (
+                                  <button
+                                    type="button"
+                                    aria-label={`Reopen note ${note.id}`}
+                                    onClick={() => void runAction(async () => { await onResolveNote(note.id, false); }, "Note reopened.")}
+                                    disabled={isSubmitting}
+                                    className="border px-2 py-1 disabled:opacity-60"
+                                    style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.35)", color: "#14b8a6" }}
+                                  >
+                                    Reopen
+                                  </button>
+                                ) : null}
+                                {canDeleteNotes ? (
+                                  <button
+                                    type="button"
+                                    aria-label={`Delete note ${note.id}`}
+                                    onClick={() => void runAction(async () => { await onDeleteNote(note.id); }, "Note deleted.")}
+                                    disabled={isSubmitting}
+                                    className="border px-2 py-1 disabled:opacity-60"
+                                    style={{ borderRadius: "3px", borderColor: "rgba(239, 68, 68, 0.3)", color: "#ef4444" }}
+                                  >
+                                    Delete
+                                  </button>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </>
             )}
           </aside>
