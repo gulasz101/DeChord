@@ -114,6 +114,10 @@ class NoteUpdate(BaseModel):
     toast_duration_sec: float | None = None
 
 
+class NoteResolveUpdate(BaseModel):
+    resolved: bool
+
+
 class PlaybackPrefsUpdate(BaseModel):
     speed_percent: int = Field(ge=40, le=200)
     volume: float = Field(ge=0.0, le=1.0)
@@ -148,6 +152,56 @@ class ProjectCreateRequest(BaseModel):
 
 def _row_to_dict(row) -> dict:
     return row.asdict() if hasattr(row, "asdict") else dict(row)
+
+
+def _build_author_avatar(display_name: str | None) -> str | None:
+    if display_name is None:
+        return None
+    parts = [part[0].upper() for part in display_name.split() if part]
+    if not parts:
+        return None
+    return "".join(parts[:2])
+
+
+async def _load_song_notes(song_id: int) -> list[dict]:
+    notes_rs = await execute(
+        """
+        SELECT
+            id,
+            author_user_id,
+            author_name,
+            author_avatar,
+            type,
+            timestamp_sec,
+            chord_index,
+            text,
+            toast_duration_sec,
+            resolved,
+            created_at,
+            updated_at
+        FROM notes
+        WHERE song_id = ?
+        ORDER BY created_at ASC, id ASC
+        """,
+        [song_id],
+    )
+    return [
+        {
+            "id": row[0],
+            "author_user_id": row[1],
+            "author_name": row[2],
+            "author_avatar": row[3],
+            "type": row[4],
+            "timestamp_sec": row[5],
+            "chord_index": row[6],
+            "text": row[7],
+            "toast_duration_sec": row[8],
+            "resolved": bool(row[9]),
+            "created_at": row[10],
+            "updated_at": row[11],
+        }
+        for row in notes_rs.rows
+    ]
 
 
 async def _create_song_record(
@@ -1360,27 +1414,7 @@ async def get_song(song_id: int):
 
     song_row = song_rs.rows[0]
     analysis = await _load_latest_analysis(song_id)
-
-    notes_rs = await execute(
-        """
-        SELECT id, type, timestamp_sec, chord_index, text, toast_duration_sec
-        FROM notes
-        WHERE song_id = ?
-        ORDER BY created_at ASC, id ASC
-        """,
-        [song_id],
-    )
-    notes = [
-        {
-            "id": row[0],
-            "type": row[1],
-            "timestamp_sec": row[2],
-            "chord_index": row[3],
-            "text": row[4],
-            "toast_duration_sec": row[5],
-        }
-        for row in notes_rs.rows
-    ]
+    notes = await _load_song_notes(song_id)
 
     prefs_rs = await execute(
         """
@@ -1701,15 +1735,32 @@ async def create_note(song_id: int, payload: NoteCreate):
         raise HTTPException(400, "timestamp_sec is required for time notes")
     if payload.type == "chord" and payload.chord_index is None:
         raise HTTPException(400, "chord_index is required for chord notes")
+    author = await get_default_user()
+    author_name = str(author["display_name"])
+    author_avatar = _build_author_avatar(author_name)
 
     inserted = await execute(
         """
-        INSERT INTO notes (song_id, type, timestamp_sec, chord_index, text, toast_duration_sec)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO notes (
+            song_id,
+            author_user_id,
+            author_name,
+            author_avatar,
+            type,
+            timestamp_sec,
+            chord_index,
+            text,
+            toast_duration_sec,
+            resolved
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
         RETURNING id
         """,
         [
             song_id,
+            author["id"],
+            author_name,
+            author_avatar,
             payload.type,
             payload.timestamp_sec,
             payload.chord_index,
@@ -1721,6 +1772,10 @@ async def create_note(song_id: int, payload: NoteCreate):
     return {
         "id": note_id,
         "song_id": song_id,
+        "author_user_id": author["id"],
+        "author_name": author_name,
+        "author_avatar": author_avatar,
+        "resolved": False,
         **payload.model_dump(),
     }
 
@@ -1750,6 +1805,25 @@ async def update_note(note_id: int, payload: NoteUpdate):
         [text, toast_duration_sec, note_id],
     )
     return {"id": note_id, "text": text, "toast_duration_sec": toast_duration_sec}
+
+
+@app.patch("/api/notes/{note_id}/resolve")
+async def resolve_note(note_id: int, payload: NoteResolveUpdate):
+    note_rs = await execute("SELECT id, resolved FROM notes WHERE id = ?", [note_id])
+    if not note_rs.rows:
+        raise HTTPException(404, "Note not found")
+    if bool(note_rs.rows[0][1]) == payload.resolved:
+        return {"id": note_id, "resolved": payload.resolved}
+
+    await execute(
+        """
+        UPDATE notes
+        SET resolved = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        [1 if payload.resolved else 0, note_id],
+    )
+    return {"id": note_id, "resolved": payload.resolved}
 
 
 @app.delete("/api/notes/{note_id}")

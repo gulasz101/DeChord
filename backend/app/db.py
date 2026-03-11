@@ -32,6 +32,15 @@ _MUSICIAN_NOUNS = [
 ]
 
 
+def _build_author_avatar(display_name: str | None) -> str | None:
+    if display_name is None:
+        return None
+    parts = [part[0].upper() for part in display_name.split() if part]
+    if not parts:
+        return None
+    return "".join(parts[:2])
+
+
 def _get_db_url() -> str:
     default_path = Path(__file__).resolve().parent.parent / "dechord.db"
     return os.getenv("DECHORD_DB_URL", f"file:{default_path}")
@@ -63,6 +72,14 @@ async def _ensure_column(table_name: str, column_name: str, ddl: str) -> None:
 
 
 async def _run_schema_migrations() -> None:
+    await _ensure_column("notes", "author_user_id", "author_user_id INTEGER")
+    await _ensure_column("notes", "author_name", "author_name TEXT")
+    await _ensure_column("notes", "author_avatar", "author_avatar TEXT")
+    await _ensure_column(
+        "notes",
+        "resolved",
+        "resolved INTEGER NOT NULL DEFAULT 0",
+    )
     await _ensure_column(
         "song_stems",
         "source_type",
@@ -109,6 +126,22 @@ async def init_db() -> None:
         await execute(stmt)
     await _run_schema_migrations()
     await get_default_project()
+    default_user = await get_default_user()
+    default_user_id = int(default_user["id"])
+    default_user_name = str(default_user["display_name"])
+    default_user_avatar = _build_author_avatar(default_user_name)
+    await execute(
+        "UPDATE notes SET author_user_id = ? WHERE author_user_id IS NULL",
+        [default_user_id],
+    )
+    await execute(
+        "UPDATE notes SET author_name = ? WHERE author_name IS NULL",
+        [default_user_name],
+    )
+    await execute(
+        "UPDATE notes SET author_avatar = ? WHERE author_avatar IS NULL",
+        [default_user_avatar],
+    )
 
 
 async def get_default_user() -> dict[str, Any]:

@@ -96,13 +96,18 @@ CREATE TABLE IF NOT EXISTS playback_prefs (
 CREATE TABLE IF NOT EXISTS notes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     song_id INTEGER NOT NULL,
+    author_user_id INTEGER NOT NULL,
+    author_name TEXT NOT NULL,
+    author_avatar TEXT,
     type TEXT NOT NULL CHECK(type IN ('time', 'chord')),
     timestamp_sec REAL,
     chord_index INTEGER,
     text TEXT NOT NULL,
     toast_duration_sec REAL,
+    resolved INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (author_user_id) REFERENCES users(id) ON DELETE RESTRICT,
     FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
 );
 

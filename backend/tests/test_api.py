@@ -4,6 +4,7 @@ import threading
 import sys
 import types
 import io
+import sqlite3
 import zipfile
 from pathlib import Path
 
@@ -373,6 +374,205 @@ def test_notes_and_playback_prefs_crud(tmp_path, monkeypatch):
 
     deleted = client.delete(f"/api/notes/{note_id}")
     assert deleted.status_code == 200
+
+
+def test_song_notes_support_resolve_and_truthful_payloads(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    expected_author = asyncio.run(main.get_default_user())
+    expected_avatar = main._build_author_avatar(str(expected_author["display_name"]))
+
+    create = client.post(
+        "/api/analyze",
+        files={"file": ("demo.mp3", b"audio", "audio/mpeg")},
+    )
+    song_id = create.json()["song_id"]
+
+    created = client.post(
+        f"/api/songs/{song_id}/notes",
+        json={"type": "chord", "text": "Tighten the verse lock", "chord_index": 1},
+    )
+    assert created.status_code == 200
+    note_id = created.json()["id"]
+
+    author_rs = asyncio.run(
+        main.execute(
+            "SELECT author_user_id, author_name, author_avatar, resolved FROM notes WHERE id = ?",
+            [note_id],
+        )
+    )
+    assert tuple(author_rs.rows[0]) == (
+        expected_author["id"],
+        expected_author["display_name"],
+        expected_avatar,
+        0,
+    )
+
+    resolved = client.patch(f"/api/notes/{note_id}/resolve", json={"resolved": True})
+    assert resolved.status_code == 200
+    assert resolved.json() == {"id": note_id, "resolved": True}
+
+    asyncio.run(
+        main.execute(
+            "UPDATE notes SET updated_at = '2001-01-01 00:00:00' WHERE id = ?",
+            [note_id],
+        )
+    )
+    before_repeat = asyncio.run(
+        main.execute("SELECT updated_at FROM notes WHERE id = ?", [note_id])
+    ).rows[0][0]
+
+    resolved_again = client.patch(
+        f"/api/notes/{note_id}/resolve", json={"resolved": True}
+    )
+    assert resolved_again.status_code == 200
+    assert resolved_again.json() == {"id": note_id, "resolved": True}
+    after_repeat = asyncio.run(
+        main.execute("SELECT updated_at FROM notes WHERE id = ?", [note_id])
+    ).rows[0][0]
+    assert after_repeat == before_repeat
+
+    unresolved = client.patch(f"/api/notes/{note_id}/resolve", json={"resolved": False})
+    assert unresolved.status_code == 200
+    assert unresolved.json() == {"id": note_id, "resolved": False}
+
+    song = client.get(f"/api/songs/{song_id}")
+    payload = song.json()["notes"][0]
+    assert payload["resolved"] is False
+    assert payload["author_name"] == "Wojtek"
+    assert payload["author_avatar"] == "W"
+    assert payload["created_at"]
+    assert payload["updated_at"]
+
+    missing = client.patch("/api/notes/999999/resolve", json={"resolved": True})
+    assert missing.status_code == 404
+
+
+def test_notes_schema_includes_resolved_and_persisted_author_columns(
+    tmp_path, monkeypatch
+):
+    _build_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    columns_rs = asyncio.run(main.execute("PRAGMA table_info(notes)"))
+    columns = {str(row[1]): row for row in columns_rs.rows}
+
+    assert "resolved" in columns
+    assert columns["resolved"][4] == "0"
+    assert "author_user_id" in columns
+    assert "author_name" in columns
+    assert "author_avatar" in columns
+
+
+def test_notes_backfill_uses_actual_default_user_and_derived_avatar(
+    tmp_path, monkeypatch
+):
+    db_path = tmp_path / "legacy-notes.db"
+    monkeypatch.setenv("DECHORD_DB_URL", f"file:{db_path}")
+
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            display_name TEXT NOT NULL UNIQUE,
+            fingerprint_token TEXT UNIQUE,
+            username TEXT UNIQUE,
+            is_claimed INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE songs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            project_id INTEGER,
+            title TEXT NOT NULL,
+            original_filename TEXT,
+            mime_type TEXT,
+            audio_blob BLOB NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            song_id INTEGER NOT NULL,
+            type TEXT NOT NULL CHECK(type IN ('time', 'chord')),
+            timestamp_sec REAL,
+            chord_index INTEGER,
+            text TEXT NOT NULL,
+            toast_duration_sec REAL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+    )
+    conn.execute("INSERT INTO users (display_name) VALUES ('Existing User')")
+    conn.execute(
+        "INSERT INTO songs (user_id, project_id, title, original_filename, mime_type, audio_blob) VALUES (1, NULL, 'legacy-note-song', 'legacy.mp3', 'audio/mpeg', x'00')"
+    )
+    conn.execute(
+        "INSERT INTO notes (song_id, type, timestamp_sec, chord_index, text, toast_duration_sec) VALUES (1, 'time', 1.0, NULL, 'legacy', NULL)"
+    )
+    conn.commit()
+    conn.close()
+
+    import app.db as db_mod
+    import app.main as main
+
+    asyncio.run(db_mod.reset_db_client_for_tests())
+    importlib.reload(db_mod)
+    main = importlib.reload(main)
+    asyncio.run(main.init_db())
+
+    default_user = asyncio.run(main.get_default_user())
+    expected_avatar = main._build_author_avatar(str(default_user["display_name"]))
+    assert default_user["id"] != 1
+
+    backfilled = asyncio.run(
+        main.execute(
+            "SELECT author_user_id, author_name, author_avatar FROM notes WHERE id = 1"
+        )
+    )
+    assert tuple(backfilled.rows[0]) == (
+        default_user["id"],
+        default_user["display_name"],
+        expected_avatar,
+    )
+
+
+def test_create_time_note_requires_timestamp_sec(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+
+    create = client.post(
+        "/api/analyze",
+        files={"file": ("demo.mp3", b"audio", "audio/mpeg")},
+    )
+    song_id = create.json()["song_id"]
+
+    response = client.post(
+        f"/api/songs/{song_id}/notes",
+        json={"type": "time", "text": "Needs an actual timestamp"},
+    )
+
+    assert response.status_code == 400
+
+
+def test_create_chord_note_requires_chord_index(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+
+    create = client.post(
+        "/api/analyze",
+        files={"file": ("demo.mp3", b"audio", "audio/mpeg")},
+    )
+    song_id = create.json()["song_id"]
+
+    response = client.post(
+        f"/api/songs/{song_id}/notes",
+        json={"type": "chord", "text": "Needs a chord reference"},
+    )
+
+    assert response.status_code == 400
 
 
 def test_status_not_found(tmp_path, monkeypatch):
