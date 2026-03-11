@@ -1,6 +1,6 @@
 import type {
   JobStatus,
-  AnalysisResult,
+  CompletedAnalysisResult,
   UploadResponse,
   SongDetailResponse,
   SongsListResponse,
@@ -48,7 +48,7 @@ export async function getJobStatus(jobId: string): Promise<JobStatus> {
   return res.json();
 }
 
-export async function getResult(jobId: string): Promise<AnalysisResult> {
+export async function getResult(jobId: string): Promise<CompletedAnalysisResult> {
   const res = await fetch(`${BASE}/api/result/${jobId}`);
   if (!res.ok) throw new Error("Result fetch failed");
   return res.json();
@@ -86,7 +86,7 @@ export async function pollUntilComplete(
   jobId: string,
   onProgress?: (status: JobStatus) => void,
   intervalMs = 1000,
-): Promise<AnalysisResult> {
+): Promise<CompletedAnalysisResult> {
   while (true) {
     const status = await getJobStatus(jobId);
     onProgress?.(status);

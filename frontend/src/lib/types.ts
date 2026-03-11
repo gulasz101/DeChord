@@ -5,11 +5,14 @@ export interface Chord {
 }
 
 export interface AnalysisResult {
-  song_id?: number;
   key: string;
   tempo: number;
   duration: number;
   chords: Chord[];
+}
+
+export interface CompletedAnalysisResult extends AnalysisResult {
+  song_id: number;
 }
 
 export type ProcessMode = "analysis_only" | "analysis_and_stems";
