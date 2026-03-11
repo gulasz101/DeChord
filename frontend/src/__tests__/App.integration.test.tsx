@@ -20,6 +20,7 @@ const {
   listProjectSongsMock,
   createBandMock,
   createProjectMock,
+  playerPagePropsSpy,
 } = vi.hoisted(() => ({
   claimIdentityMock: vi.fn().mockResolvedValue({
     user: {
@@ -110,6 +111,22 @@ const {
   createProjectMock: vi.fn().mockResolvedValue({
     project: { id: 21, band_id: 11, name: "Debut", description: "", created_at: "2026-03-10", song_count: 0 },
   }),
+  playerPagePropsSpy: vi.fn(),
+}));
+
+vi.mock("../redesign/pages/PlayerPage", () => ({
+  PlayerPage: ({ song }: { song: { id: string; stems: Array<unknown>; chords: Array<unknown>; tab?: { sourceStemKey?: string | null } | null } }) => {
+    playerPagePropsSpy(song);
+    return (
+      <div
+        data-testid="player-page"
+        data-song-id={song.id}
+        data-stem-count={String(song.stems.length)}
+        data-chord-count={String(song.chords.length)}
+        data-tab-source-stem-key={song.tab?.sourceStemKey ?? ""}
+      />
+    );
+  },
 }));
 
 vi.mock("../lib/api", async (importOriginal) => {
@@ -160,6 +177,7 @@ describe("App integration", () => {
     listProjectSongsMock.mockReset();
     createBandMock.mockReset();
     createProjectMock.mockReset();
+    playerPagePropsSpy.mockReset();
     vi.useRealTimers();
     claimIdentityMock.mockResolvedValue({
       user: {
@@ -729,5 +747,174 @@ describe("App integration", () => {
 
     expect(screen.getByText("The Trooper")).toBeTruthy();
     expect(getSongTabsMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("hydrates the player route from song detail with the latest real song assets", async () => {
+    getSongMock.mockResolvedValue({
+      song: { id: 30, title: "The Trooper", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-09" },
+      analysis: {
+        key: "Em",
+        tempo: 160,
+        duration: 48,
+        chords: [{ start: 0, end: 4, label: "Em" }],
+      },
+      notes: [],
+      playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+    });
+    listSongStemsMock
+      .mockResolvedValueOnce({ stems: [] })
+      .mockResolvedValueOnce({
+        stems: [{ stem_key: "bass", relative_path: "stems/30/bass.wav", mime_type: "audio/x-wav", duration: 48 }],
+      });
+    getSongTabsMock
+      .mockResolvedValueOnce({ tab: null })
+      .mockResolvedValueOnce({
+        tab: {
+          id: 1,
+          source_stem_key: "bass",
+          source_midi_id: 1,
+          source_type: "user",
+          source_display_name: "Bass DI",
+          tab_format: "alphatex",
+          tuning: "E1,A1,D2,G2",
+          strings: 4,
+          generator_version: "v2-rhythm-grid",
+          status: "complete",
+          error_message: null,
+          created_at: "2026-03-10",
+          updated_at: "2026-03-10",
+        },
+      });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    await waitFor(() => {
+      expect(screen.getByText("Your Bands")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Default Band"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library →")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    await waitFor(() => {
+      expect(screen.getByText("The Trooper")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("The Trooper"));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /open player/i })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /open player/i }));
+
+    await waitFor(() => {
+      expect(getSongMock).toHaveBeenCalledTimes(2);
+      expect(playerPagePropsSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          id: "30",
+          chords: [{ start: 0, end: 4, label: "Em" }],
+          stems: [expect.objectContaining({ stemKey: "bass" })],
+          tab: expect.objectContaining({ sourceStemKey: "bass" }),
+        }),
+      );
+    });
+
+    expect(screen.getByTestId("player-page").getAttribute("data-tab-source-stem-key")).toBe("bass");
+    expect(screen.getByTestId("player-page").getAttribute("data-stem-count")).toBe("1");
+  });
+
+  it("ignores stale player hydration if song detail is no longer the current route when it resolves", async () => {
+    let resolveDeferredSong: ((value: Awaited<ReturnType<typeof getSongMock>>) => void) | null = null;
+    const deferredSongDetail = new Promise<Awaited<ReturnType<typeof getSongMock>>>((resolve) => {
+      resolveDeferredSong = resolve;
+    });
+
+    getSongMock
+      .mockResolvedValueOnce({
+        song: { id: 30, title: "The Trooper", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-09" },
+        analysis: {
+          key: "Em",
+          tempo: 160,
+          duration: 48,
+          chords: [{ start: 0, end: 4, label: "Em" }],
+        },
+        notes: [],
+        playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+      })
+      .mockReturnValueOnce(deferredSongDetail);
+    listSongStemsMock
+      .mockResolvedValueOnce({ stems: [] })
+      .mockResolvedValueOnce({
+        stems: [{ stem_key: "bass", relative_path: "stems/30/bass.wav", mime_type: "audio/x-wav", duration: 48 }],
+      });
+    getSongTabsMock
+      .mockResolvedValueOnce({ tab: null })
+      .mockResolvedValueOnce({
+        tab: {
+          id: 1,
+          source_stem_key: "bass",
+          source_midi_id: 1,
+          source_type: "user",
+          source_display_name: "Bass DI",
+          tab_format: "alphatex",
+          tuning: "E1,A1,D2,G2",
+          strings: 4,
+          generator_version: "v2-rhythm-grid",
+          status: "complete",
+          error_message: null,
+          created_at: "2026-03-10",
+          updated_at: "2026-03-10",
+        },
+      });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    await waitFor(() => {
+      expect(screen.getByText("Your Bands")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Default Band"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library →")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    await waitFor(() => {
+      expect(screen.getByText("The Trooper")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("The Trooper"));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /open player/i })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /open player/i }));
+    fireEvent.click(screen.getByText(/song library/i));
+
+    await waitFor(() => {
+      expect(screen.getByText("Song Library")).toBeTruthy();
+    });
+
+    await act(async () => {
+      resolveDeferredSong?.({
+        song: { id: 30, title: "The Trooper", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-09" },
+        analysis: {
+          key: "Em",
+          tempo: 160,
+          duration: 48,
+          chords: [{ start: 0, end: 4, label: "Em" }],
+        },
+        notes: [],
+        playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+      });
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByTestId("player-page")).toBeNull();
+    expect(screen.getByText("Song Library")).toBeTruthy();
   });
 });

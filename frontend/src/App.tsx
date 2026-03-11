@@ -401,6 +401,23 @@ export default function App() {
     });
   }, [loadSongDetails, route]);
 
+  const openPlayerForSong = useCallback(async (band: Band, project: Project, song: Song) => {
+    const detailed = await loadSongDetails(song);
+
+    setRoute((current) => {
+      if (
+        current.page !== "song-detail"
+        || current.band.id !== band.id
+        || current.project.id !== project.id
+        || current.song.id !== song.id
+      ) {
+        return current;
+      }
+
+      return { page: "player", band, project, song: detailed };
+    });
+  }, [loadSongDetails]);
+
   const findBandInHierarchy = useCallback((loadedBands: Band[], bandId: string) => {
     return loadedBands.find((band) => band.id === bandId) ?? null;
   }, []);
@@ -684,7 +701,9 @@ export default function App() {
             await regenerateSongTabs(songId, { source_stem_key: sourceStemKey });
             await refreshSongDetailRoute();
           }}
-          onOpenPlayer={() => setRoute({ page: "player", band: route.band, project: route.project, song: route.song })}
+          onOpenPlayer={() => {
+            void openPlayerForSong(route.band, route.project, route.song);
+          }}
           onBack={goBack}
         />
       );
