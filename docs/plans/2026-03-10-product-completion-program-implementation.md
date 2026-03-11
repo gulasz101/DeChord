@@ -17,7 +17,7 @@
   <task>[x] Task 2: Plan the processing-journey slice in detail.</task>
   <task>[x] Task 3: Implement and verify the processing-journey slice.</task>
   <task>[x] Task 4: Plan the song-detail-completeness slice in detail.</task>
-  <task>[ ] Task 5: Implement and verify the song-detail-completeness slice.</task>
+  <task>[x] Task 5: Implement and verify the song-detail-completeness slice.</task>
   <task>[ ] Task 6: Plan the real-player slice in detail.</task>
   <task>[ ] Task 7: Implement and verify the real-player slice.</task>
   <task>[ ] Task 8: Plan the notes-and-rehearsal slice in detail.</task>
@@ -51,11 +51,11 @@ Use this section as the durable landing zone for each slice's linked docs, statu
 
 ### Slice 2: Song Detail Completeness
 
-- Status: Planned and ready for implementation; honest asset-management docs are in place, code not started.
+- Status: Complete and verification-backed.
 - Design doc: `docs/plans/2026-03-10-song-detail-completeness-design.md`
 - Implementation doc: `docs/plans/2026-03-10-song-detail-completeness-implementation.md`
-- Verification notes: Not recorded yet.
-- Commit links: Not recorded yet.
+- Verification notes: On 2026-03-11, focused verification passed before reset with `npm --prefix frontend test -- --run src/lib/__tests__/api.song-detail-assets.test.ts src/redesign/pages/__tests__/SongDetailPage.test.tsx src/__tests__/App.integration.test.tsx` (3 files passed, 22 tests passed) and `uv run --project backend pytest backend/tests/test_api.py -k "upload_song_stem_persists_user_asset_and_returns_provenance or upload_song_stem_same_filename_creates_distinct_storage_and_versions or song_tabs_metadata_includes_source_provenance_fields or song_tabs_provenance_stays_tied_to_generated_source_after_later_replacement or regenerate_song_stems_preserves_active_user_upload_for_same_key or regenerate_song_stems_prunes_obsolete_system_rows_but_keeps_user_rows or generate_tab_from_demucs_stems_persists_transient_uploaded_provenance_for_existing_song or regenerate_song_tabs_uses_selected_stem_and_persists_new_tab or tabs_metadata_endpoint_returns_latest_tab" -q` (9 passed, 31 deselected, warnings limited to the existing FastAPI `on_event` deprecations). `make reset` then passed, `make up` passed, and the runtime after the final restart served frontend at `http://127.0.0.1:4553` and backend at `http://127.0.0.1:4836`. After reset, the same focused frontend command passed again with 22 tests passed and the same focused backend command passed again with 9 passed, 31 deselected, and the same warnings only. Manual verification with `test songs/Clara Luciani - La grenade.mp3` used upload job `814babe1d554`, observed processing `analyzing_chords -> splitting_stems -> transcribing_bass_midi -> complete`, and finished with backend `status=complete`, `stems_status=complete`, `midi_status=complete`, `tab_status=complete`. On the verified `Clara Luciani - La grenade` song detail page, the real `Generate Stems` action was opened and confirmed, the inline panel showed `Stems regenerated.`, the active system stem rows refreshed in place, and the visible version labels for drums/other/vocals changed from `v5686` to `v758847` while the uploaded user bass stem remained active and unchanged with display name `Clara Luciani - La grenade.mp3`, source `User`, and uploader `Wojtek`. This provides explicit manual evidence that regenerate-stems refreshes system stems while preserving the active user override for the same key. The frontend auto-opened song detail for `Clara Luciani - La grenade`, initially showed system stems plus current bass tab provenance `Generated from Bass.` / `Provenance: System`, refreshed the bass stem row after replacement upload to display name `Clara Luciani - La grenade.mp3`, source `User`, uploader `Wojtek`, preserved the current bass tab provenance on the last generated tab until regeneration, and after regenerating bass tab from the uploaded bass stem showed `Generated from Clara Luciani - La grenade.mp3.`, `Provenance: User`, and updated timestamp `2026-03-11 14:29:46`.
+- Commit links: local commits `a111de1`, `fb76619`, `e787403`, `4df07b9`, and `df06c0a`. Pushed links not recorded yet.
 
 ### Slice 3: Real Player
 

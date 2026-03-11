@@ -12,12 +12,12 @@
 
 ## XML Tracking
 
-<phase id="song-detail-completeness-plan-execution" status="planned">
-  <task>[ ] Task 1: Lock the song-detail asset API contract in frontend tests.</task>
-  <task>[ ] Task 2: Add backend upload-stem and provenance support.</task>
-  <task>[ ] Task 3: Render honest asset management in `SongDetailPage`.</task>
-  <task>[ ] Task 4: Wire song-detail refresh behavior in `App.tsx`.</task>
-  <task>[ ] Task 5: Verify the slice end-to-end and record the implementation result.</task>
+<phase id="song-detail-completeness-plan-execution" status="completed">
+  <task>[x] Task 1: Lock the song-detail asset API contract in frontend tests.</task>
+  <task>[x] Task 2: Add backend upload-stem and provenance support.</task>
+  <task>[x] Task 3: Render honest asset management in `SongDetailPage`.</task>
+  <task>[x] Task 4: Wire song-detail refresh behavior in `App.tsx`.</task>
+  <task>[x] Task 5: Verify the slice end-to-end and record the implementation result.</task>
 </phase>
 
 ### Task 1: Lock the song-detail asset API contract in frontend tests
@@ -519,6 +519,17 @@ After code is green, record:
 
 Run: `npm --prefix frontend test -- --run src/lib/__tests__/api.song-detail-assets.test.ts src/redesign/pages/__tests__/SongDetailPage.test.tsx src/__tests__/App.integration.test.tsx && uv run --project backend pytest backend/tests/test_api.py -k "upload_song_stem_persists_user_asset_and_returns_provenance or song_tabs_metadata_includes_source_provenance_fields or regenerate_song_stems or regenerate_song_tabs" -q && make reset && npm --prefix frontend test -- --run src/lib/__tests__/api.song-detail-assets.test.ts src/redesign/pages/__tests__/SongDetailPage.test.tsx src/__tests__/App.integration.test.tsx && uv run --project backend pytest backend/tests/test_api.py -k "upload_song_stem_persists_user_asset_and_returns_provenance or song_tabs_metadata_includes_source_provenance_fields or regenerate_song_stems or regenerate_song_tabs" -q`
 Expected: PASS. Then manually verify the real song-detail asset flows.
+
+### Task 5 Verification Record
+
+- Focused verification before reset: `npm --prefix frontend test -- --run src/lib/__tests__/api.song-detail-assets.test.ts src/redesign/pages/__tests__/SongDetailPage.test.tsx src/__tests__/App.integration.test.tsx` passed with 3 files passed and 22 tests passed.
+- Focused verification before reset: `uv run --project backend pytest backend/tests/test_api.py -k "upload_song_stem_persists_user_asset_and_returns_provenance or upload_song_stem_same_filename_creates_distinct_storage_and_versions or song_tabs_metadata_includes_source_provenance_fields or song_tabs_provenance_stays_tied_to_generated_source_after_later_replacement or regenerate_song_stems_preserves_active_user_upload_for_same_key or regenerate_song_stems_prunes_obsolete_system_rows_but_keeps_user_rows or generate_tab_from_demucs_stems_persists_transient_uploaded_provenance_for_existing_song or regenerate_song_tabs_uses_selected_stem_and_persists_new_tab or tabs_metadata_endpoint_returns_latest_tab" -q` passed with 9 passed and 31 deselected; warnings were limited to the existing FastAPI `on_event` deprecations.
+- Reset / restart evidence: `make reset` passed, `make up` passed, and the runtime after the final restart served frontend at `http://127.0.0.1:4553` and backend at `http://127.0.0.1:4836`.
+- Focused verification after reset: the same frontend command passed again with 3 files passed and 22 tests passed, and the same backend command passed again with 9 passed, 31 deselected, and the same warnings only.
+- Manual verification succeeded with fixture `test songs/Clara Luciani - La grenade.mp3` and upload job `814babe1d554`; observed processing progressed `analyzing_chords -> splitting_stems -> transcribing_bass_midi -> complete`, and the final backend status reported `status=complete`, `stems_status=complete`, `midi_status=complete`, `tab_status=complete`.
+- Manual verification confirmed the real `Generate Stems` action on the verified `Clara Luciani - La grenade` song detail page: the action was opened and confirmed, the inline panel showed `Stems regenerated.`, the active system stem rows refreshed in place, and the visible version labels for drums/other/vocals changed from `v5686` to `v758847`.
+- Manual verification confirmed the uploaded user bass stem remained active and unchanged through regenerate-stems with display name `Clara Luciani - La grenade.mp3`, source `User`, and uploader `Wojtek`; this explicitly shows the slice truth model where system stems refresh while the active user override for the same key is preserved.
+- Manual verification confirmed the frontend auto-opened song detail for `Clara Luciani - La grenade`; the initial song detail showed system stems and current bass tab provenance `Generated from Bass.` / `Provenance: System`; uploading a replacement bass stem refreshed the bass stem row to display name `Clara Luciani - La grenade.mp3`, source `User`, and uploader `Wojtek`; current bass tab provenance remained on the last generated tab after upload, matching the intended truth model; regenerating bass tab from the uploaded bass stem updated the current bass tab summary to `Generated from Clara Luciani - La grenade.mp3.`, `Provenance: User`, with updated timestamp `2026-03-11 14:29:46`.
 
 **Step 5: Commit**
 
