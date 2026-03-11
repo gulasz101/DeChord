@@ -10,6 +10,7 @@ interface SongDetailPageProps {
   onBack: () => void;
   onDownloadStem?: (stemId: string) => void;
   onDownloadAllStems?: () => void;
+  onUploadStem?: (payload: { stemKey: string; file: File }) => Promise<void> | void;
   onGenerateStems?: () => Promise<void> | void;
   onGenerateBassTab?: (sourceStemKey: string) => Promise<void> | void;
 }
@@ -31,11 +32,12 @@ export function SongDetailPage({
   onBack,
   onDownloadStem,
   onDownloadAllStems,
+  onUploadStem,
   onGenerateStems,
   onGenerateBassTab,
 }: SongDetailPageProps) {
   const [showResolved, setShowResolved] = useState(false);
-  const [openPanel, setOpenPanel] = useState<"stems" | "tabs" | null>(null);
+  const [openPanel, setOpenPanel] = useState<"upload" | "stems" | "tabs" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -47,10 +49,30 @@ export function SongDetailPage({
   const tabEligibleStems = activeStems.filter((stem) => stem.stemKey !== "drums");
   const defaultTabStemKey = tabEligibleStems.find((stem) => stem.stemKey === "bass")?.stemKey ?? tabEligibleStems[0]?.stemKey ?? "";
   const [selectedTabStemKey, setSelectedTabStemKey] = useState(defaultTabStemKey);
+  const [uploadStemKey, setUploadStemKey] = useState(defaultTabStemKey || "bass");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
 
   useEffect(() => {
     setSelectedTabStemKey(defaultTabStemKey);
+    setUploadStemKey(defaultTabStemKey || "bass");
   }, [defaultTabStemKey]);
+
+  function resetUploadState() {
+    setUploadFile(null);
+    setUploadStemKey(defaultTabStemKey || "bass");
+  }
+
+  function togglePanel(panel: "upload" | "stems" | "tabs") {
+    const nextPanel = openPanel === panel ? null : panel;
+    if (openPanel === "upload" || nextPanel === "upload") {
+      resetUploadState();
+    }
+    setOpenPanel(nextPanel);
+    setActionError(null);
+    setActionSuccess(null);
+  }
+
+  const currentTabSourceLabel = song.tab?.sourceDisplayName?.trim() || song.tab?.sourceStemKey || null;
 
   async function runAction(action: () => Promise<void>, successMessage: string) {
     setActionError(null);
@@ -122,7 +144,10 @@ export function SongDetailPage({
                           {stem.sourceType}
                         </span>
                       </div>
-                      <div className="mt-0.5 text-xs" style={{ color: "#7a7a90" }}>{stem.description} — by {stem.uploaderName}</div>
+                      <div className="mt-0.5 text-xs" style={{ color: "#7a7a90" }}>
+                        {stem.description}
+                        {stem.uploaderName ? ` - by ${stem.uploaderName}` : ""}
+                      </div>
                     </div>
                     <button
                       onClick={() => onDownloadStem?.(stem.stemKey)}
@@ -156,32 +181,115 @@ export function SongDetailPage({
               >
                 Download All Stems
               </button>
-              <button className="border px-5 py-2.5 text-sm font-medium transition-all hover:bg-white/5 hover:border-purple-500/30" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}>
+              <button
+                onClick={() => togglePanel("upload")}
+                className="border px-5 py-2.5 text-sm font-medium transition-all hover:bg-white/5 hover:border-purple-500/30"
+                style={{ borderRadius: "3px", borderColor: openPanel === "upload" ? "rgba(20, 184, 166, 0.35)" : "rgba(192, 192, 192, 0.1)", color: openPanel === "upload" ? "#14b8a6" : "#c0c0c0" }}
+              >
                 Upload Stem
               </button>
               <button
-                onClick={() => {
-                  setOpenPanel(openPanel === "stems" ? null : "stems");
-                  setActionError(null);
-                  setActionSuccess(null);
-                }}
+                onClick={() => togglePanel("stems")}
                 className="border px-5 py-2.5 text-sm font-medium transition-all hover:bg-white/5 hover:border-purple-500/30"
                 style={{ borderRadius: "3px", borderColor: openPanel === "stems" ? "rgba(20, 184, 166, 0.35)" : "rgba(192, 192, 192, 0.1)", color: openPanel === "stems" ? "#14b8a6" : "#c0c0c0" }}
               >
                 Generate Stems
               </button>
               <button
-                onClick={() => {
-                  setOpenPanel(openPanel === "tabs" ? null : "tabs");
-                  setActionError(null);
-                  setActionSuccess(null);
-                }}
+                onClick={() => togglePanel("tabs")}
                 className="border px-5 py-2.5 text-sm font-medium transition-all hover:bg-white/5 hover:border-purple-500/30"
                 style={{ borderRadius: "3px", borderColor: openPanel === "tabs" ? "rgba(20, 184, 166, 0.35)" : "rgba(192, 192, 192, 0.1)", color: openPanel === "tabs" ? "#14b8a6" : "#c0c0c0" }}
               >
                 Generate Bass Tab
               </button>
             </div>
+
+            <div className="mt-6 border p-4" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.05)", background: "rgba(255, 255, 255, 0.02)", backdropFilter: "blur(8px)" }}>
+              {song.tab ? (
+                <>
+                  <h3 className="text-sm font-semibold" style={{ color: "#e2e2f0" }}>Current bass tab</h3>
+                  <p className="mt-2 text-sm" style={{ color: "#c0c0c0" }}>
+                    {currentTabSourceLabel ? `Generated from ${currentTabSourceLabel}.` : "Generated from the current active source stem."}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs" style={{ color: "#7a7a90" }}>
+                    <span>Status: {song.tab.status}</span>
+                    <span>Provenance: {song.tab.sourceType}</span>
+                    <span>Generator: {song.tab.generatorVersion}</span>
+                    <span>Updated: {song.tab.updatedAt}</span>
+                  </div>
+                  {song.tab.errorMessage ? <p className="mt-2 text-sm" style={{ color: "#ef4444" }}>{song.tab.errorMessage}</p> : null}
+                </>
+              ) : (
+                <>
+                  <h3 className="text-sm font-semibold" style={{ color: "#e2e2f0" }}>No generated bass tab yet</h3>
+                  <p className="mt-2 text-sm" style={{ color: "#7a7a90" }}>
+                    Tab provenance will appear after a successful tab generation run.
+                  </p>
+                </>
+              )}
+            </div>
+
+            {openPanel === "upload" && (
+              <div className="mt-4 border p-4" style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.2)", background: "rgba(20, 184, 166, 0.06)" }}>
+                <h3 className="text-sm font-semibold" style={{ color: "#e2e2f0" }}>Upload Replacement Stem</h3>
+                <p className="mt-2 text-sm" style={{ color: "#c0c0c0" }}>
+                  Upload a file for the active stem role. The newest active asset replaces the current role on this page.
+                </p>
+                <div className="mt-4 grid gap-4">
+                  <label className="grid gap-1 text-sm" style={{ color: "#e2e2f0" }}>
+                    <span>Stem Role</span>
+                    <select
+                      aria-label="Stem Role"
+                      value={uploadStemKey}
+                      onChange={(event) => setUploadStemKey(event.target.value)}
+                      className="border px-3 py-2"
+                      style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.12)", background: "rgba(10, 14, 39, 0.7)", color: "#e2e2f0" }}
+                    >
+                      {Array.from(new Set(["bass", ...activeStems.map((stem) => stem.stemKey)])).map((stemKey) => (
+                        <option key={stemKey} value={stemKey}>{stemKey}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-sm" style={{ color: "#e2e2f0" }}>
+                    <span>Stem File</span>
+                    <input
+                      aria-label="Stem File"
+                      type="file"
+                      accept="audio/*"
+                      onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
+                      className="border px-3 py-2"
+                      style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.12)", background: "rgba(10, 14, 39, 0.7)", color: "#e2e2f0" }}
+                    />
+                  </label>
+                </div>
+                {actionError && <p className="mt-3 text-sm" style={{ color: "#ef4444" }}>{actionError}</p>}
+                {actionSuccess && <p className="mt-3 text-sm" style={{ color: "#14b8a6" }}>{actionSuccess}</p>}
+                <div className="mt-4 flex gap-3">
+                  <button
+                    onClick={() => {
+                      void runAction(async () => {
+                        if (!uploadFile) throw new Error("Select a stem file");
+                        await onUploadStem?.({ stemKey: uploadStemKey, file: uploadFile });
+                        resetUploadState();
+                      }, "Stem uploaded.");
+                    }}
+                    disabled={isSubmitting}
+                    className="border px-4 py-2 text-sm font-medium transition-all disabled:opacity-60"
+                    style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.35)", color: "#14b8a6" }}
+                  >
+                    {isSubmitting ? "Uploading..." : "Confirm Stem Upload"}
+                  </button>
+                  <button
+                    onClick={() => togglePanel("upload")}
+                    disabled={isSubmitting}
+                    className="border px-4 py-2 text-sm font-medium transition-all disabled:opacity-60"
+                    style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
 
             {openPanel === "stems" && (
               <div className="mt-4 border p-4" style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.2)", background: "rgba(20, 184, 166, 0.06)" }}>

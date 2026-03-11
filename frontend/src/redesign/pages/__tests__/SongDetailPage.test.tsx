@@ -148,4 +148,145 @@ describe("SongDetailPage", () => {
       expect(screen.getByText("Bass tab regenerated from Bass.")).toBeTruthy();
     });
   });
+
+  it("shows current stem provenance, uploads a stem, and renders current tab provenance", async () => {
+    const onUploadStem = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <SongDetailPage
+        user={user}
+        band={band}
+        project={project}
+        song={{
+          ...song,
+          stems: [
+            {
+              id: "bass-user",
+              stemKey: "bass",
+              label: "Bass DI",
+              uploaderName: "Groove Bassline",
+              sourceType: "User",
+              description: "Uploaded 2026-03-10",
+              version: 2,
+              isArchived: false,
+              createdAt: "2026-03-10T10:00:00Z",
+            },
+          ],
+          tab: {
+            sourceStemKey: "bass",
+            sourceDisplayName: "Bass DI",
+            sourceType: "User",
+            status: "complete",
+            generatorVersion: "v2-rhythm-grid",
+            updatedAt: "2026-03-10T10:05:00Z",
+          },
+        }}
+        onOpenPlayer={() => {}}
+        onBack={() => {}}
+        onUploadStem={onUploadStem}
+      />,
+    );
+
+    expect(screen.getByText("Bass DI")).toBeTruthy();
+    expect(screen.getAllByText("User")[0]).toBeTruthy();
+    expect(screen.getByText(/Current bass tab/i)).toBeTruthy();
+    expect(screen.getByText(/Generated from Bass DI/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Generate Stems"));
+    expect(screen.getByText(/regenerates system stems from the original uploaded mix/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Upload Stem"));
+    expect(screen.queryByText(/regenerates system stems from the original uploaded mix/i)).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("Stem Role"), { target: { value: "bass" } });
+    fireEvent.change(screen.getByLabelText("Stem File"), {
+      target: { files: [new File(["bass"], "bass.wav", { type: "audio/wav" })] },
+    });
+    fireEvent.click(screen.getByText("Confirm Stem Upload"));
+
+    await waitFor(() => {
+      expect(onUploadStem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stemKey: "bass",
+          file: expect.any(File),
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Stem uploaded.")).toBeTruthy();
+    });
+  });
+
+  it("shows honest tab empty state and action errors when no tab metadata exists", async () => {
+    const onUploadStem = vi.fn().mockRejectedValue(new Error("Upload failed"));
+
+    render(
+      <SongDetailPage
+        user={user}
+        band={band}
+        project={project}
+        song={{
+          ...song,
+          tab: null,
+        }}
+        onOpenPlayer={() => {}}
+        onBack={() => {}}
+        onUploadStem={onUploadStem}
+      />,
+    );
+
+    expect(screen.getByText(/No generated bass tab yet/i)).toBeTruthy();
+    expect(screen.getByText(/Tab provenance will appear after a successful tab generation run/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Upload Stem"));
+    fireEvent.change(screen.getByLabelText("Stem Role"), { target: { value: "bass" } });
+    fireEvent.change(screen.getByLabelText("Stem File"), {
+      target: { files: [new File(["bass"], "bass.wav", { type: "audio/wav" })] },
+    });
+    fireEvent.click(screen.getByText("Confirm Stem Upload"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Upload failed")).toBeTruthy();
+    });
+  });
+
+  it("requires reselecting a file after the upload panel is closed and reopened", async () => {
+    const onUploadStem = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <SongDetailPage
+        user={user}
+        band={band}
+        project={project}
+        song={song}
+        onOpenPlayer={() => {}}
+        onBack={() => {}}
+        onUploadStem={onUploadStem}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Upload Stem"));
+    fireEvent.change(screen.getByLabelText("Stem File"), {
+      target: { files: [new File(["bass"], "bass.wav", { type: "audio/wav" })] },
+    });
+    fireEvent.click(screen.getByText("Cancel"));
+
+    fireEvent.click(screen.getByText("Upload Stem"));
+    fireEvent.click(screen.getByText("Confirm Stem Upload"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Select a stem file")).toBeTruthy();
+    });
+    expect(onUploadStem).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText("Upload Stem"));
+    fireEvent.click(screen.getByText("Upload Stem"));
+    fireEvent.click(screen.getByText("Confirm Stem Upload"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Select a stem file")).toBeTruthy();
+    });
+    expect(onUploadStem).not.toHaveBeenCalled();
+  });
 });

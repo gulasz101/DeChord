@@ -17,12 +17,22 @@ export interface StemInfo {
   id: string;
   stemKey: string;
   label: string;
-  uploaderName: string;
+  uploaderName: string | null;
   sourceType: "System" | "User";
   description: string;
   version: number;
   isArchived: boolean;
   createdAt: string;
+}
+
+export interface SongTabSummary {
+  sourceStemKey: string;
+  sourceDisplayName: string | null;
+  sourceType: "System" | "User";
+  status: string;
+  generatorVersion: string;
+  updatedAt: string;
+  errorMessage?: string | null;
 }
 
 export interface SongNote {
@@ -47,6 +57,7 @@ export interface Song {
   status: "uploaded" | "processing" | "ready" | "failed" | "needs_review";
   chords: Chord[];
   stems: StemInfo[];
+  tab?: SongTabSummary | null;
   notes: SongNote[];
   updatedAt: string;
 }
