@@ -26,7 +26,9 @@ def _find_bar_index(time_sec: float, grid: BarGrid) -> int | None:
     return None
 
 
-def _snap_time_to_bar_grid(time_sec: float, *, bar_start: float, bar_end: float, subdivisions_per_bar: int) -> float:
+def _snap_time_to_bar_grid(
+    time_sec: float, *, bar_start: float, bar_end: float, subdivisions_per_bar: int
+) -> float:
     duration = max(bar_end - bar_start, 1e-6)
     relative = max(0.0, min((time_sec - bar_start) / duration, 1.0))
     snapped_step = round(relative * subdivisions_per_bar)
@@ -59,6 +61,8 @@ def quantize_note_events(
 
             bar = grid.bars[bar_idx]
             segment_end = min(event_end, bar.end_sec)
+            if segment_end <= cursor:
+                break
 
             snapped_start = _snap_time_to_bar_grid(
                 cursor,
@@ -74,10 +78,18 @@ def quantize_note_events(
             )
 
             if snapped_end <= snapped_start:
-                snapped_end = min(bar.end_sec, snapped_start + ((bar.end_sec - bar.start_sec) / subdivisions_per_bar))
+                snapped_end = min(
+                    bar.end_sec,
+                    snapped_start
+                    + ((bar.end_sec - bar.start_sec) / subdivisions_per_bar),
+                )
 
-            beat_position = ((snapped_start - bar.start_sec) / (bar.end_sec - bar.start_sec)) * numerator
-            duration_beats = ((snapped_end - snapped_start) / (bar.end_sec - bar.start_sec)) * numerator
+            beat_position = (
+                (snapped_start - bar.start_sec) / (bar.end_sec - bar.start_sec)
+            ) * numerator
+            duration_beats = (
+                (snapped_end - snapped_start) / (bar.end_sec - bar.start_sec)
+            ) * numerator
 
             quantized.append(
                 QuantizedNote(
