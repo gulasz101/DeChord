@@ -35,6 +35,13 @@ export interface SongTabSummary {
   errorMessage?: string | null;
 }
 
+export interface SongPlaybackPrefs {
+  speedPercent: number;
+  volume: number;
+  loopStartIndex: number | null;
+  loopEndIndex: number | null;
+}
+
 export interface SongNote {
   id: number;
   type: "time" | "chord";
@@ -58,6 +65,7 @@ export interface Song {
   chords: Chord[];
   stems: StemInfo[];
   tab?: SongTabSummary | null;
+  playbackPrefs?: SongPlaybackPrefs | null;
   notes: SongNote[];
   updatedAt: string;
 }

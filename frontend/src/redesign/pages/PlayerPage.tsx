@@ -1,10 +1,13 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import type { Band, Project, Song, User } from "../lib/types";
 import { Fretboard } from "../components/Fretboard";
 import { ChordTimeline } from "../components/ChordTimeline";
 import { TransportBar } from "../components/TransportBar";
 import { TabViewerPanel } from "../components/TabViewerPanel";
 import { StemMixer } from "../components/StemMixer";
+import { useAudioPlayer } from "../../hooks/useAudioPlayer";
+import { getTabFileUrl } from "../../lib/api";
+import { resolvePlaybackSources } from "../../lib/playbackSources";
 
 interface PlayerPageProps {
   user: User;
@@ -16,16 +19,18 @@ interface PlayerPageProps {
 
 type SidePanel = "none" | "stems" | "comments";
 
+const DEFAULT_PLAYBACK_PREFS = {
+  speedPercent: 100,
+  volume: 1,
+  loopStartIndex: null,
+  loopEndIndex: null,
+} as const;
+
 export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProps) {
-  const playbackIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [playing, setPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [volume, setVolume] = useState(0.8);
-  const [speedPercent, setSpeedPercent] = useState(100);
-  const [loopStart, setLoopStart] = useState<number | null>(null);
-  const [loopEnd, setLoopEnd] = useState<number | null>(null);
   const [sidePanel, setSidePanel] = useState<SidePanel>("none");
   const [showTabs, setShowTabs] = useState(true);
+  const [loopStart, setLoopStart] = useState<number | null>(song.playbackPrefs?.loopStartIndex ?? null);
+  const [loopEnd, setLoopEnd] = useState<number | null>(song.playbackPrefs?.loopEndIndex ?? null);
 
   // Stem mixer state
   const [activeStemKeys, setActiveStemKeys] = useState<Set<string>>(() => {
@@ -42,12 +47,22 @@ export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProp
   });
 
   // Chord sync
+  const songId = Number(song.id);
+  const { audioSrc, stemSources } = useMemo(() => resolvePlaybackSources({
+    songId: Number.isFinite(songId) ? songId : null,
+    playbackMode: "full_mix",
+    stems: [],
+    enabledByStem: {},
+  }), [songId]);
+  const player = useAudioPlayer(audioSrc, stemSources);
+  const tabSourceUrl = song.tab && Number.isFinite(songId) ? getTabFileUrl(songId) : null;
+
   const currentIndex = useMemo(() => {
     for (let i = song.chords.length - 1; i >= 0; i--) {
-      if (currentTime >= song.chords[i].start) return i;
+      if (player.currentTime >= song.chords[i].start) return i;
     }
     return 0;
-  }, [currentTime, song.chords]);
+  }, [player.currentTime, song.chords]);
 
   const currentChord = song.chords[currentIndex] ?? null;
   const nextChord = song.chords[currentIndex + 1] ?? null;
@@ -66,49 +81,63 @@ export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProp
   const activeStemCount = song.stems.filter((s) => !s.isArchived).length;
   const openCommentCount = song.notes.filter((n) => !n.resolved).length;
 
-  const togglePlay = useCallback(() => {
-    if (!playing) {
-      setPlaying(true);
-      const interval = setInterval(() => {
-        setCurrentTime((t) => {
-          const next = t + 0.1;
-          if (next >= song.duration) { setPlaying(false); clearInterval(interval); return 0; }
-          if (loopStart !== null && loopEnd !== null) {
-            const endChord = song.chords[loopEnd];
-            if (endChord && next >= endChord.end) return song.chords[loopStart].start;
-          }
-          return next;
-        });
-      }, 100);
-      playbackIntervalRef.current = interval;
-    } else {
-      setPlaying(false);
-      if (playbackIntervalRef.current) {
-        clearInterval(playbackIntervalRef.current);
-        playbackIntervalRef.current = null;
+  useEffect(() => {
+    const prefs = song.playbackPrefs ?? DEFAULT_PLAYBACK_PREFS;
+
+    player.setPlaybackRate(prefs.speedPercent / 100);
+    player.setVolume(prefs.volume);
+    setLoopStart(prefs.loopStartIndex);
+    setLoopEnd(prefs.loopEndIndex);
+
+    if (prefs.loopStartIndex !== null && prefs.loopEndIndex !== null) {
+      const startChord = song.chords[prefs.loopStartIndex];
+      const endChord = song.chords[prefs.loopEndIndex];
+      if (startChord && endChord) {
+        player.setLoop({ start: startChord.start, end: endChord.end });
+        return;
       }
     }
-  }, [playing, song.duration, song.chords, loopStart, loopEnd]);
 
-  useEffect(() => () => {
-    if (playbackIntervalRef.current) {
-      clearInterval(playbackIntervalRef.current);
-      playbackIntervalRef.current = null;
-    }
-  }, []);
+    player.setLoop(null);
+  }, [player.setLoop, player.setPlaybackRate, player.setVolume, song.chords, song.playbackPrefs]);
 
   const handleChordClick = useCallback((index: number) => {
+    const chord = song.chords[index];
+    if (!chord) return;
+
+    let nextLoopStart = loopStart;
+    let nextLoopEnd = loopEnd;
+
     if (loopStart === null) {
-      setLoopStart(index);
+      nextLoopStart = index;
+      nextLoopEnd = null;
     } else if (loopEnd === null) {
-      if (index > loopStart) setLoopEnd(index);
-      else { setLoopStart(index); setLoopEnd(null); }
+      if (index > loopStart) {
+        nextLoopEnd = index;
+      } else {
+        nextLoopStart = index;
+        nextLoopEnd = null;
+      }
     } else {
-      setLoopStart(index);
-      setLoopEnd(null);
+      nextLoopStart = index;
+      nextLoopEnd = null;
     }
-    if (song.chords[index]) setCurrentTime(song.chords[index].start);
-  }, [loopStart, loopEnd, song.chords]);
+
+    setLoopStart(nextLoopStart);
+    setLoopEnd(nextLoopEnd);
+    player.seek(chord.start);
+
+    if (nextLoopStart !== null && nextLoopEnd !== null) {
+      const startChord = song.chords[nextLoopStart];
+      const endChord = song.chords[nextLoopEnd];
+      if (startChord && endChord) {
+        player.setLoop({ start: startChord.start, end: endChord.end });
+        return;
+      }
+    }
+
+    player.setLoop(null);
+  }, [loopEnd, loopStart, player, song.chords]);
 
   const loopLabel = loopStart !== null && loopEnd !== null
     ? `${song.chords[loopStart]?.label} → ${song.chords[loopEnd]?.label}`
@@ -176,14 +205,14 @@ export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProp
         {/* Player content */}
         <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
           {/* Chord Timeline */}
-          <ChordTimeline chords={song.chords} currentIndex={currentIndex} currentTime={currentTime} loopStart={loopStart} loopEnd={loopEnd} noteChordIndexes={noteChordIndexes} onChordClick={handleChordClick} onSeek={setCurrentTime} />
+          <ChordTimeline chords={song.chords} currentIndex={currentIndex} currentTime={player.currentTime} loopStart={loopStart} loopEnd={loopEnd} noteChordIndexes={noteChordIndexes} onChordClick={handleChordClick} onSeek={player.seek} />
 
           {/* Fretboard — keep D5 color-changing */}
           <Fretboard chordLabel={currentChord?.label ?? null} nextChordLabel={nextChord?.label ?? null} />
 
           {/* Tab Viewer — toggleable */}
           {showTabs && (
-            <TabViewerPanel tabSourceUrl="/mock-bass.alphatex" currentTime={currentTime} isPlaying={playing} />
+            <TabViewerPanel tabSourceUrl={tabSourceUrl} currentTime={player.currentTime} isPlaying={player.playing} />
           )}
         </div>
 
@@ -239,10 +268,14 @@ export function PlayerPage({ user, band, project, song, onBack }: PlayerPageProp
 
       {/* Transport Bar */}
       <div className="relative z-10 shrink-0 border-t px-4 py-2" style={{ borderColor: "rgba(192, 192, 192, 0.06)" }}>
-        <TransportBar currentTime={currentTime} duration={song.duration} playing={playing} volume={volume} speedPercent={speedPercent}
+        <TransportBar currentTime={player.currentTime} duration={player.duration || song.duration} playing={player.playing} volume={player.volume} speedPercent={Math.round(player.playbackRate * 100)}
           loopActive={loopStart !== null && loopEnd !== null} loopLabel={loopLabel} noteMarkers={timeNoteMarkers}
-          onTogglePlay={togglePlay} onSeek={setCurrentTime} onSeekRelative={(d) => setCurrentTime((t) => Math.max(0, Math.min(song.duration, t + d)))}
-          onVolumeChange={setVolume} onSpeedChange={setSpeedPercent} onClearLoop={() => { setLoopStart(null); setLoopEnd(null); }} />
+          onTogglePlay={player.togglePlay} onSeek={player.seek} onSeekRelative={player.seekRelative}
+          onVolumeChange={player.setVolume} onSpeedChange={(speed) => player.setPlaybackRate(speed / 100)} onClearLoop={() => {
+            setLoopStart(null);
+            setLoopEnd(null);
+            player.setLoop(null);
+          }} />
       </div>
     </div>
   );
