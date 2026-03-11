@@ -18,7 +18,7 @@
   <task>[x] Task 3: Implement and verify the processing-journey slice.</task>
   <task>[x] Task 4: Plan the song-detail-completeness slice in detail.</task>
   <task>[x] Task 5: Implement and verify the song-detail-completeness slice.</task>
-  <task>[ ] Task 6: Plan the real-player slice in detail.</task>
+  <task>[x] Task 6: Plan the real-player slice in detail.</task>
   <task>[ ] Task 7: Implement and verify the real-player slice.</task>
   <task>[ ] Task 8: Plan the notes-and-rehearsal slice in detail.</task>
   <task>[ ] Task 9: Implement and verify the notes-and-rehearsal slice.</task>
@@ -59,9 +59,9 @@ Use this section as the durable landing zone for each slice's linked docs, statu
 
 ### Slice 3: Real Player
 
-- Status: Planned, not started.
-- Design doc: `docs/plans/2026-03-10-real-player-design.md` (to create)
-- Implementation doc: `docs/plans/2026-03-10-real-player-implementation.md` (to create)
+- Status: Planned and ready for implementation.
+- Design doc: `docs/plans/2026-03-10-real-player-design.md`
+- Implementation doc: `docs/plans/2026-03-10-real-player-implementation.md` (includes XML `<phase>` / `<task>` tracking for execution and an explicit player quality gate)
 - Verification notes: Not recorded yet.
 - Commit links: Not recorded yet.
 
