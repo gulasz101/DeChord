@@ -16,7 +16,7 @@
   <task>[x] Task 1: Create the master gap matrix and baseline verification record.</task>
   <task>[x] Task 2: Plan the processing-journey slice in detail.</task>
   <task>[x] Task 3: Implement and verify the processing-journey slice.</task>
-  <task>[ ] Task 4: Plan the song-detail-completeness slice in detail.</task>
+  <task>[x] Task 4: Plan the song-detail-completeness slice in detail.</task>
   <task>[ ] Task 5: Implement and verify the song-detail-completeness slice.</task>
   <task>[ ] Task 6: Plan the real-player slice in detail.</task>
   <task>[ ] Task 7: Implement and verify the real-player slice.</task>
@@ -51,9 +51,9 @@ Use this section as the durable landing zone for each slice's linked docs, statu
 
 ### Slice 2: Song Detail Completeness
 
-- Status: Planned, not started.
-- Design doc: `docs/plans/2026-03-10-song-detail-completeness-design.md` (to create)
-- Implementation doc: `docs/plans/2026-03-10-song-detail-completeness-implementation.md` (to create)
+- Status: Planned and ready for implementation; honest asset-management docs are in place, code not started.
+- Design doc: `docs/plans/2026-03-10-song-detail-completeness-design.md`
+- Implementation doc: `docs/plans/2026-03-10-song-detail-completeness-implementation.md`
 - Verification notes: Not recorded yet.
 - Commit links: Not recorded yet.
 
