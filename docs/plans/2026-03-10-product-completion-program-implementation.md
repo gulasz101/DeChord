@@ -20,7 +20,7 @@
   <task>[x] Task 5: Implement and verify the song-detail-completeness slice.</task>
   <task>[x] Task 6: Plan the real-player slice in detail.</task>
   <task>[x] Task 7: Implement and verify the real-player slice.</task>
-  <task>[ ] Task 8: Plan the notes-and-rehearsal slice in detail.</task>
+  <task>[x] Task 8: Plan the notes-and-rehearsal slice in detail.</task>
   <task>[ ] Task 9: Implement and verify the notes-and-rehearsal slice.</task>
   <task>[ ] Task 10: Plan the collaboration slice in detail.</task>
   <task>[ ] Task 11: Implement and verify the collaboration slice.</task>
@@ -67,9 +67,9 @@ Use this section as the durable landing zone for each slice's linked docs, statu
 
 ### Slice 4: Notes and Rehearsal
 
-- Status: Planned, not started.
-- Design doc: `docs/plans/2026-03-10-notes-rehearsal-design.md` (to create)
-- Implementation doc: `docs/plans/2026-03-10-notes-rehearsal-implementation.md` (to create)
+- Status: Planned in detail; implementation not started.
+- Design doc: `docs/plans/2026-03-10-notes-rehearsal-design.md`
+- Implementation doc: `docs/plans/2026-03-10-notes-rehearsal-implementation.md` (includes XML `<phase>` / `<task>` tracking for execution and an explicit notes/rehearsal quality gate)
 - Verification notes: Not recorded yet.
 - Commit links: Not recorded yet.
 
