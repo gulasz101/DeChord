@@ -1,5 +1,7 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 
+const EMPTY_STEM_SOURCES: StemSource[] = [];
+
 export interface LoopPoints {
   start: number;
   end: number;
@@ -53,15 +55,16 @@ export async function playAudios(audios: AudioLike[]) {
   await Promise.all(audios.map((audio) => Promise.resolve(audio.play())));
 }
 
-export function useAudioPlayer(src: string | null, stemSources: StemSource[] = []) {
+export function useAudioPlayer(src: string | null, stemSources: StemSource[] = EMPTY_STEM_SOURCES) {
   const audioRefs = useRef<HTMLAudioElement[]>([]);
   const rafRef = useRef<number>(0);
+  const loopRef = useRef<LoopPoints | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [volume, setVolumeState] = useState(1);
   const [playbackRate, setPlaybackRateState] = useState(1);
-  const [loop, setLoop] = useState<LoopPoints | null>(null);
+  const [loop, setLoopState] = useState<LoopPoints | null>(null);
 
   const sources = useMemo(
     () => (stemSources.length > 0
@@ -80,6 +83,11 @@ export function useAudioPlayer(src: string | null, stemSources: StemSource[] = [
     () => enabledFlags.map((enabled) => (enabled ? "1" : "0")).join(""),
     [enabledFlags],
   );
+
+  const setLoop = useCallback((nextLoop: LoopPoints | null) => {
+    loopRef.current = nextLoop;
+    setLoopState(nextLoop);
+  }, []);
 
   useEffect(() => {
     if (sources.length === 0) return;
@@ -107,7 +115,7 @@ export function useAudioPlayer(src: string | null, stemSources: StemSource[] = [
       audioRefs.current = [];
       cancelAnimationFrame(rafRef.current);
     };
-  }, [sourceConfigSignature, sources]);
+  }, [sourceConfigSignature]);
 
   useEffect(() => {
     applyVolumeToAudios(
@@ -131,10 +139,13 @@ export function useAudioPlayer(src: string | null, stemSources: StemSource[] = [
       const audios = audioRefs.current;
       if (audios.length === 0) return;
       const primary = audios.find((_a, idx) => enabledFlags[idx]) ?? audios[0];
-      setCurrentTime(primary.currentTime);
+      const nextLoop = loopRef.current;
 
-      if (loop && primary.currentTime >= loop.end) {
-        seekAudios(audios, loop.start, primary.duration || 0);
+      if (nextLoop && primary.currentTime >= nextLoop.end) {
+        const loopedTime = seekAudios(audios, nextLoop.start, primary.duration || 0);
+        setCurrentTime(loopedTime);
+      } else {
+        setCurrentTime(primary.currentTime);
       }
 
       rafRef.current = requestAnimationFrame(tick);

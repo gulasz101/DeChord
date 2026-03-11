@@ -3,20 +3,26 @@ interface TransportBarProps {
   duration: number;
   playing: boolean;
   volume: number;
-  speedPercent: number;
+  playbackRate: number;
   timeNoteMarkers: Array<{ id: number; timestampSec: number }>;
   loopActive: boolean;
   loopLabel?: string;
-  onTogglePlay: () => void;
-  onSeek: (time: number) => void;
+  togglePlay: () => void;
+  seek: (time: number) => void;
   onSeekDragStart: () => void;
   onSeekDragEnd: () => void;
-  onSeekRelative: (delta: number) => void;
+  seekRelative: (delta: number) => void;
   onNoteLaneClick: (time: number) => void;
   onNoteMarkerClick: (noteId: number) => void;
-  onVolumeChange: (v: number) => void;
-  onSpeedChange: (speedPercent: number) => void;
+  setVolume: (v: number) => void;
+  setPlaybackRate: (rate: number) => void;
   onClearLoop: () => void;
+}
+
+function assertHandler(name: string, handler: unknown): asserts handler is (...args: unknown[]) => unknown {
+  if (typeof handler !== "function") {
+    throw new Error(`TransportBar requires ${name}`);
+  }
 }
 
 function formatTime(seconds: number): string {
@@ -32,21 +38,27 @@ export function TransportBar({
   duration,
   playing,
   volume,
-  speedPercent,
+  playbackRate,
   timeNoteMarkers,
   loopActive,
   loopLabel,
-  onTogglePlay,
-  onSeek,
+  togglePlay,
+  seek,
   onSeekDragStart,
   onSeekDragEnd,
-  onSeekRelative,
+  seekRelative,
   onNoteLaneClick,
   onNoteMarkerClick,
-  onVolumeChange,
-  onSpeedChange,
+  setVolume,
+  setPlaybackRate,
   onClearLoop,
 }: TransportBarProps) {
+  assertHandler("togglePlay", togglePlay);
+  assertHandler("seek", seek);
+  assertHandler("seekRelative", seekRelative);
+  assertHandler("setVolume", setVolume);
+  assertHandler("setPlaybackRate", setPlaybackRate);
+
   const clampTimeFromClientX = (target: HTMLDivElement, clientX: number) => {
     const rect = target.getBoundingClientRect();
     if (rect.width <= 0) return 0;
@@ -57,16 +69,16 @@ export function TransportBar({
   return (
     <div className="border-t border-slate-800 bg-slate-900 px-4 py-2">
       <div className="mb-2 flex items-center gap-2">
-        <button onClick={() => onSeekRelative(-10)} className="px-2 text-slate-400 hover:text-white" title="Back 10s">
+        <button onClick={() => seekRelative(-10)} className="px-2 text-slate-400 hover:text-white" title="Back 10s">
           &#x23EA;
         </button>
         <button
-          onClick={onTogglePlay}
+          onClick={togglePlay}
           className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-500"
         >
           {playing ? "\u23F8" : "\u25B6"}
         </button>
-        <button onClick={() => onSeekRelative(10)} className="px-2 text-slate-400 hover:text-white" title="Forward 10s">
+        <button onClick={() => seekRelative(10)} className="px-2 text-slate-400 hover:text-white" title="Forward 10s">
           &#x23E9;
         </button>
 
@@ -115,7 +127,7 @@ export function TransportBar({
             max={duration || 1}
             step={0.05}
             value={currentTime}
-            onChange={(e) => onSeek(parseFloat(e.target.value))}
+            onChange={(e) => seek(parseFloat(e.target.value))}
             onMouseDown={onSeekDragStart}
             onMouseUp={onSeekDragEnd}
             onTouchStart={onSeekDragStart}
@@ -131,8 +143,8 @@ export function TransportBar({
         <span className="w-12 font-mono text-xs text-slate-300">{formatTime(duration)}</span>
 
         <select
-          value={speedPercent}
-          onChange={(e) => onSpeedChange(parseInt(e.target.value, 10))}
+          value={Math.round(playbackRate * 100)}
+          onChange={(e) => setPlaybackRate(parseInt(e.target.value, 10) / 100)}
           className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-200"
         >
           {SPEED_OPTIONS.map((v) => (
@@ -158,7 +170,7 @@ export function TransportBar({
           max={1}
           step={0.05}
           value={volume}
-          onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
+          onChange={(e) => setVolume(parseFloat(e.target.value))}
           className="h-1 w-20 accent-blue-500"
         />
       </div>
