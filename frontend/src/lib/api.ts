@@ -44,13 +44,23 @@ export async function uploadAudio(
 
 export async function getJobStatus(jobId: string): Promise<JobStatus> {
   const res = await fetch(`${BASE}/api/status/${jobId}`);
-  if (!res.ok) throw new Error("Status check failed");
+  if (!res.ok) {
+    if (res.status === 404) {
+      throw new Error("Processing job no longer available after reset");
+    }
+    throw new Error("Status check failed");
+  }
   return res.json();
 }
 
 export async function getResult(jobId: string): Promise<CompletedAnalysisResult> {
   const res = await fetch(`${BASE}/api/result/${jobId}`);
-  if (!res.ok) throw new Error("Result fetch failed");
+  if (!res.ok) {
+    if (res.status === 404) {
+      throw new Error("Processing result no longer available after reset");
+    }
+    throw new Error("Result fetch failed");
+  }
   return res.json();
 }
 

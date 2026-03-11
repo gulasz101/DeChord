@@ -3,6 +3,8 @@ import {
   claimIdentity,
   createBand,
   createProject,
+  getJobStatus,
+  getResult,
   getSong,
   uploadAudio,
   regenerateSongStems,
@@ -15,10 +17,12 @@ import {
   listSongStems,
   resolveIdentity,
 } from "./lib/api";
+import type { ProcessMode, TabGenerationQuality } from "./lib/types";
 import type { Band, Project, Song, StemInfo, User, SongNote, Chord } from "./redesign/lib/types";
 import { LandingPage } from "./redesign/pages/LandingPage";
 import { BandSelectPage } from "./redesign/pages/BandSelectPage";
 import { ProjectHomePage } from "./redesign/pages/ProjectHomePage";
+import { ProcessingJourneyPage } from "./redesign/pages/ProcessingJourneyPage";
 import { SongLibraryPage } from "./redesign/pages/SongLibraryPage";
 import { SongDetailPage } from "./redesign/pages/SongDetailPage";
 import { PlayerPage } from "./redesign/pages/PlayerPage";
@@ -28,6 +32,27 @@ type Route =
   | { page: "bands" }
   | { page: "project"; band: Band; project: Project | null }
   | { page: "songs"; band: Band; project: Project }
+  | {
+      page: "processing-journey";
+      band: Band;
+      project: Project;
+      songId: number;
+      jobId: string;
+      retryCount: number;
+      uploadFilename: string;
+      processMode: ProcessMode;
+      tabGenerationQuality: TabGenerationQuality;
+      journey: {
+        songTitle: string | null;
+        uploadFilename: string;
+        status: "queued" | "processing" | "complete" | "error";
+        stage: import("./lib/types").JobStage | null;
+        progressPct: number;
+        stageHistory: import("./lib/types").JobStage[];
+        message: string | null;
+        error: string | null;
+      };
+    }
   | { page: "song-detail"; band: Band; project: Project; song: Song }
   | { page: "player"; band: Band; project: Project; song: Song };
 
@@ -119,6 +144,80 @@ function mapChord(chord: { start: number; end: number; label: string }): Chord {
     end: chord.end,
     label: chord.label,
   };
+}
+
+function mergeSongWithDetails(
+  song: Song,
+  songDetail: Awaited<ReturnType<typeof getSong>>,
+  stemsDetail: Awaited<ReturnType<typeof listSongStems>>,
+  user: User,
+): Song {
+  return {
+    ...song,
+    title: songDetail.song.title || song.title,
+    key: songDetail.analysis?.key ?? song.key,
+    tempo: songDetail.analysis?.tempo ?? song.tempo,
+    duration: songDetail.analysis?.duration ?? song.duration,
+    status: mapChordStatus(Boolean(songDetail.analysis)),
+    chords: (songDetail.analysis?.chords ?? []).map(mapChord),
+    stems: stemsDetail.stems.map(mapStem),
+    notes: songDetail.notes.map((n) => mapNote(n, user)),
+    updatedAt: songDetail.song.created_at,
+  };
+}
+
+function mapSongMetaToSong(raw: {
+  id: number;
+  project_id: number;
+  title: string;
+  original_filename: string | null;
+  created_at: string;
+}): Song {
+  return mapProjectSongSummaryToSong({
+    ...raw,
+    key: null,
+    tempo: null,
+    duration: null,
+  });
+}
+
+function mapJobStatusToJourney(
+  currentJourney: Route & { page: "processing-journey" }["journey"],
+  uploadFilename: string,
+  status: {
+    status: "queued" | "processing" | "complete" | "error";
+    stage?: import("./lib/types").JobStage;
+    stage_history?: import("./lib/types").JobStage[];
+    progress_pct?: number;
+    message?: string;
+    error?: string;
+  },
+) {
+  return {
+    ...currentJourney,
+    uploadFilename,
+    status: status.status,
+    stage: status.stage ?? currentJourney.stage,
+    progressPct: status.progress_pct ?? currentJourney.progressPct,
+    stageHistory: status.stage_history && status.stage_history.length > 0
+      ? status.stage_history
+      : currentJourney.stageHistory,
+    message: status.message ?? currentJourney.message,
+    error: status.status === "error" ? (status.error ?? status.message ?? currentJourney.error) : null,
+  };
+}
+
+function getJourneyErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    if (error.message === "Processing job no longer available after reset") {
+      return "This processing job was lost after a reset. DeChord cannot recover in-progress jobs yet.";
+    }
+    if (error.message === "Processing result no longer available after reset") {
+      return "The finished job result was lost after a reset. Retry refresh or return to the library.";
+    }
+    return error.message;
+  }
+  return "Processing status is temporarily unavailable.";
 }
 
 async function loadBandHierarchy(currentUser: User | null): Promise<Band[]> {
@@ -220,14 +319,7 @@ export default function App() {
           listSongStems(songId),
         ]);
         return {
-          ...song,
-          key: songDetail.analysis?.key ?? song.key,
-          tempo: songDetail.analysis?.tempo ?? song.tempo,
-          duration: songDetail.analysis?.duration ?? song.duration,
-          status: mapChordStatus(Boolean(songDetail.analysis)),
-          chords: (songDetail.analysis?.chords ?? []).map(mapChord),
-          stems: stemsDetail.stems.map(mapStem),
-          notes: songDetail.notes.map((n) => mapNote(n, user)),
+          ...mergeSongWithDetails(song, songDetail, stemsDetail, user),
         };
       } catch {
         return song;
@@ -248,6 +340,9 @@ export default function App() {
         setRoute({ page: "project", band: route.band, project: route.project });
         break;
       case "song-detail":
+        setRoute({ page: "songs", band: route.band, project: route.project });
+        break;
+      case "processing-journey":
         setRoute({ page: "songs", band: route.band, project: route.project });
         break;
       case "player":
@@ -271,6 +366,116 @@ export default function App() {
   const findProjectInBand = useCallback((band: Band | null, projectId: string) => {
     return band?.projects.find((project) => project.id === projectId) ?? null;
   }, []);
+
+  useEffect(() => {
+    if (route.page !== "processing-journey" || !user) return;
+
+    const processingRoute = route;
+
+    let cancelled = false;
+    let timeoutHandle: number | null = null;
+
+    const failJourney = (error: unknown) => {
+      setRoute((current) => {
+        if (current.page !== "processing-journey" || current.jobId !== processingRoute.jobId) {
+          return current;
+        }
+        return {
+          ...current,
+          journey: {
+            ...current.journey,
+            status: "error",
+            stage: current.journey.stage ?? "error",
+            progressPct: current.journey.progressPct,
+            error: getJourneyErrorMessage(error),
+            message: current.journey.message ?? "Processing failed",
+            stageHistory: current.journey.stageHistory.includes("error")
+              ? current.journey.stageHistory
+              : [...current.journey.stageHistory, "error"],
+          },
+        };
+      });
+    };
+
+    const poll = async () => {
+      try {
+        const status = await getJobStatus(processingRoute.jobId);
+        if (cancelled) return;
+
+        setRoute((current) => {
+          if (current.page !== "processing-journey" || current.jobId !== processingRoute.jobId) {
+            return current;
+          }
+          return {
+            ...current,
+            journey: mapJobStatusToJourney(current.journey, processingRoute.uploadFilename, status),
+          };
+        });
+
+        if (status.status === "error") {
+          return;
+        }
+
+        if (status.status === "complete") {
+          const result = await getResult(processingRoute.jobId);
+          if (cancelled) return;
+
+          const loadedBands = await refreshBands(user);
+          if (cancelled) return;
+
+          const refreshedBand = findBandInHierarchy(loadedBands, processingRoute.band.id) ?? processingRoute.band;
+          const refreshedProject = findProjectInBand(refreshedBand, processingRoute.project.id) ?? processingRoute.project;
+          const summarySong = refreshedProject.songs.find((song) => song.id === String(result.song_id));
+          const [songDetail, stemsDetail] = await Promise.all([
+            getSong(result.song_id),
+            listSongStems(result.song_id),
+          ]);
+          if (cancelled) return;
+
+          const baseSong = summarySong ?? mapSongMetaToSong({
+            id: songDetail.song.id,
+            project_id: Number(refreshedProject.id),
+            title: songDetail.song.title,
+            original_filename: songDetail.song.original_filename,
+            created_at: songDetail.song.created_at,
+          });
+
+          setRoute({
+            page: "song-detail",
+            band: refreshedBand,
+            project: refreshedProject,
+            song: mergeSongWithDetails(baseSong, songDetail, stemsDetail, user),
+          });
+          return;
+        }
+
+        timeoutHandle = window.setTimeout(() => {
+          void poll();
+        }, 1000);
+      } catch (error) {
+        if (!cancelled) {
+          failJourney(error);
+        }
+      }
+    };
+
+    void poll();
+
+    return () => {
+      cancelled = true;
+      if (timeoutHandle !== null) {
+        window.clearTimeout(timeoutHandle);
+      }
+    };
+  }, [
+    findBandInHierarchy,
+    findProjectInBand,
+    refreshBands,
+    route.page,
+    route.page === "processing-journey" ? route.jobId : null,
+    route.page === "processing-journey" ? route.retryCount : null,
+    user,
+  ]);
 
   if (!user) {
     return <LandingPage onGetStarted={() => setRoute({ page: "bands" })} onSignIn={() => setRoute({ page: "bands" })} />;
@@ -349,12 +554,28 @@ export default function App() {
           project={route.project}
           onUploadSong={async (file, processMode, tabGenerationQuality) => {
             if (!user) return;
-            await uploadAudio(file, processMode, tabGenerationQuality, Number(route.project.id));
-            const loadedBands = await refreshBands(user);
-            const refreshedBand = findBandInHierarchy(loadedBands, route.band.id);
-            const refreshedProject = findProjectInBand(refreshedBand, route.project.id);
-            if (!refreshedBand || !refreshedProject) return;
-            setRoute({ page: "songs", band: refreshedBand, project: refreshedProject });
+            const upload = await uploadAudio(file, processMode, tabGenerationQuality, Number(route.project.id));
+            setRoute({
+              page: "processing-journey",
+              band: route.band,
+              project: route.project,
+              songId: upload.song_id,
+              jobId: upload.job_id,
+              retryCount: 0,
+              uploadFilename: file.name,
+              processMode,
+              tabGenerationQuality,
+              journey: {
+                songTitle: null,
+                uploadFilename: file.name,
+                status: "queued",
+                stage: "queued",
+                progressPct: 0,
+                stageHistory: ["queued"],
+                message: "Queued",
+                error: null,
+              },
+            });
           }}
           onSelectSong={(song) => {
             void (async () => {
@@ -363,6 +584,30 @@ export default function App() {
             })();
           }}
           onBack={goBack}
+        />
+      );
+    case "processing-journey":
+      return (
+        <ProcessingJourneyPage
+          band={route.band}
+          project={route.project}
+          journey={route.journey}
+          onBack={goBack}
+          onRetryRefresh={() => {
+            setRoute((current) => {
+              if (current.page !== "processing-journey") return current;
+              return {
+                ...current,
+                retryCount: current.retryCount + 1,
+                journey: {
+                  ...current.journey,
+                  status: "queued",
+                  error: null,
+                  message: "Retrying processing refresh...",
+                },
+              };
+            });
+          }}
         />
       );
     case "song-detail":
