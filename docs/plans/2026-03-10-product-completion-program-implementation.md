@@ -15,7 +15,7 @@
 <phase id="product-completion-program" status="in_progress">
   <task>[x] Task 1: Create the master gap matrix and baseline verification record.</task>
   <task>[x] Task 2: Plan the processing-journey slice in detail.</task>
-  <task>[ ] Task 3: Implement and verify the processing-journey slice.</task>
+  <task>[x] Task 3: Implement and verify the processing-journey slice.</task>
   <task>[ ] Task 4: Plan the song-detail-completeness slice in detail.</task>
   <task>[ ] Task 5: Implement and verify the song-detail-completeness slice.</task>
   <task>[ ] Task 6: Plan the real-player slice in detail.</task>
@@ -43,11 +43,11 @@ Use this section as the durable landing zone for each slice's linked docs, statu
 
 ### Slice 1: Processing Journey
 
-- Status: Planned in detail; child design and implementation docs are ready.
+- Status: Complete and verification-backed.
 - Design doc: `docs/plans/2026-03-10-processing-journey-design.md`
 - Implementation doc: `docs/plans/2026-03-10-processing-journey-implementation.md` (includes XML `<phase>` / `<task>` tracking for execution)
-- Verification notes: Not recorded yet.
-- Commit links: Not recorded yet.
+- Verification notes: On 2026-03-11, `npm --prefix frontend test -- --run src/lib/__tests__/api.processing-journey.test.ts src/redesign/pages/__tests__/ProcessingJourneyPage.test.tsx src/__tests__/App.integration.test.tsx` passed before reset (3 files, 16 tests), `make reset` completed successfully, and the same focused test command passed again after reset (3 files, 16 tests). Fresh backend regression checks then passed: `uv run --group dev pytest tests/test_stems.py -k "wrapped_missing_demucs_dependency or raises_when_demucs_fails_without_fallback_opt_in or falls_back_when_demucs_runner_fails or wraps_missing_dependency_error" -q` (4 passed) and `uv run --group dev pytest tests/test_quantization.py -q` (3 passed). After `make reset` and `make up`, the runtime served frontend at `http://127.0.0.1:4655` and backend at `http://127.0.0.1:4458`; a real upload of `test songs/Clara Luciani - La grenade.mp3` entered the processing journey, job `6fd381a5cb65` progressed through `analyzing_chords` -> `splitting_stems` -> `transcribing_bass_midi` -> `complete`, and final polling reported `status=complete`, `stems_status=complete`, `midi_status=complete`, `tab_status=complete`. The frontend then auto-opened song detail showing `Clara Luciani - La grenade`, status `ready`, `91` chords, and a persisted stems list with `Generate Stems` and `Generate Bass Tab`. Supporting local commits: `e8e6e5b` and `c592c82`.
+- Commit links: local commits `dda100f` (processing journey API contract tests), `a9b018c` (processing journey route surface), `6935ddc` (route-level upload/polling/song-detail wiring), `e8e6e5b` (Demucs missing-runtime fallback), and `c592c82` (quantization tail infinite-loop fix). Pushed links not recorded yet.
 
 ### Slice 2: Song Detail Completeness
 

@@ -12,11 +12,11 @@
 
 ## XML Tracking
 
-<phase id="processing-journey-plan-execution" status="planned">
-  <task>[ ] Task 1: Lock the processing journey API contract in frontend tests.</task>
-  <task>[ ] Task 2: Add the processing journey page as a presentational route surface.</task>
-  <task>[ ] Task 3: Wire upload, polling, and route transitions in App.tsx.</task>
-  <task>[ ] Task 4: Verify the slice end-to-end and record the implementation result.</task>
+<phase id="processing-journey-plan-execution" status="completed">
+  <task>[x] Task 1: Lock the processing journey API contract in frontend tests.</task>
+  <task>[x] Task 2: Add the processing journey page as a presentational route surface.</task>
+  <task>[x] Task 3: Wire upload, polling, and route transitions in App.tsx.</task>
+  <task>[x] Task 4: Verify the slice end-to-end and record the implementation result.</task>
 </phase>
 
 ### Task 1: Lock the processing journey API contract in frontend tests
@@ -373,6 +373,52 @@ After code is green, record:
 
 Run: `npm --prefix frontend test -- --run src/lib/__tests__/api.processing-journey.test.ts src/redesign/pages/__tests__/ProcessingJourneyPage.test.tsx src/__tests__/App.integration.test.tsx && make reset && npm --prefix frontend test -- --run src/lib/__tests__/api.processing-journey.test.ts src/redesign/pages/__tests__/ProcessingJourneyPage.test.tsx src/__tests__/App.integration.test.tsx`
 Expected: PASS. Then manually verify upload with `test songs/Clara Luciani - La grenade.mp3`.
+
+### Task 4 Verification Record (2026-03-11)
+
+**Focused verification before reset**
+
+- Command: `npm --prefix frontend test -- --run src/lib/__tests__/api.processing-journey.test.ts src/redesign/pages/__tests__/ProcessingJourneyPage.test.tsx src/__tests__/App.integration.test.tsx`
+- Outcome: PASS.
+- Details: `src/lib/__tests__/api.processing-journey.test.ts` passed (2 tests), `src/redesign/pages/__tests__/ProcessingJourneyPage.test.tsx` passed (2 tests), and `src/__tests__/App.integration.test.tsx` passed (12 tests). Total: 3 files passed, 16 tests passed.
+
+**Reset command**
+
+- Command: `make reset`
+- Outcome: PASS.
+- Details: `dechord-backend` and `dechord-frontend` tmux sessions were not running, backend database files were removed, `backend/uploads` and `backend/stems` were recreated, and the command ended with `Local backend state reset.`
+
+**Focused verification after reset**
+
+- Command: `npm --prefix frontend test -- --run src/lib/__tests__/api.processing-journey.test.ts src/redesign/pages/__tests__/ProcessingJourneyPage.test.tsx src/__tests__/App.integration.test.tsx`
+- Outcome: PASS.
+- Details: the same three files passed again with the same 16 passing tests after reset.
+
+**Additional regression checks before retry**
+
+- Command: `uv run --group dev pytest tests/test_stems.py -k "wrapped_missing_demucs_dependency or raises_when_demucs_fails_without_fallback_opt_in or falls_back_when_demucs_runner_fails or wraps_missing_dependency_error" -q`
+- Outcome: PASS.
+- Details: 4 tests passed.
+- Command: `uv run --group dev pytest tests/test_quantization.py -q`
+- Outcome: PASS.
+- Details: 3 tests passed.
+
+**Runtime restart for real verification**
+
+- Command: `make reset`
+- Outcome: PASS.
+- Command: `make up`
+- Outcome: PASS.
+- Runtime observation: frontend served at `http://127.0.0.1:4655` and backend served at `http://127.0.0.1:4458`
+
+**Manual verification success**
+
+- Real workflow exercised: navigated the real app, uploaded `test songs/Clara Luciani - La grenade.mp3`, and confirmed the processing journey route rendered with live status updates
+- Job evidence: job id `6fd381a5cb65`
+- Observed stage progression: `analyzing_chords` -> `splitting_stems` -> `transcribing_bass_midi` -> `complete`
+- Final polled backend status: `status=complete`, `stems_status=complete`, `midi_status=complete`, `tab_status=complete`
+- Frontend completion evidence: the app auto-opened song detail showing `Clara Luciani - La grenade`, status `ready`, `91` chords, and a persisted stems list with `Generate Stems` and `Generate Bass Tab`
+- Supporting implementation evidence: local commits `e8e6e5b` (Demucs missing-runtime fallback) and `c592c82` (quantization tail infinite-loop fix) resolved the blockers discovered during the earlier manual verification attempt
 
 **Step 5: Commit**
 
