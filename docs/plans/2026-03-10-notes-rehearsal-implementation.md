@@ -12,12 +12,12 @@
 
 ## XML Tracking
 
-<phase id="notes-rehearsal-plan-execution" status="planned">
-  <task>[ ] Task 1: Lock the backend note-truth contract with failing API tests.</task>
-  <task>[ ] Task 2: Align frontend note types and route hydration with the truthful contract.</task>
-  <task>[ ] Task 3: Add song-detail note CRUD and resolved-state interactions.</task>
-  <task>[ ] Task 4: Add player rehearsal note capture and mutation flows.</task>
-  <task>[ ] Task 5: Run the notes-and-rehearsal quality gate and record implementation status.</task>
+<phase id="notes-rehearsal-plan-execution" status="completed">
+  <task>[x] Task 1: Lock the backend note-truth contract with failing API tests.</task>
+  <task>[x] Task 2: Align frontend note types and route hydration with the truthful contract.</task>
+  <task>[x] Task 3: Add song-detail note CRUD and resolved-state interactions.</task>
+  <task>[x] Task 4: Add player rehearsal note capture and mutation flows.</task>
+  <task>[x] Task 5: Run the notes-and-rehearsal quality gate and record implementation status.</task>
 </phase>
 
 ### Task 1: Lock the backend note-truth contract with failing API tests
@@ -514,21 +514,22 @@ Expected: PASS for code only after Tasks 1-4 are complete, but documentation sti
 
 After code is green, record all of the following:
 - exact backend and frontend commands from the quality gate
-- the pre-reset result and the post-`make reset` rerun result
+- the pre-reset result and the post-`make reset` / `make up` rerun result
 - manual verification using `test songs/Clara Luciani - La grenade.mp3`
 - Slice 4 status and commit links in `docs/plans/2026-03-10-product-completion-program-implementation.md`
 
 **Step 4: Run test to verify it passes**
 
-Run: `uv run --project backend pytest backend/tests/test_api.py -k "song_notes_support_resolve_and_truthful_payloads or notes_and_playback_prefs_crud or create_time_note_requires_timestamp_sec or create_chord_note_requires_chord_index" -q && npm --prefix frontend test -- --run src/redesign/pages/__tests__/SongDetailPage.notes.test.tsx src/redesign/pages/__tests__/PlayerPage.test.tsx src/__tests__/App.integration.test.tsx && make reset && uv run --project backend pytest backend/tests/test_api.py -k "song_notes_support_resolve_and_truthful_payloads or notes_and_playback_prefs_crud or create_time_note_requires_timestamp_sec or create_chord_note_requires_chord_index" -q && npm --prefix frontend test -- --run src/redesign/pages/__tests__/SongDetailPage.notes.test.tsx src/redesign/pages/__tests__/PlayerPage.test.tsx src/__tests__/App.integration.test.tsx`
-Expected: PASS. Then manually verify the rehearsal note flow with the real song fixture.
+Run: `uv run --project backend pytest backend/tests/test_api.py -k "song_notes_support_resolve_and_truthful_payloads or notes_and_playback_prefs_crud or create_time_note_requires_timestamp_sec or create_chord_note_requires_chord_index" -q && npm --prefix frontend test -- --run src/redesign/pages/__tests__/SongDetailPage.notes.test.tsx src/redesign/pages/__tests__/PlayerPage.test.tsx src/__tests__/App.integration.test.tsx && make reset && make up && uv run --project backend pytest backend/tests/test_api.py -k "song_notes_support_resolve_and_truthful_payloads or notes_and_playback_prefs_crud or create_time_note_requires_timestamp_sec or create_chord_note_requires_chord_index" -q && npm --prefix frontend test -- --run src/redesign/pages/__tests__/SongDetailPage.notes.test.tsx src/redesign/pages/__tests__/PlayerPage.test.tsx src/__tests__/App.integration.test.tsx`
+Expected: PASS. Then manually verify the rehearsal note flow with the real song fixture after `make up`.
 
 ## Notes and Rehearsal Quality Gate
 
 - `uv run --project backend pytest backend/tests/test_api.py -k "song_notes_support_resolve_and_truthful_payloads or notes_and_playback_prefs_crud or create_time_note_requires_timestamp_sec or create_chord_note_requires_chord_index" -q`
 - `npm --prefix frontend test -- --run src/redesign/pages/__tests__/SongDetailPage.notes.test.tsx src/redesign/pages/__tests__/PlayerPage.test.tsx src/__tests__/App.integration.test.tsx`
 - `make reset`
-- rerun the same backend and frontend commands after reset
+- `make up`
+- rerun the same backend and frontend commands after reset and restart
 - manual verification with `test songs/Clara Luciani - La grenade.mp3` covering:
   - create a chord-linked note from song detail
   - create a time-linked note from the player at the live transport time
@@ -538,8 +539,19 @@ Expected: PASS. Then manually verify the rehearsal note flow with the real song 
 
 ### Task 5 Verification Record
 
-- Fill this section only after implementation.
-- Record exact command output summaries, reset evidence, manual verification notes, and Slice 4 ledger updates here.
+- Focused verification before reset passed with `uv run --project backend pytest backend/tests/test_api.py -k "song_notes_support_resolve_and_truthful_payloads or notes_and_playback_prefs_crud or create_time_note_requires_timestamp_sec or create_chord_note_requires_chord_index" -q` reporting 4 passed, 41 deselected, and warnings limited to the existing FastAPI `on_event` deprecations.
+- Focused verification before reset also passed with `npm --prefix frontend test -- --run src/redesign/pages/__tests__/SongDetailPage.notes.test.tsx src/redesign/pages/__tests__/PlayerPage.test.tsx src/__tests__/App.integration.test.tsx` reporting 3 files passed and 29 tests passed.
+- Reset and restart evidence: `make reset` passed, `make up` passed, and the runtime after the final restart served frontend at `http://127.0.0.1:4963` and backend at `http://127.0.0.1:4848`.
+- Focused verification after reset reran the same backend command and passed again with 4 passed, 41 deselected, and the same warnings only.
+- Focused verification after reset reran the same frontend command and passed again with 3 files passed and 29 tests passed.
+- Manual verification used fixture `test songs/Clara Luciani - La grenade.mp3` with upload job `2500d00fa383`; observed processing progressed through `analyzing_chords -> splitting_stems -> transcribing_bass_midi -> complete`, and final backend polling reported `status=complete`, `stems_status=complete`, `midi_status=complete`, and `tab_status=complete`.
+- Song-detail chord-note creation also succeeded: created note text `Kick into chorus tighter`, the UI showed `Chord note added.`, and the note rendered as `Wojtek` / `chord #1`.
+- Cross-surface edit verification succeeded: that chord note was edited from song detail to `Kick into chorus together`, the UI showed `Note updated.`, and after opening the player comments rail the edited text `Kick into chorus together` was visible there.
+- Delete verification succeeded across both surfaces: the edited note was deleted from the player comments rail, the player UI showed `Note deleted.`, the open comment count dropped from `4` to `3`, and after navigating back to song detail the deleted note was absent there too.
+- Song-detail verification succeeded: manual time-note creation using timestamp `01:18` showed `Time note added.`, rendered the note as `Wojtek` / `at 1:18` with text `Verse entry still drags`, resolve removed it from open comments and showed `No open comments.` with `Show resolved (1)`, showing resolved exposed the note in the resolved section, and reopen returned it to open comments with `Note reopened.`.
+- Player verification succeeded: opening player from song detail worked, opening the `Comments` panel exposed the compact note capture UI, creating a time note from current transport showed `Time note added.` and rendered `0.0s`, creating a chord note from the current chord showed `Chord note added.` and rendered `chord #1`, and the open comment count increased consistently in the player comments rail.
+- Route ownership and refresh behavior stayed truthful in this slice: note mutations remained route-owned in `App`, and both song detail and player reflected backend truth after refresh.
+- Supporting local commits for this slice implementation: `0625e11`, `9b75f41`, `afe71a5`, and `2817025`.
 
 **Step 5: Commit**
 

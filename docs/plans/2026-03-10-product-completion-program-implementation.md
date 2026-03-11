@@ -21,7 +21,7 @@
   <task>[x] Task 6: Plan the real-player slice in detail.</task>
   <task>[x] Task 7: Implement and verify the real-player slice.</task>
   <task>[x] Task 8: Plan the notes-and-rehearsal slice in detail.</task>
-  <task>[ ] Task 9: Implement and verify the notes-and-rehearsal slice.</task>
+  <task>[x] Task 9: Implement and verify the notes-and-rehearsal slice.</task>
   <task>[ ] Task 10: Plan the collaboration slice in detail.</task>
   <task>[ ] Task 11: Implement and verify the collaboration slice.</task>
   <task>[ ] Task 12: Plan the hardening-and-finish slice in detail.</task>
@@ -67,11 +67,11 @@ Use this section as the durable landing zone for each slice's linked docs, statu
 
 ### Slice 4: Notes and Rehearsal
 
-- Status: Planned in detail; implementation not started.
+- Status: Complete and verification-backed.
 - Design doc: `docs/plans/2026-03-10-notes-rehearsal-design.md`
 - Implementation doc: `docs/plans/2026-03-10-notes-rehearsal-implementation.md` (includes XML `<phase>` / `<task>` tracking for execution and an explicit notes/rehearsal quality gate)
-- Verification notes: Not recorded yet.
-- Commit links: Not recorded yet.
+- Verification notes: On 2026-03-12, focused verification passed before reset with `uv run --project backend pytest backend/tests/test_api.py -k "song_notes_support_resolve_and_truthful_payloads or notes_and_playback_prefs_crud or create_time_note_requires_timestamp_sec or create_chord_note_requires_chord_index" -q` (4 passed, 41 deselected, warnings limited to the existing FastAPI `on_event` deprecations) and `npm --prefix frontend test -- --run src/redesign/pages/__tests__/SongDetailPage.notes.test.tsx src/redesign/pages/__tests__/PlayerPage.test.tsx src/__tests__/App.integration.test.tsx` (3 files passed, 29 tests passed). `make reset` then passed, `make up` passed, and the runtime after the final restart served frontend at `http://127.0.0.1:4963` and backend at `http://127.0.0.1:4848`. After reset, the same focused backend command passed again with 4 passed, 41 deselected, and the same warnings only, and the same focused frontend command passed again with 3 files passed and 29 tests passed. Manual verification with `test songs/Clara Luciani - La grenade.mp3` used upload job `2500d00fa383`, observed processing `analyzing_chords -> splitting_stems -> transcribing_bass_midi -> complete`, and finished with backend `status=complete`, `stems_status=complete`, `midi_status=complete`, and `tab_status=complete`. On song detail, chord-note creation succeeded for `Kick into chorus tighter` with `Chord note added.` and rendered `Wojtek` / `chord #1`; time-note creation with timestamp `01:18` succeeded with `Time note added.` and rendered `Wojtek` / `at 1:18` with text `Verse entry still drags`; resolve moved that time note out of open comments to show `No open comments.` plus `Show resolved (1)`; showing resolved exposed it in the resolved section; and reopen returned it to open comments with `Note reopened.`. Cross-surface edit verification then succeeded when the song-detail chord note was updated to `Kick into chorus together` with `Note updated.` and the edited text was visible in the player comments rail. Delete verification also succeeded across both surfaces when that edited note was removed from the player comments rail with `Note deleted.`, the open comment count dropped from `4` to `3`, and the note was absent again after navigating back to song detail. In the player, opening from song detail succeeded, the `Comments` panel exposed the compact note capture UI, creating a time note from current transport succeeded with `Time note added.` and rendered `0.0s`, creating a chord note from the current chord succeeded with `Chord note added.` and rendered `chord #1`, and the open comment count increased consistently in the comments rail. This slice kept note mutations route-owned in `App`, and both song detail and player reflected backend truth after refresh.
+- Commit links: local commits `0625e11`, `9b75f41`, `afe71a5`, and `2817025`. Pushed links not recorded yet.
 
 ### Slice 5: Collaboration
 
