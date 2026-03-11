@@ -78,7 +78,8 @@ def _get_analysis_config_for_quality_mode(
     )
     should_enable_ensemble = config.enable_model_ensemble or (
         quality_mode_auto_ensemble
-        and quality_mode in {
+        and quality_mode
+        in {
             "high_accuracy",
             "high_accuracy_aggressive",
         }
@@ -126,7 +127,9 @@ class IdentityResolveRequest(BaseModel):
 
 class IdentityClaimRequest(BaseModel):
     user_id: int
-    username: str = Field(min_length=3, max_length=64, pattern=r"^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$")
+    username: str = Field(
+        min_length=3, max_length=64, pattern=r"^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$"
+    )
     password: str = Field(min_length=8, max_length=256)
 
 
@@ -176,7 +179,9 @@ async def _persist_analysis(song_id: int, result: AnalysisResult) -> None:
     prev = await execute("SELECT id FROM analyses WHERE song_id = ?", [song_id])
     for row in prev.rows:
         analysis_id = int(row[0])
-        await execute("DELETE FROM analysis_chords WHERE analysis_id = ?", [analysis_id])
+        await execute(
+            "DELETE FROM analysis_chords WHERE analysis_id = ?", [analysis_id]
+        )
     await execute("DELETE FROM analyses WHERE song_id = ?", [song_id])
 
     analysis_insert = await execute(
@@ -200,14 +205,130 @@ async def _persist_analysis(song_id: int, result: AnalysisResult) -> None:
 
 
 async def _persist_stems(song_id: int, stems: list[StemResult]) -> None:
-    await execute("DELETE FROM song_stems WHERE song_id = ?", [song_id])
-    for stem in stems:
+    await _persist_generated_stems(song_id, stems)
+
+
+def _is_user_uploaded_stem_path(relative_path: str) -> bool:
+    path = Path(relative_path)
+    return any(part in {"upload", "uploads", "uploaded"} for part in path.parts)
+
+
+def _build_stem_display_name(
+    stem_key: str, relative_path: str, source_type: str
+) -> str:
+    path = Path(relative_path)
+    if source_type == "user" and path.name:
+        return path.name
+    return stem_key.replace("_", " ").title()
+
+
+def _build_version_label(prefix: str) -> str:
+    return f"{prefix}-{uuid.uuid4().hex[:8]}"
+
+
+async def _serialize_song_stem(row) -> dict:
+    source_type = str(row[5] or "system")
+    display_name = row[6] or _build_stem_display_name(
+        str(row[1]), str(row[2]), source_type
+    )
+    version_label = row[7] or "legacy"
+    uploaded_by_name = row[8]
+    return {
+        "id": int(row[0]),
+        "stem_key": row[1],
+        "source_type": source_type,
+        "display_name": display_name,
+        "version_label": version_label,
+        "uploaded_by_name": uploaded_by_name,
+        "is_archived": False,
+        "relative_path": row[2],
+        "mime_type": row[3],
+        "duration": row[4],
+        "created_at": row[9],
+    }
+
+
+async def _load_active_song_stem(song_id: int, stem_key: str) -> dict | None:
+    rs = await execute(
+        """
+        SELECT id, stem_key, relative_path, mime_type, duration, source_type, display_name, version_label, uploaded_by_name, created_at
+        FROM song_stems
+        WHERE song_id = ? AND stem_key = ?
+        LIMIT 1
+        """,
+        [song_id, stem_key],
+    )
+    if not rs.rows:
+        return None
+    return await _serialize_song_stem(rs.rows[0])
+
+
+async def _replace_song_stem(
+    song_id: int,
+    *,
+    stem_key: str,
+    relative_path: str,
+    mime_type: str | None,
+    duration: float | None,
+    source_type: str,
+    display_name: str,
+    version_label: str,
+    uploaded_by_name: str | None,
+) -> None:
+    await execute(
+        "DELETE FROM song_stems WHERE song_id = ? AND stem_key = ?",
+        [song_id, stem_key],
+    )
+    await execute(
+        """
+        INSERT INTO song_stems (
+            song_id, stem_key, relative_path, mime_type, duration, source_type, display_name, version_label, uploaded_by_name
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            song_id,
+            stem_key,
+            relative_path,
+            mime_type,
+            duration,
+            source_type,
+            display_name,
+            version_label,
+            uploaded_by_name,
+        ],
+    )
+
+
+async def _persist_generated_stems(song_id: int, stems: list[StemResult]) -> None:
+    regen_version = _build_version_label("regen")
+    generated_keys = {stem.stem_key for stem in stems}
+    existing_stems = await _load_song_stems(song_id)
+    for stem in existing_stems:
+        if stem["source_type"] != "system":
+            continue
+        if stem["stem_key"] in generated_keys:
+            continue
         await execute(
-            """
-            INSERT INTO song_stems (song_id, stem_key, relative_path, mime_type, duration)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            [song_id, stem.stem_key, stem.relative_path, stem.mime_type, stem.duration],
+            "DELETE FROM song_stems WHERE song_id = ? AND stem_key = ?",
+            [song_id, stem["stem_key"]],
+        )
+    for stem in stems:
+        current = await _load_active_song_stem(song_id, stem.stem_key)
+        if current is not None and current["source_type"] == "user":
+            continue
+        await _replace_song_stem(
+            song_id,
+            stem_key=stem.stem_key,
+            relative_path=stem.relative_path,
+            mime_type=stem.mime_type,
+            duration=stem.duration,
+            source_type="system",
+            display_name=_build_stem_display_name(
+                stem.stem_key, stem.relative_path, "system"
+            ),
+            version_label=regen_version,
+            uploaded_by_name=None,
         )
 
 
@@ -217,20 +338,53 @@ async def _persist_midi(
     source_stem_key: str,
     midi_blob: bytes,
     engine: str,
+    provenance: dict | None = None,
     status: str = "complete",
     error_message: str | None = None,
 ) -> int:
+    stem = (
+        provenance
+        if provenance is not None
+        else await _load_active_song_stem(song_id, source_stem_key)
+    )
     await execute(
         "DELETE FROM song_midis WHERE song_id = ? AND source_stem_key = ?",
         [song_id, source_stem_key],
     )
     rs = await execute(
         """
-        INSERT INTO song_midis (song_id, source_stem_key, midi_blob, midi_format, engine, status, error_message)
-        VALUES (?, ?, ?, 'mid', ?, ?, ?)
+        INSERT INTO song_midis (
+            song_id,
+            source_stem_key,
+            source_stem_id,
+            source_stem_source_type,
+            source_stem_display_name,
+            source_stem_version_label,
+            source_stem_uploaded_by_name,
+            midi_blob,
+            midi_format,
+            engine,
+            status,
+            error_message
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'mid', ?, ?, ?)
         RETURNING id
         """,
-        [song_id, source_stem_key, midi_blob, engine, status, error_message],
+        [
+            song_id,
+            source_stem_key,
+            stem["id"] if stem is not None else None,
+            stem["source_type"] if stem is not None else "system",
+            stem["display_name"]
+            if stem is not None
+            else _build_stem_display_name(source_stem_key, source_stem_key, "system"),
+            stem["version_label"] if stem is not None else "transient",
+            stem["uploaded_by_name"] if stem is not None else None,
+            midi_blob,
+            engine,
+            status,
+            error_message,
+        ],
     )
     return int(rs.rows[0][0])
 
@@ -342,28 +496,35 @@ async def _load_song_row(song_id: int) -> dict | None:
 async def _load_song_stems(song_id: int) -> list[dict]:
     stems_rs = await execute(
         """
-        SELECT stem_key, relative_path, mime_type, duration
+        SELECT id, stem_key, relative_path, mime_type, duration, source_type, display_name, version_label, uploaded_by_name, created_at
         FROM song_stems
         WHERE song_id = ?
         ORDER BY stem_key ASC
         """,
         [song_id],
     )
-    return [
-        {
-            "stem_key": row[0],
-            "relative_path": row[1],
-            "mime_type": row[2],
-            "duration": row[3],
-        }
-        for row in stems_rs.rows
-    ]
+    return [await _serialize_song_stem(row) for row in stems_rs.rows]
 
 
 async def _load_song_tab_meta(song_id: int) -> dict | None:
     rs = await execute(
         """
-        SELECT t.id, m.source_stem_key, t.source_midi_id, t.tab_format, t.tuning, t.strings, t.generator_version, t.status, t.error_message, t.created_at, t.updated_at
+        SELECT
+            t.id,
+            m.source_stem_key,
+            t.source_midi_id,
+            m.source_stem_id,
+            m.source_stem_source_type,
+            m.source_stem_display_name,
+            m.source_stem_version_label,
+            t.tab_format,
+            t.tuning,
+            t.strings,
+            t.generator_version,
+            t.status,
+            t.error_message,
+            t.created_at,
+            t.updated_at
         FROM song_tabs t
         JOIN song_midis m ON m.id = t.source_midi_id
         WHERE t.song_id = ?
@@ -379,18 +540,25 @@ async def _load_song_tab_meta(song_id: int) -> dict | None:
         "id": row[0],
         "source_stem_key": row[1],
         "source_midi_id": row[2],
-        "tab_format": row[3],
-        "tuning": row[4],
-        "strings": row[5],
-        "generator_version": row[6],
-        "status": row[7],
-        "error_message": row[8],
-        "created_at": row[9],
-        "updated_at": row[10],
+        "source_stem_id": row[3],
+        "source_type": row[4],
+        "source_display_name": row[5]
+        or _build_stem_display_name(str(row[1]), str(row[1]), str(row[4] or "system")),
+        "source_version_label": row[6],
+        "tab_format": row[7],
+        "tuning": row[8],
+        "strings": row[9],
+        "generator_version": row[10],
+        "status": row[11],
+        "error_message": row[12],
+        "created_at": row[13],
+        "updated_at": row[14],
     }
 
 
-def _write_song_audio_tempfile(song_id: int, original_filename: str | None, audio_blob: bytes) -> Path:
+def _write_song_audio_tempfile(
+    song_id: int, original_filename: str | None, audio_blob: bytes
+) -> Path:
     suffix = Path(original_filename or "").suffix or ".mp3"
     temp_dir = Path(tempfile.mkdtemp(prefix=f"dechord-song-{song_id}-"))
     audio_path = temp_dir / f"source{suffix}"
@@ -401,8 +569,7 @@ def _write_song_audio_tempfile(song_id: int, original_filename: str | None, audi
 async def _regenerate_song_tabs(song_id: int, source_stem_key: str) -> dict:
     stems = await _load_song_stems(song_id)
     stems_by_key = {
-        str(stem["stem_key"]): Path(str(stem["relative_path"]))
-        for stem in stems
+        str(stem["stem_key"]): Path(str(stem["relative_path"])) for stem in stems
     }
     if source_stem_key not in stems_by_key:
         raise HTTPException(404, "Requested source stem not found.")
@@ -500,36 +667,51 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                 asyncio.run(_persist_stems(song_id, stems))
                 jobs[job_id]["stems_status"] = "complete"
                 jobs[job_id]["stems_error"] = None
-                bass_stem = next((stem for stem in stems if stem.stem_key == "bass"), None)
-                drums_stem = next((stem for stem in stems if stem.stem_key == "drums"), None)
+                bass_stem = next(
+                    (stem for stem in stems if stem.stem_key == "bass"), None
+                )
+                drums_stem = next(
+                    (stem for stem in stems if stem.stem_key == "drums"), None
+                )
                 analysis_stem_result: BassAnalysisStemResult | None = None
                 if bass_stem is None:
                     jobs[job_id]["midi_status"] = "failed"
-                    jobs[job_id]["midi_error"] = "Bass stem missing; cannot transcribe MIDI."
+                    jobs[job_id]["midi_error"] = (
+                        "Bass stem missing; cannot transcribe MIDI."
+                    )
                     jobs[job_id]["tab_status"] = "not_requested"
                     jobs[job_id]["tab_error"] = None
                 elif drums_stem is None:
                     jobs[job_id]["midi_status"] = "not_requested"
                     jobs[job_id]["midi_error"] = None
                     jobs[job_id]["tab_status"] = "failed"
-                    jobs[job_id]["tab_error"] = "Drums stem missing; cannot build rhythm grid."
+                    jobs[job_id]["tab_error"] = (
+                        "Drums stem missing; cannot build rhythm grid."
+                    )
                 else:
                     try:
-                        tab_generation_quality = jobs[job_id].get("tab_generation_quality", "standard")
+                        tab_generation_quality = jobs[job_id].get(
+                            "tab_generation_quality", "standard"
+                        )
                         stem_paths = {
-                            stem.stem_key: Path(stem.relative_path)
-                            for stem in stems
+                            stem.stem_key: Path(stem.relative_path) for stem in stems
                         }
                         analysis_output_dir = STEMS_DIR / str(song_id) / "analysis"
                         analysis_output_dir.mkdir(parents=True, exist_ok=True)
                         analysis_stem_result = build_bass_analysis_stem(
                             stems=stem_paths,
                             output_dir=analysis_output_dir,
-                            analysis_config=_get_analysis_config_for_quality_mode(tab_generation_quality),
+                            analysis_config=_get_analysis_config_for_quality_mode(
+                                tab_generation_quality
+                            ),
                             source_audio_path=Path(audio_path),
                         )
-                        jobs[job_id]["analysis_stem_path"] = str(analysis_stem_result.path)
-                        jobs[job_id]["analysis_stem_diagnostics"] = analysis_stem_result.diagnostics
+                        jobs[job_id]["analysis_stem_path"] = str(
+                            analysis_stem_result.path
+                        )
+                        jobs[job_id]["analysis_stem_diagnostics"] = (
+                            analysis_stem_result.diagnostics
+                        )
                         set_stage(
                             "transcribing_bass_midi",
                             message="Transcribing bass stem to MIDI...",
@@ -581,21 +763,33 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                             "analysis_stem_diagnostics": analysis_stem_result.diagnostics,
                         }
                     except FingeringCollapseError as exc:
-                        logger.error("Job %s: phase2 tab pipeline fingering collapse: %s", job_id, exc, exc_info=True)
+                        logger.error(
+                            "Job %s: phase2 tab pipeline fingering collapse: %s",
+                            job_id,
+                            exc,
+                            exc_info=True,
+                        )
                         jobs[job_id]["midi_status"] = "failed"
                         jobs[job_id]["midi_error"] = str(exc)
                         jobs[job_id]["tab_status"] = "failed"
                         jobs[job_id]["tab_error"] = str(exc)
                         jobs[job_id]["tab_debug_info"] = exc.debug_info
                     except Exception as exc:
-                        logger.error("Job %s: phase2 tab pipeline failed: %s", job_id, exc, exc_info=True)
+                        logger.error(
+                            "Job %s: phase2 tab pipeline failed: %s",
+                            job_id,
+                            exc,
+                            exc_info=True,
+                        )
                         jobs[job_id]["midi_status"] = "failed"
                         jobs[job_id]["midi_error"] = str(exc)
                         jobs[job_id]["tab_status"] = "not_requested"
                         jobs[job_id]["tab_error"] = None
                 logger.info("Job %s: stem splitting complete", job_id)
             except Exception as exc:
-                logger.error("Job %s: stem splitting failed: %s", job_id, exc, exc_info=True)
+                logger.error(
+                    "Job %s: stem splitting failed: %s", job_id, exc, exc_info=True
+                )
                 jobs[job_id]["stems_status"] = "failed"
                 jobs[job_id]["stems_error"] = str(exc)
                 jobs[job_id]["midi_status"] = "not_requested"
@@ -603,7 +797,11 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                 jobs[job_id]["tab_status"] = "not_requested"
                 jobs[job_id]["tab_error"] = None
         else:
-            logger.info("Job %s: stems not requested (mode=%s)", job_id, jobs[job_id].get("process_mode"))
+            logger.info(
+                "Job %s: stems not requested (mode=%s)",
+                job_id,
+                jobs[job_id].get("process_mode"),
+            )
             jobs[job_id]["stems_status"] = "not_requested"
             jobs[job_id]["stems_error"] = None
             jobs[job_id]["midi_status"] = "not_requested"
@@ -745,7 +943,9 @@ async def create_project(band_id: int, payload: ProjectCreateRequest):
 def _parse_time_signature(time_signature: str) -> tuple[int, int]:
     match = re.match(r"^\s*(\d+)\s*/\s*(\d+)\s*$", time_signature or "")
     if not match:
-        raise HTTPException(400, "time_signature must use the form 'N/D' (for example '4/4').")
+        raise HTTPException(
+            400, "time_signature must use the form 'N/D' (for example '4/4')."
+        )
     numerator = int(match.group(1))
     denominator = int(match.group(2))
     if numerator <= 0 or denominator <= 0:
@@ -765,7 +965,9 @@ async def tab_from_demucs_stems(
     subdivision: int = Form(16),
     max_fret: int = Form(24),
     sync_every_bars: int = Form(8),
-    tabGenerationQuality: Literal["standard", "high_accuracy", "high_accuracy_aggressive"] = Form("standard"),
+    tabGenerationQuality: Literal[
+        "standard", "high_accuracy", "high_accuracy_aggressive"
+    ] = Form("standard"),
     onset_recovery: bool = Form(False),
 ):
     signature = _parse_time_signature(time_signature)
@@ -858,6 +1060,13 @@ async def tab_from_demucs_stems(
         source_stem_key="bass",
         midi_blob=result.midi_bytes,
         engine="basic_pitch",
+        provenance={
+            "id": None,
+            "source_type": "user",
+            "display_name": bass.filename or "bass.wav",
+            "version_label": _build_version_label("transient"),
+            "uploaded_by_name": None,
+        },
     )
     await _persist_tab(
         resolved_song_id,
@@ -881,7 +1090,10 @@ async def tab_from_demucs_stems(
             for bar in result.bars
         ],
         "sync_points": [
-            {"bar_index": point.bar_index, "millisecond_offset": point.millisecond_offset}
+            {
+                "bar_index": point.bar_index,
+                "millisecond_offset": point.millisecond_offset,
+            }
             for point in result.sync_points
         ],
         "debug_info": {
@@ -896,7 +1108,9 @@ async def tab_from_demucs_stems(
 async def analyze(
     file: UploadFile,
     process_mode: ProcessMode = Form("analysis_only"),
-    tabGenerationQuality: Literal["standard", "high_accuracy", "high_accuracy_aggressive"] = Form("standard"),
+    tabGenerationQuality: Literal[
+        "standard", "high_accuracy", "high_accuracy_aggressive"
+    ] = Form("standard"),
     onset_recovery: bool | None = Form(None),
     project_id: int | None = Form(None),
 ):
@@ -925,11 +1139,17 @@ async def analyze(
         "process_mode": process_mode,
         "tab_generation_quality": tabGenerationQuality,
         "tab_onset_recovery": onset_recovery,
-        "stems_status": "queued" if process_mode == "analysis_and_stems" else "not_requested",
+        "stems_status": "queued"
+        if process_mode == "analysis_and_stems"
+        else "not_requested",
         "stems_error": None,
-        "midi_status": "queued" if process_mode == "analysis_and_stems" else "not_requested",
+        "midi_status": "queued"
+        if process_mode == "analysis_and_stems"
+        else "not_requested",
         "midi_error": None,
-        "tab_status": "queued" if process_mode == "analysis_and_stems" else "not_requested",
+        "tab_status": "queued"
+        if process_mode == "analysis_and_stems"
+        else "not_requested",
         "tab_error": None,
         "audio_path": str(audio_path),
         "song_id": song_id,
@@ -980,7 +1200,9 @@ async def result(job_id: str):
             "key": r.key,
             "tempo": r.tempo,
             "duration": r.duration,
-            "chords": [{"start": c.start, "end": c.end, "label": c.label} for c in r.chords],
+            "chords": [
+                {"start": c.start, "end": c.end, "label": c.label} for c in r.chords
+            ],
         }
 
     return {
@@ -1202,6 +1424,39 @@ async def get_song_stems(song_id: int):
     return {"stems": await _load_song_stems(song_id)}
 
 
+@app.post("/api/songs/{song_id}/stems/upload")
+async def upload_song_stem(
+    song_id: int, stem_key: str = Form(...), file: UploadFile = File(...)
+):
+    song = await _load_song_row(song_id)
+    if song is None:
+        raise HTTPException(404, "Song not found")
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(400, "Stem file is empty")
+
+    user = await get_default_user()
+    safe_name = Path(file.filename or f"{stem_key}.wav").name or f"{stem_key}.wav"
+    upload_dir = STEMS_DIR / str(song_id) / "uploads"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    stored_path = upload_dir / f"{uuid.uuid4().hex[:8]}-{safe_name}"
+    stored_path.write_bytes(content)
+
+    await _replace_song_stem(
+        song_id,
+        stem_key=stem_key,
+        relative_path=str(stored_path),
+        mime_type=file.content_type,
+        duration=None,
+        source_type="user",
+        display_name=safe_name,
+        version_label=_build_version_label("upload"),
+        uploaded_by_name=str(user["display_name"]),
+    )
+    return {"stems": await _load_song_stems(song_id)}
+
+
 @app.post("/api/songs/{song_id}/stems/regenerate")
 async def regenerate_song_stems(song_id: int):
     song = await _load_song_row(song_id)
@@ -1245,7 +1500,10 @@ async def download_song_stem(song_id: int, stem_key: str):
     if not path.exists():
         raise HTTPException(404, "Stem file missing")
 
-    safe_title = re.sub(r"[^a-zA-Z0-9._-]+", "_", song_title or f"song-{song_id}").strip("._-") or f"song-{song_id}"
+    safe_title = (
+        re.sub(r"[^a-zA-Z0-9._-]+", "_", song_title or f"song-{song_id}").strip("._-")
+        or f"song-{song_id}"
+    )
     extension = path.suffix or ".wav"
     filename = f"{safe_title}-{stem_key}{extension}"
     stem_bytes = path.read_bytes()
@@ -1344,7 +1602,11 @@ async def get_song_tabs_file(song_id: int):
     if not rs.rows:
         raise HTTPException(404, "Tabs not found")
     tab_blob, tab_format = rs.rows[0][0], (rs.rows[0][1] or "").lower()
-    media_type = "text/plain; charset=utf-8" if tab_format == "alphatex" else "application/octet-stream"
+    media_type = (
+        "text/plain; charset=utf-8"
+        if tab_format == "alphatex"
+        else "application/octet-stream"
+    )
     return Response(content=tab_blob, media_type=media_type)
 
 
@@ -1364,9 +1626,20 @@ async def download_song_tabs_file(song_id: int):
     if not rs.rows:
         raise HTTPException(404, "Tabs not found")
 
-    title, tab_blob, tab_format = rs.rows[0][0], rs.rows[0][1], (rs.rows[0][2] or "gp5").lower()
-    safe_title = re.sub(r"[^a-zA-Z0-9._-]+", "_", title or f"song-{song_id}").strip("._-") or f"song-{song_id}"
-    extension = "alphatex" if tab_format == "alphatex" else ("gp5" if tab_format not in {"gp3", "gp4", "gp5", "gpx"} else tab_format)
+    title, tab_blob, tab_format = (
+        rs.rows[0][0],
+        rs.rows[0][1],
+        (rs.rows[0][2] or "gp5").lower(),
+    )
+    safe_title = (
+        re.sub(r"[^a-zA-Z0-9._-]+", "_", title or f"song-{song_id}").strip("._-")
+        or f"song-{song_id}"
+    )
+    extension = (
+        "alphatex"
+        if tab_format == "alphatex"
+        else ("gp5" if tab_format not in {"gp3", "gp4", "gp5", "gpx"} else tab_format)
+    )
     filename = f"{safe_title}.{extension}"
 
     return Response(
@@ -1454,14 +1727,18 @@ async def create_note(song_id: int, payload: NoteCreate):
 
 @app.patch("/api/notes/{note_id}")
 async def update_note(note_id: int, payload: NoteUpdate):
-    row_rs = await execute("SELECT text, toast_duration_sec FROM notes WHERE id = ?", [note_id])
+    row_rs = await execute(
+        "SELECT text, toast_duration_sec FROM notes WHERE id = ?", [note_id]
+    )
     if not row_rs.rows:
         raise HTTPException(404, "Note not found")
 
     current = row_rs.rows[0]
     text = payload.text if payload.text is not None else current[0]
     toast_duration_sec = (
-        payload.toast_duration_sec if payload.toast_duration_sec is not None else current[1]
+        payload.toast_duration_sec
+        if payload.toast_duration_sec is not None
+        else current[1]
     )
 
     await execute(

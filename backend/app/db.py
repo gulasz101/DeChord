@@ -51,11 +51,63 @@ async def execute(sql: str, args: list[Any] | tuple[Any, ...] | None = None):
     return await client.execute(sql, list(args))
 
 
+async def _table_has_column(table_name: str, column_name: str) -> bool:
+    rs = await execute(f"PRAGMA table_info({table_name})")
+    return any(str(row[1]) == column_name for row in rs.rows)
+
+
+async def _ensure_column(table_name: str, column_name: str, ddl: str) -> None:
+    if await _table_has_column(table_name, column_name):
+        return
+    await execute(f"ALTER TABLE {table_name} ADD COLUMN {ddl}")
+
+
+async def _run_schema_migrations() -> None:
+    await _ensure_column(
+        "song_stems",
+        "source_type",
+        "source_type TEXT NOT NULL DEFAULT 'system'",
+    )
+    await _ensure_column("song_stems", "display_name", "display_name TEXT")
+    await _ensure_column(
+        "song_stems",
+        "version_label",
+        "version_label TEXT NOT NULL DEFAULT 'legacy'",
+    )
+    await _ensure_column(
+        "song_stems",
+        "uploaded_by_name",
+        "uploaded_by_name TEXT",
+    )
+    await _ensure_column("song_midis", "source_stem_id", "source_stem_id INTEGER")
+    await _ensure_column(
+        "song_midis",
+        "source_stem_source_type",
+        "source_stem_source_type TEXT NOT NULL DEFAULT 'system'",
+    )
+    await _ensure_column(
+        "song_midis",
+        "source_stem_display_name",
+        "source_stem_display_name TEXT",
+    )
+    await _ensure_column(
+        "song_midis",
+        "source_stem_version_label",
+        "source_stem_version_label TEXT",
+    )
+    await _ensure_column(
+        "song_midis",
+        "source_stem_uploaded_by_name",
+        "source_stem_uploaded_by_name TEXT",
+    )
+
+
 async def init_db() -> None:
     schema = _SCHEMA_PATH.read_text(encoding="utf-8")
     statements = [stmt.strip() for stmt in schema.split(";") if stmt.strip()]
     for stmt in statements:
         await execute(stmt)
+    await _run_schema_migrations()
     await get_default_project()
 
 
@@ -73,10 +125,14 @@ async def get_default_user() -> dict[str, Any]:
         [DEFAULT_USER_NAME],
     )
     row = rs.rows[0]
-    return row.asdict() if hasattr(row, "asdict") else {
-        "id": row[0],
-        "display_name": row[1],
-    }
+    return (
+        row.asdict()
+        if hasattr(row, "asdict")
+        else {
+            "id": row[0],
+            "display_name": row[1],
+        }
+    )
 
 
 def _generate_guest_display_name() -> str:
@@ -84,13 +140,17 @@ def _generate_guest_display_name() -> str:
 
 
 def _row_as_user_dict(row: Any) -> dict[str, Any]:
-    data = row.asdict() if hasattr(row, "asdict") else {
-        "id": row[0],
-        "display_name": row[1],
-        "fingerprint_token": row[2],
-        "username": row[3],
-        "is_claimed": row[4],
-    }
+    data = (
+        row.asdict()
+        if hasattr(row, "asdict")
+        else {
+            "id": row[0],
+            "display_name": row[1],
+            "fingerprint_token": row[2],
+            "username": row[3],
+            "is_claimed": row[4],
+        }
+    )
     return {
         "id": int(data["id"]),
         "display_name": data["display_name"],
@@ -150,7 +210,9 @@ async def resolve_identity_user(fingerprint_token: str) -> dict[str, Any]:
     raise RuntimeError("Failed to allocate guest identity")
 
 
-async def claim_identity_user(user_id: int, username: str, password_hash: str) -> dict[str, Any] | None:
+async def claim_identity_user(
+    user_id: int, username: str, password_hash: str
+) -> dict[str, Any] | None:
     await execute(
         """
         UPDATE users
@@ -206,7 +268,11 @@ async def get_default_project() -> dict[str, Any]:
         VALUES (?, ?, ?)
         ON CONFLICT(band_id, name) DO NOTHING
         """,
-        [band_id, DEFAULT_PROJECT_NAME, "Default project created for local development."],
+        [
+            band_id,
+            DEFAULT_PROJECT_NAME,
+            "Default project created for local development.",
+        ],
     )
     project_rs = await execute(
         "SELECT id, name, band_id FROM projects WHERE band_id = ? AND name = ?",
