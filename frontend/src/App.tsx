@@ -3,6 +3,8 @@ import {
   claimIdentity,
   createBand,
   createProject,
+  createSongNote,
+  deleteSongNote,
   getJobStatus,
   getResult,
   getSong,
@@ -17,7 +19,9 @@ import {
   listBands,
   listProjectSongs,
   listSongStems,
+  resolveSongNote,
   resolveIdentity,
+  updateSongNote,
 } from "./lib/api";
 import type { ProcessMode, TabGenerationQuality } from "./lib/types";
 import type { Band, Project, Song, StemInfo, User, SongNote, Chord } from "./redesign/lib/types";
@@ -706,6 +710,29 @@ export default function App() {
             const songId = Number(route.song.id);
             if (Number.isNaN(songId)) return;
             await regenerateSongTabs(songId, { source_stem_key: sourceStemKey });
+            await refreshSongDetailRoute();
+          }}
+          onCreateNote={async ({ type, text, timestampSec, chordIndex }) => {
+            const songId = Number(route.song.id);
+            if (Number.isNaN(songId)) return;
+            await createSongNote(songId, {
+              type,
+              text,
+              timestamp_sec: timestampSec,
+              chord_index: chordIndex,
+            });
+            await refreshSongDetailRoute();
+          }}
+          onEditNote={async (noteId, payload) => {
+            await updateSongNote(noteId, { text: payload.text });
+            await refreshSongDetailRoute();
+          }}
+          onResolveNote={async (noteId, resolved) => {
+            await resolveSongNote(noteId, resolved);
+            await refreshSongDetailRoute();
+          }}
+          onDeleteNote={async (noteId) => {
+            await deleteSongNote(noteId);
             await refreshSongDetailRoute();
           }}
           onOpenPlayer={() => {
