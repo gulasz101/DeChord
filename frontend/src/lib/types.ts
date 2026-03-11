@@ -75,6 +75,11 @@ export interface SongNote {
   chord_index: number | null;
   text: string;
   toast_duration_sec: number | null;
+  resolved: boolean;
+  author_name: string | null;
+  author_avatar: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface PlaybackPrefs {

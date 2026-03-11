@@ -48,10 +48,12 @@ export interface SongNote {
   timestampSec: number | null;
   chordIndex: number | null;
   text: string;
-  authorName: string;
-  authorAvatar: string;
+  toastDurationSec: number | null;
+  authorName: string | null;
+  authorAvatar: string | null;
   resolved: boolean;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface Song {

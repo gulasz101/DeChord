@@ -157,17 +157,25 @@ function mapNote(note: {
   timestamp_sec: number | null;
   chord_index: number | null;
   text: string;
-}, user: User): SongNote {
+  toast_duration_sec: number | null;
+  resolved: boolean;
+  author_name: string | null;
+  author_avatar: string | null;
+  created_at: string;
+  updated_at: string;
+}): SongNote {
   return {
     id: note.id,
     type: note.type,
     timestampSec: note.timestamp_sec,
     chordIndex: note.chord_index,
     text: note.text,
-    authorName: user.name,
-    authorAvatar: user.avatar,
-    resolved: false,
-    createdAt: new Date().toISOString(),
+    toastDurationSec: note.toast_duration_sec,
+    authorName: note.author_name,
+    authorAvatar: note.author_avatar,
+    resolved: note.resolved,
+    createdAt: note.created_at,
+    updatedAt: note.updated_at,
   };
 }
 
@@ -184,7 +192,6 @@ function mergeSongWithDetails(
   songDetail: Awaited<ReturnType<typeof getSong>>,
   stemsDetail: Awaited<ReturnType<typeof listSongStems>>,
   tabsDetail: Awaited<ReturnType<typeof getSongTabs>>,
-  user: User,
 ): Song {
   return {
     ...song,
@@ -196,7 +203,7 @@ function mergeSongWithDetails(
     chords: (songDetail.analysis?.chords ?? []).map(mapChord),
     stems: stemsDetail.stems.map(mapStem),
     tab: mapSongTab(tabsDetail.tab),
-    notes: songDetail.notes.map((n) => mapNote(n, user)),
+    notes: songDetail.notes.map(mapNote),
     updatedAt: songDetail.song.created_at,
   };
 }
@@ -355,7 +362,7 @@ export default function App() {
           getSongTabs(songId),
         ]);
         return {
-          ...mergeSongWithDetails(song, songDetail, stemsDetail, tabsDetail, user),
+          ...mergeSongWithDetails(song, songDetail, stemsDetail, tabsDetail),
         };
       } catch {
         return song;

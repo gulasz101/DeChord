@@ -203,6 +203,19 @@ export async function updateSongNote(
   return res.json();
 }
 
+export async function resolveSongNote(
+  noteId: number,
+  resolved: boolean,
+): Promise<{ id: number; resolved: boolean }> {
+  const res = await fetch(`${BASE}/api/notes/${noteId}/resolve`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ resolved }),
+  });
+  if (!res.ok) throw new Error("Failed to resolve note");
+  return res.json();
+}
+
 export async function deleteSongNote(noteId: number): Promise<void> {
   const res = await fetch(`${BASE}/api/notes/${noteId}`, {
     method: "DELETE",

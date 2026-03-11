@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import App from "../App";
+import { resolveSongNote } from "../lib/api";
 import { resolvePlaybackSources } from "../lib/playbackSources";
 
 const {
@@ -268,6 +269,10 @@ describe("App integration", () => {
     createProjectMock.mockResolvedValue({
       project: { id: 21, band_id: 11, name: "Debut", description: "", created_at: "2026-03-10", song_count: 0 },
     });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("renders opus landing shell", () => {
@@ -749,6 +754,74 @@ describe("App integration", () => {
     expect(getSongTabsMock).toHaveBeenCalledTimes(3);
   });
 
+  it("preserves resolved note truth and note metadata when song details hydrate", async () => {
+    listBandsMock.mockResolvedValueOnce({
+      bands: [{ id: 10, name: "Demo Band", owner_user_id: 1, created_at: "2026-03-09", project_count: 1 }],
+    });
+    listBandProjectsMock.mockResolvedValueOnce({
+      projects: [{ id: 20, band_id: 10, name: "Demo Project", description: "", created_at: "2026-03-09", song_count: 1 }],
+    });
+    listProjectSongsMock.mockResolvedValueOnce({
+      songs: [{ id: 30, project_id: 20, title: "Demo Song", original_filename: "demo.mp3", created_at: "2026-03-09", key: "C", tempo: 120, duration: 10 }],
+    });
+    getSongMock.mockResolvedValue({
+      song: { id: 30, title: "Demo Song", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-10T00:00:00Z" },
+      analysis: { key: "C", tempo: 120, duration: 10, chords: [{ start: 0, end: 2, label: "C" }] },
+      notes: [{
+        id: 91,
+        type: "time",
+        timestamp_sec: 4.2,
+        chord_index: null,
+        text: "Drop the fill",
+        toast_duration_sec: 6,
+        resolved: true,
+        author_name: "Wojtek",
+        author_avatar: "WG",
+        created_at: "2026-03-10T10:00:00Z",
+        updated_at: "2026-03-10T10:05:00Z",
+      }],
+      playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    await waitFor(() => {
+      expect(screen.getByText("Demo Band")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Demo Band"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library →")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    await waitFor(() => {
+      expect(screen.getByText("Demo Song")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Demo Song"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/show resolved/i)).toBeTruthy();
+      expect(screen.getByText(/no open comments/i)).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText(/show resolved/i));
+
+    expect(screen.getByText("Wojtek")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /open player/i }));
+
+    await waitFor(() => {
+      expect(playerPagePropsSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          notes: [expect.objectContaining({ id: 91, toastDurationSec: 6 })],
+        }),
+      );
+    });
+  });
+
   it("hydrates the player route from song detail with the latest real song assets", async () => {
     getSongMock.mockResolvedValue({
       song: { id: 30, title: "The Trooper", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-09" },
@@ -916,5 +989,23 @@ describe("App integration", () => {
 
     expect(screen.queryByTestId("player-page")).toBeNull();
     expect(screen.getByText("Song Library")).toBeTruthy();
+  });
+
+  it("calls the resolve-note api helper with the truthful backend route", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 91, resolved: true }),
+    } as Response);
+
+    await resolveSongNote(91, true);
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/notes/91/resolve",
+      expect.objectContaining({
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resolved: true }),
+      }),
+    );
   });
 });
