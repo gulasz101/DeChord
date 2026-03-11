@@ -19,7 +19,7 @@
   <task>[x] Task 4: Plan the song-detail-completeness slice in detail.</task>
   <task>[x] Task 5: Implement and verify the song-detail-completeness slice.</task>
   <task>[x] Task 6: Plan the real-player slice in detail.</task>
-  <task>[ ] Task 7: Implement and verify the real-player slice.</task>
+  <task>[x] Task 7: Implement and verify the real-player slice.</task>
   <task>[ ] Task 8: Plan the notes-and-rehearsal slice in detail.</task>
   <task>[ ] Task 9: Implement and verify the notes-and-rehearsal slice.</task>
   <task>[ ] Task 10: Plan the collaboration slice in detail.</task>
@@ -59,11 +59,11 @@ Use this section as the durable landing zone for each slice's linked docs, statu
 
 ### Slice 3: Real Player
 
-- Status: Planned and ready for implementation.
+- Status: Complete and verification-backed.
 - Design doc: `docs/plans/2026-03-10-real-player-design.md`
 - Implementation doc: `docs/plans/2026-03-10-real-player-implementation.md` (includes XML `<phase>` / `<task>` tracking for execution and an explicit player quality gate)
-- Verification notes: Not recorded yet.
-- Commit links: Not recorded yet.
+- Verification notes: On 2026-03-11, focused verification passed before reset with `npm --prefix frontend test -- --run src/lib/__tests__/playbackSources.mode.test.ts src/hooks/__tests__/useAudioPlayer.transport.test.ts src/components/__tests__/TransportBar.transport.test.tsx src/components/__tests__/TabViewerPanel.test.tsx src/redesign/pages/__tests__/PlayerPage.test.tsx src/__tests__/App.integration.test.tsx` (6 files passed, 28 tests passed) and `npm --prefix frontend run build` (build succeeded; existing Vite chunk-size warning for `alphaTab` only). `make reset` then passed, `make up` passed, and the runtime after the final restart served frontend at `http://127.0.0.1:4086` and backend at `http://127.0.0.1:4875`. After reset, `npm --prefix frontend test -- --run src/hooks/__tests__/useAudioPlayer.transport.test.ts src/components/__tests__/TransportBar.transport.test.tsx src/components/__tests__/TabViewerPanel.test.tsx src/redesign/pages/__tests__/PlayerPage.test.tsx src/__tests__/App.integration.test.tsx` passed again with 5 files passed and 25 tests passed, `npm --prefix frontend test -- --run src/lib/__tests__/playbackSources.mode.test.ts` passed with 1 file passed and 3 tests passed, and `npm --prefix frontend run build` succeeded again with the same `alphaTab` warning only. Manual verification with `test songs/Clara Luciani - La grenade.mp3` used upload job `09c8dc34a50a`, observed processing `analyzing_chords -> transcribing_bass_midi -> complete`, and finished with `status=complete`, `stems_status=complete`, `midi_status=complete`, and `tab_status=complete`. Opening the player from song detail loaded real backend resources `/api/audio/1` and `/api/songs/1/tabs/file`; the player shell rendered the current song title, key, tempo, chord progression, and `Tab Viewer`; manual checks confirmed play/pause toggled from `▶` to `⏸`, transport time advanced from `0:00` to `0:01`, seek updated shared player state by moving the transport display from `0:33` back to `0:00`, clicking a real chord tile changed the transport display from `0:00` to `0:08` and the visible chord index from `1 / 91` to `3 / 91`, and the real `Tab Viewer` remained mounted during that chord-click seek. Stem playback mode was intentionally not exercised because this slice still routes playback through full-mix transport only, the stem side-panel controls exist, and explicit stem-playback-mode switching is not enabled in this slice. Back navigation then returned cleanly to song detail.
+- Commit links: local commits `2d8aa3a`, `38a4fd1`, `c199d38`, `3c519af`, and `b8d22c4`. Pushed links not recorded yet.
 
 ### Slice 4: Notes and Rehearsal
 

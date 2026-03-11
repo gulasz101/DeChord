@@ -12,12 +12,12 @@
 
 ## XML Tracking
 
-<phase id="real-player-plan-execution" status="planned">
-  <task>[ ] Task 1: Lock the player route and real-asset contract in tests.</task>
-  <task>[ ] Task 2: Make `useAudioPlayer` the single transport clock.</task>
-  <task>[ ] Task 3: Refactor `PlayerPage` and child components around real transport truth.</task>
-  <task>[ ] Task 4: Wire `App.tsx` player hydration and optional playback-pref persistence.</task>
-  <task>[ ] Task 5: Run the player quality gate and record implementation status.</task>
+<phase id="real-player-plan-execution" status="completed">
+  <task>[x] Task 1: Lock the player route and real-asset contract in tests.</task>
+  <task>[x] Task 2: Make `useAudioPlayer` the single transport clock.</task>
+  <task>[x] Task 3: Refactor `PlayerPage` and child components around real transport truth.</task>
+  <task>[x] Task 4: Wire `App.tsx` player hydration and optional playback-pref persistence.</task>
+  <task>[x] Task 5: Run the player quality gate and record implementation status.</task>
 </phase>
 
 ### Task 1: Lock the player route and real-asset contract in tests
@@ -394,12 +394,13 @@ After code is green, record all of the following:
 
 **Step 4: Run test to verify it passes**
 
-Run: `npm --prefix frontend test -- --run src/lib/__tests__/playbackSources.mode.test.ts src/hooks/__tests__/useAudioPlayer.transport.test.ts src/components/__tests__/TabViewerPanel.test.tsx src/redesign/pages/__tests__/PlayerPage.test.tsx src/__tests__/App.integration.test.tsx && make reset && npm --prefix frontend test -- --run src/lib/__tests__/playbackSources.mode.test.ts src/hooks/__tests__/useAudioPlayer.transport.test.ts src/components/__tests__/TabViewerPanel.test.tsx src/redesign/pages/__tests__/PlayerPage.test.tsx src/__tests__/App.integration.test.tsx`
+Run: `npm --prefix frontend test -- --run src/lib/__tests__/playbackSources.mode.test.ts src/hooks/__tests__/useAudioPlayer.transport.test.ts src/components/__tests__/TransportBar.transport.test.tsx src/components/__tests__/TabViewerPanel.test.tsx src/redesign/pages/__tests__/PlayerPage.test.tsx src/__tests__/App.integration.test.tsx && npm --prefix frontend run build && make reset && npm --prefix frontend test -- --run src/lib/__tests__/playbackSources.mode.test.ts src/hooks/__tests__/useAudioPlayer.transport.test.ts src/components/__tests__/TransportBar.transport.test.tsx src/components/__tests__/TabViewerPanel.test.tsx src/redesign/pages/__tests__/PlayerPage.test.tsx src/__tests__/App.integration.test.tsx && npm --prefix frontend run build`
 Expected: PASS. Then manually verify the real player flow. If prefs persistence was included, also run `uv run --project backend pytest backend/tests/test_api.py -k "notes_and_playback_prefs_crud" -q` before reset and again after reset.
 
 ## Player Quality Gate
 
-- `npm --prefix frontend test -- --run src/lib/__tests__/playbackSources.mode.test.ts src/hooks/__tests__/useAudioPlayer.transport.test.ts src/components/__tests__/TabViewerPanel.test.tsx src/redesign/pages/__tests__/PlayerPage.test.tsx src/__tests__/App.integration.test.tsx`
+- `npm --prefix frontend test -- --run src/lib/__tests__/playbackSources.mode.test.ts src/hooks/__tests__/useAudioPlayer.transport.test.ts src/components/__tests__/TransportBar.transport.test.tsx src/components/__tests__/TabViewerPanel.test.tsx src/redesign/pages/__tests__/PlayerPage.test.tsx src/__tests__/App.integration.test.tsx`
+- `npm --prefix frontend run build`
 - if prefs persistence shipped, `uv run --project backend pytest backend/tests/test_api.py -k "notes_and_playback_prefs_crud" -q`
 - `make reset`
 - rerun the same commands above after reset
@@ -408,14 +409,30 @@ Expected: PASS. Then manually verify the real player flow. If prefs persistence 
   - audible real play/pause/seek
   - chord click seeks real transport
   - tab viewer follows the same current time
-  - stem playback mode, if enabled, still uses one shared clock
+  - stem playback mode, if enabled, still uses one shared clock; otherwise record it as not applicable
   - speed/volume/loop prefs restore only if persistence landed in the slice
 
 ### Task 5 Verification Record
 
-- Record the exact pass/fail results here during execution.
-- Record runtime URLs after the post-reset `make up` if manual verification requires a fresh runtime.
-- Record the manual player observations here, including whether prefs persistence shipped or was explicitly deferred.
+- Focused verification before reset:
+  - `npm --prefix frontend test -- --run src/lib/__tests__/playbackSources.mode.test.ts src/hooks/__tests__/useAudioPlayer.transport.test.ts src/components/__tests__/TransportBar.transport.test.tsx src/components/__tests__/TabViewerPanel.test.tsx src/redesign/pages/__tests__/PlayerPage.test.tsx src/__tests__/App.integration.test.tsx` passed with 6 files passed and 28 tests passed.
+  - `npm --prefix frontend run build` succeeded.
+  - Build output included the existing Vite chunk-size warning for `alphaTab`; this remained a warning only and not a failure.
+- Reset / restart evidence:
+  - `make reset` passed.
+  - `make up` passed.
+  - Runtime after the final restart served frontend at `http://127.0.0.1:4086` and backend at `http://127.0.0.1:4875`.
+- Focused verification after reset:
+  - `npm --prefix frontend test -- --run src/hooks/__tests__/useAudioPlayer.transport.test.ts src/components/__tests__/TransportBar.transport.test.tsx src/components/__tests__/TabViewerPanel.test.tsx src/redesign/pages/__tests__/PlayerPage.test.tsx src/__tests__/App.integration.test.tsx` passed again with 5 files passed and 25 tests passed.
+  - `npm --prefix frontend test -- --run src/lib/__tests__/playbackSources.mode.test.ts` passed with 1 file passed and 3 tests passed.
+  - `npm --prefix frontend run build` succeeded again with the same `alphaTab` chunk-size warning only.
+- Manual verification:
+  - Fixture `test songs/Clara Luciani - La grenade.mp3` was uploaded as job `09c8dc34a50a`.
+  - Observed processing progressed through `analyzing_chords -> transcribing_bass_midi -> complete` and finished with `status=complete`, `stems_status=complete`, `midi_status=complete`, and `tab_status=complete`.
+  - Opening the player from song detail loaded real backend resources `/api/audio/1` and `/api/songs/1/tabs/file`.
+  - The player shell rendered the current song title, key, tempo, chord progression, and `Tab Viewer`, with the real player route hydrated from song detail.
+  - Manual player checks confirmed the play button toggled from `▶` to `⏸`, transport time advanced from `0:00` to `0:01`, the seek control updated shared player state by moving the transport display from `0:33` back to `0:00`, clicking a real chord tile changed the transport display from `0:00` to `0:08` and the visible chord index from `1 / 91` to `3 / 91`, the real `Tab Viewer` remained mounted during that chord-click seek, and back navigation returned cleanly to song detail without trapping the user in player state.
+  - Stem playback mode was intentionally not exercised: this slice still routes playback through full-mix transport only, the stem side-panel controls exist, and explicit stem-playback-mode switching is not enabled in this slice.
 
 **Step 5: Commit**
 
