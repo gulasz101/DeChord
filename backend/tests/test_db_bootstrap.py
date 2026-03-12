@@ -1,7 +1,39 @@
 import asyncio
+import importlib
+import sys
+import types
+from types import ModuleType
 from pathlib import Path
 
+from fastapi.testclient import TestClient
+
 from app import db
+
+
+def _build_client(tmp_path: Path, monkeypatch) -> TestClient:
+    db_path = tmp_path / "db-bootstrap-test.db"
+    monkeypatch.setenv("DECHORD_DB_URL", f"file:{db_path}")
+    if "torch" not in sys.modules:
+
+        class _FakeTorchTensor:
+            pass
+
+        torch_module = ModuleType("torch")
+        setattr(torch_module, "Tensor", _FakeTorchTensor)
+        setattr(
+            torch_module,
+            "backends",
+            types.SimpleNamespace(
+                mps=types.SimpleNamespace(is_available=lambda: False)
+            ),
+        )
+        setattr(torch_module, "cuda", types.SimpleNamespace(is_available=lambda: False))
+        sys.modules["torch"] = torch_module
+
+    import app.main as main_mod
+
+    main = importlib.reload(main_mod)
+    return TestClient(main.app)
 
 
 def test_db_module_exposes_bootstrap_symbols():
@@ -118,3 +150,50 @@ def test_songs_table_is_project_scoped(tmp_path: Path, monkeypatch):
     assert "projects" in fk_targets
 
     asyncio.run(db.close_db())
+
+
+def test_runtime_paths_create_missing_dirs(tmp_path: Path):
+    from app.runtime import RuntimePaths
+
+    paths = RuntimePaths(root=tmp_path / "backend-runtime")
+
+    assert not paths.uploads_dir.exists()
+    assert not paths.stems_dir.exists()
+    assert not paths.cache_dir.exists()
+
+    paths.ensure_dirs()
+
+    assert paths.uploads_dir.is_dir()
+    assert paths.stems_dir.is_dir()
+    assert paths.cache_dir.is_dir()
+
+
+def test_app_uses_lifespan_instead_of_event_hooks(tmp_path: Path, monkeypatch):
+    import app.main as main
+    from app.runtime import RuntimePaths
+
+    client = _build_client(tmp_path, monkeypatch)
+    runtime_paths = RuntimePaths(root=tmp_path / "backend-runtime")
+    calls: list[str] = []
+
+    async def fake_init_db() -> None:
+        calls.append("init")
+
+    async def fake_close_db() -> None:
+        calls.append("close")
+
+    monkeypatch.setattr(main, "runtime_paths", runtime_paths)
+    monkeypatch.setattr(main, "init_db", fake_init_db)
+    monkeypatch.setattr(main, "close_db", fake_close_db)
+
+    assert main.app.router.on_startup == []
+    assert main.app.router.on_shutdown == []
+    assert not runtime_paths.uploads_dir.exists()
+    with client as scoped_client:
+        assert scoped_client.get("/api/health").status_code == 200
+        assert calls == ["init"]
+        assert runtime_paths.uploads_dir.is_dir()
+        assert runtime_paths.stems_dir.is_dir()
+        assert runtime_paths.cache_dir.is_dir()
+
+    assert calls == ["init", "close"]

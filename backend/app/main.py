@@ -1,5 +1,6 @@
 # backend/app/main.py
 import asyncio
+from contextlib import asynccontextmanager
 from dataclasses import replace
 import hashlib
 import logging
@@ -34,6 +35,7 @@ from app.db import (
 from app.midi import transcribe_bass_stem_to_midi
 from app.models import ProcessMode
 from app.pipeline_presets import active_pipeline_preset_name, resolve_pipeline_preset
+from app.runtime import runtime_paths
 from app.services.tab_pipeline import FingeringCollapseError, TabPipeline
 from app.stems import (
     BassAnalysisStemResult,
@@ -45,7 +47,18 @@ from app.stems import (
 )
 from app.tabs import build_gp5_from_tab_positions, map_midi_to_eadg_positions
 
-app = FastAPI(title="DeChord API")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    runtime_paths.ensure_dirs()
+    await init_db()
+    try:
+        yield
+    finally:
+        await close_db()
+
+
+app = FastAPI(title="DeChord API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -54,10 +67,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
-STEMS_DIR = Path("stems")
-STEMS_DIR.mkdir(exist_ok=True)
+UPLOAD_DIR = runtime_paths.uploads_dir
+STEMS_DIR = runtime_paths.stems_dir
 
 # In-memory job store (single-user local)
 jobs: dict[str, dict] = {}
@@ -1081,16 +1092,6 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
             stage_progress_pct=100,
         )
         jobs[job_id]["error"] = str(e)
-
-
-@app.on_event("startup")
-async def startup_event():
-    await init_db()
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    await close_db()
 
 
 @app.get("/api/health")
