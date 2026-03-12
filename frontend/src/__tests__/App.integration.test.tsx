@@ -964,6 +964,103 @@ describe("App integration", () => {
     expect(getJobStatusMock).toHaveBeenCalledTimes(1);
   });
 
+  it("replaces stale processing copy when reset removes a job", async () => {
+    vi.useFakeTimers();
+    listProjectSongsMock.mockResolvedValueOnce({ songs: [] }).mockResolvedValue({ songs: [] });
+    getJobStatusMock
+      .mockResolvedValueOnce({
+        status: "processing",
+        stage: "splitting_stems",
+        progress_pct: 45,
+        stage_history: ["queued", "splitting_stems"],
+        message: "Splitting stems...",
+      })
+      .mockRejectedValueOnce(new Error("Processing job no longer available after reset"));
+
+    render(<App />);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    expect(screen.getByText("Default Band")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Default Band"));
+    expect(screen.getByText("Song Library →")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    expect(screen.getByText("+ Upload Song")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("+ Upload Song"));
+    const file = new File(["bass"], "new-song.mp3", { type: "audio/mpeg" });
+    fireEvent.change(screen.getByLabelText("Song File"), { target: { files: [file] } });
+    await act(async () => {
+      fireEvent.click(screen.getByText("Start Upload"));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("Splitting stems...")).toBeTruthy();
+    expect(screen.getAllByText("splitting_stems").length).toBeGreaterThan(0);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(/lost after a reset/i)).toBeTruthy();
+    expect(screen.getByText(/re-upload the song or return to the library/i)).toBeTruthy();
+    expect(screen.queryByText("Splitting stems...")).toBeNull();
+    expect(screen.queryByText("Processing hit a recoverable problem.")).toBeNull();
+  });
+
+  it("replaces stale completion copy when reset removes a finished result", async () => {
+    vi.useFakeTimers();
+    listProjectSongsMock.mockResolvedValueOnce({ songs: [] }).mockResolvedValue({ songs: [] });
+    getJobStatusMock.mockResolvedValueOnce({
+      status: "complete",
+      stage: "complete",
+      progress_pct: 100,
+      stage_history: ["queued", "complete"],
+      message: "Completed",
+    });
+    getResultMock.mockRejectedValueOnce(new Error("Processing result no longer available after reset"));
+
+    render(<App />);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    expect(screen.getByText("Default Band")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Default Band"));
+    expect(screen.getByText("Song Library →")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    expect(screen.getByText("+ Upload Song")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("+ Upload Song"));
+    const file = new File(["bass"], "new-song.mp3", { type: "audio/mpeg" });
+    fireEvent.change(screen.getByLabelText("Song File"), { target: { files: [file] } });
+    await act(async () => {
+      fireEvent.click(screen.getByText("Start Upload"));
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(/finished job result was lost after a reset/i)).toBeTruthy();
+    expect(screen.getByText("Reset removed the saved result for this job. Refresh the library or return to the library.")).toBeTruthy();
+    expect(screen.getByText("The finished job result was lost after a reset. Refresh the library or return to the library.")).toBeTruthy();
+    expect(screen.queryByText("Completed")).toBeNull();
+    expect(screen.queryByText("Processing hit a recoverable problem.")).toBeNull();
+    expect(screen.queryByText(/retry refresh/i)).toBeNull();
+    expect(screen.queryByText(/re-run processing/i)).toBeNull();
+  });
+
   it("triggers claim account flow from bands page", async () => {
     const promptSpy = vi.spyOn(window, "prompt");
     promptSpy.mockReturnValueOnce("bassbot").mockReturnValueOnce("secret-pass");

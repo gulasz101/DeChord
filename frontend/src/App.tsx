@@ -361,11 +361,35 @@ function getJourneyErrorMessage(error: unknown): string {
       return "This processing job was lost after a reset. DeChord cannot recover in-progress jobs yet.";
     }
     if (error.message === "Processing result no longer available after reset") {
-      return "The finished job result was lost after a reset. Retry refresh or return to the library.";
+      return "The finished job result was lost after a reset. Refresh the library or return to the library.";
     }
     return error.message;
   }
   return "Processing status is temporarily unavailable.";
+}
+
+function getJourneyResetLossState(error: unknown): { message: string; error: string } | null {
+  if (!(error instanceof Error)) {
+    return null;
+  }
+  if (error.message === "Processing job no longer available after reset") {
+    return {
+      message: "Reset removed this in-progress job. Re-upload the song or return to the library.",
+      error: "This processing job was lost after a reset. DeChord cannot recover in-progress jobs yet.",
+    };
+  }
+  if (error.message === "Processing result no longer available after reset") {
+    return {
+      message: "Reset removed the saved result for this job. Refresh the library or return to the library.",
+      error: "The finished job result was lost after a reset. Refresh the library or return to the library.",
+    };
+  }
+  return null;
+}
+
+function isJourneyResetLossError(error: string | null): boolean {
+  return error === "This processing job was lost after a reset. DeChord cannot recover in-progress jobs yet."
+    || error === "The finished job result was lost after a reset. Refresh the library or return to the library.";
 }
 
 async function loadBandHierarchy(): Promise<Band[]> {
@@ -640,6 +664,7 @@ export default function App() {
     let timeoutHandle: number | null = null;
 
     const failJourney = (error: unknown) => {
+      const resetLoss = getJourneyResetLossState(error);
       setRoute((current) => {
         if (current.page !== "processing-journey" || current.jobId !== processingRoute.jobId) {
           return current;
@@ -649,10 +674,10 @@ export default function App() {
           journey: {
             ...current.journey,
             status: "error",
-            stage: current.journey.stage ?? "error",
+            stage: "error",
             progressPct: current.journey.progressPct,
-            error: getJourneyErrorMessage(error),
-            message: current.journey.message ?? "Processing failed",
+            error: resetLoss?.error ?? getJourneyErrorMessage(error),
+            message: resetLoss?.message ?? "Processing failed",
             stageHistory: current.journey.stageHistory.includes("error")
               ? current.journey.stageHistory
               : [...current.journey.stageHistory, "error"],
@@ -848,6 +873,36 @@ export default function App() {
         />
       );
     case "processing-journey":
+      if (isJourneyResetLossError(route.journey.error)) {
+        return (
+          <div className="me-mesh min-h-screen" style={{ background: "linear-gradient(160deg, #0a0e27 0%, #111638 40%, #0a0e27 100%)" }}>
+            <main className="mx-auto flex min-h-screen max-w-3xl items-center px-8 py-10">
+              <section
+                className="w-full border p-8"
+                style={{ borderRadius: "4px", borderColor: "rgba(239, 68, 68, 0.25)", background: "rgba(255, 255, 255, 0.03)", backdropFilter: "blur(10px)" }}
+              >
+                <p className="text-xs font-semibold uppercase tracking-[0.22em]" style={{ color: "#fca5a5" }}>Processing Journey</p>
+                <h1 className="mt-4 text-4xl" style={{ fontFamily: "Playfair Display, serif", color: "#e2e2f0" }}>
+                  {route.journey.songTitle ?? route.uploadFilename}
+                </h1>
+                <p className="mt-2 text-sm" style={{ color: "#7a7a90" }}>{route.uploadFilename}</p>
+                <p className="mt-6 text-base" style={{ color: "#fecaca" }}>{route.journey.message}</p>
+                <p className="mt-3 text-sm" style={{ color: "#fca5a5" }}>{route.journey.error}</p>
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <button
+                    onClick={goBack}
+                    className="border px-5 py-2.5 text-sm font-medium transition-all hover:bg-white/5"
+                    style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.12)", color: "#c0c0c0" }}
+                  >
+                    Back to Library
+                  </button>
+                </div>
+              </section>
+            </main>
+          </div>
+        );
+      }
+
       return (
         <ProcessingJourneyPage
           band={route.band}
