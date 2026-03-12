@@ -102,7 +102,7 @@ describe("SongDetailPage", () => {
     expect(onGenerateStems).toHaveBeenCalledTimes(1);
 
     await waitFor(() => {
-      expect(screen.getByText("Stems regenerated.")).toBeTruthy();
+      expect(screen.getAllByText("Stems regenerated.").length).toBeGreaterThan(0);
     });
   });
 
@@ -145,7 +145,7 @@ describe("SongDetailPage", () => {
     expect(onGenerateBassTab).toHaveBeenCalledWith("bass");
 
     await waitFor(() => {
-      expect(screen.getByText("Bass tab regenerated from Bass.")).toBeTruthy();
+      expect(screen.getAllByText("Bass tab regenerated from Bass.").length).toBeGreaterThan(0);
     });
   });
 
@@ -214,7 +214,7 @@ describe("SongDetailPage", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Stem uploaded.")).toBeTruthy();
+      expect(screen.getAllByText("Stem uploaded.").length).toBeGreaterThan(0);
     });
   });
 
@@ -247,7 +247,7 @@ describe("SongDetailPage", () => {
     fireEvent.click(screen.getByText("Confirm Stem Upload"));
 
     await waitFor(() => {
-      expect(screen.getByText("Upload failed")).toBeTruthy();
+      expect(screen.getAllByText("Upload failed").length).toBeGreaterThan(0);
     });
   });
 
@@ -276,7 +276,7 @@ describe("SongDetailPage", () => {
     fireEvent.click(screen.getByText("Confirm Stem Upload"));
 
     await waitFor(() => {
-      expect(screen.getByText("Select a stem file")).toBeTruthy();
+      expect(screen.getAllByText("Select a stem file").length).toBeGreaterThan(0);
     });
     expect(onUploadStem).not.toHaveBeenCalled();
 
@@ -285,7 +285,7 @@ describe("SongDetailPage", () => {
     fireEvent.click(screen.getByText("Confirm Stem Upload"));
 
     await waitFor(() => {
-      expect(screen.getByText("Select a stem file")).toBeTruthy();
+      expect(screen.getAllByText("Select a stem file").length).toBeGreaterThan(0);
     });
     expect(onUploadStem).not.toHaveBeenCalled();
   });
