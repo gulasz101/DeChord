@@ -8,6 +8,7 @@ import sqlite3
 import zipfile
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -130,6 +131,36 @@ def test_create_band_creates_owned_band_and_membership(tmp_path, monkeypatch):
     assert membership_rs.rows[0][0] == "owner"
 
 
+def test_create_band_uses_request_identity_for_owner_membership(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    inserted_user = asyncio.run(
+        main.execute(
+            "INSERT INTO users (display_name, fingerprint_token) VALUES ('Alicja Band Owner', 'fp-band-owner') RETURNING id"
+        )
+    )
+    user_id = int(inserted_user.rows[0][0])
+
+    response = client.post(
+        "/api/bands",
+        json={"name": f"Request Owned {tmp_path.name}"},
+        headers={"X-DeChord-User-Id": str(user_id)},
+    )
+
+    assert response.status_code == 200
+    band_id = response.json()["band"]["id"]
+    assert response.json()["band"]["owner_user_id"] == user_id
+
+    membership_rs = asyncio.run(
+        main.execute(
+            "SELECT user_id, role FROM band_memberships WHERE band_id = ?",
+            [band_id],
+        )
+    )
+    assert [tuple(row) for row in membership_rs.rows] == [(user_id, "owner")]
+
+
 def test_create_project_creates_project_under_selected_band(tmp_path, monkeypatch):
     client = _build_client(tmp_path, monkeypatch)
     import app.main as main
@@ -185,6 +216,492 @@ def test_list_bands_projects_and_project_songs(tmp_path, monkeypatch):
     assert songs_response.status_code == 200
     songs = songs_response.json()["songs"]
     assert any(song["id"] == created_song_id for song in songs)
+
+
+def test_band_members_and_project_unread_counts_are_backed_by_memberships_and_reads(
+    tmp_path, monkeypatch
+):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    band = client.post("/api/bands", json={"name": f"Band {tmp_path.name}"}).json()[
+        "band"
+    ]
+    project = client.post(
+        f"/api/bands/{band['id']}/projects",
+        json={"name": "Collab", "description": ""},
+    ).json()["project"]
+
+    inserted_user = asyncio.run(
+        main.execute(
+            "INSERT INTO users (display_name, fingerprint_token) VALUES (?, 'fp-a') RETURNING id",
+            [f"Alicja {tmp_path.name}"],
+        )
+    )
+    user_id = int(inserted_user.rows[0][0])
+    asyncio.run(
+        main.execute(
+            "INSERT INTO band_memberships (band_id, user_id, role) VALUES (?, ?, 'member')",
+            [band["id"], user_id],
+        )
+    )
+
+    members = client.get(
+        f"/api/bands/{band['id']}/members", headers={"X-DeChord-User-Id": "1"}
+    )
+    assert members.status_code == 200
+    assert [row["name"] for row in members.json()["members"]] == [
+        "Wojtek",
+        f"Alicja {tmp_path.name}",
+    ]
+    assert [row["presence_state"] for row in members.json()["members"]] == [
+        "not_live",
+        "not_live",
+    ]
+
+    song = client.post(
+        "/api/analyze",
+        files={"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")},
+        data={"process_mode": "analysis_only", "project_id": str(project["id"])},
+        headers={"X-DeChord-User-Id": "1"},
+    )
+    assert song.status_code == 200
+
+    note = client.post(
+        f"/api/songs/{song.json()['song_id']}/notes",
+        json={"type": "chord", "text": "Tighten verse", "chord_index": 0},
+        headers={"X-DeChord-User-Id": "1"},
+    )
+    assert note.status_code == 200
+
+    projects = client.get(
+        f"/api/bands/{band['id']}/projects", headers={"X-DeChord-User-Id": str(user_id)}
+    )
+    assert projects.status_code == 200
+    assert projects.json()["projects"][0]["unread_count"] == 2
+
+    activity = client.get(
+        f"/api/projects/{project['id']}/activity",
+        headers={"X-DeChord-User-Id": str(user_id)},
+    )
+    assert activity.status_code == 200
+    assert activity.json()["unread_count"] == 2
+
+    marked = client.post(
+        f"/api/projects/{project['id']}/activity/read",
+        headers={"X-DeChord-User-Id": str(user_id)},
+    )
+    assert marked.status_code == 200
+    assert marked.json() == {"project_id": project["id"], "unread_count": 0}
+
+
+def test_project_activity_and_mark_read_use_acting_user_identity(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    band = client.post("/api/bands", json={"name": f"Band {tmp_path.name}"}).json()[
+        "band"
+    ]
+    project = client.post(
+        f"/api/bands/{band['id']}/projects",
+        json={"name": "Collab", "description": ""},
+    ).json()["project"]
+
+    inserted_user = asyncio.run(
+        main.execute(
+            "INSERT INTO users (display_name, fingerprint_token) VALUES (?, 'fp-a2') RETURNING id",
+            [f"Alicja {tmp_path.name}"],
+        )
+    )
+    user_id = int(inserted_user.rows[0][0])
+    asyncio.run(
+        main.execute(
+            "INSERT INTO band_memberships (band_id, user_id, role) VALUES (?, ?, 'member')",
+            [band["id"], user_id],
+        )
+    )
+
+    created_song = client.post(
+        "/api/analyze",
+        files={"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")},
+        data={"process_mode": "analysis_only", "project_id": str(project["id"])},
+        headers={"X-DeChord-User-Id": str(user_id)},
+    )
+    assert created_song.status_code == 200
+    song_id = created_song.json()["song_id"]
+
+    created = client.post(
+        f"/api/songs/{song_id}/notes",
+        json={"type": "chord", "text": "Tighten verse", "chord_index": 0},
+        headers={"X-DeChord-User-Id": str(user_id)},
+    )
+    assert created.status_code == 200
+    note_id = created.json()["id"]
+
+    resolved = client.patch(
+        f"/api/notes/{note_id}/resolve",
+        json={"resolved": True},
+        headers={"X-DeChord-User-Id": "1"},
+    )
+    assert resolved.status_code == 200
+
+    unresolved = client.patch(
+        f"/api/notes/{note_id}/resolve",
+        json={"resolved": False},
+        headers={"X-DeChord-User-Id": str(user_id)},
+    )
+    assert unresolved.status_code == 200
+
+    stem_upload = client.post(
+        f"/api/songs/{song_id}/stems/upload",
+        data={"stem_key": "bass"},
+        files={"file": ("bass.wav", b"bass-audio", "audio/wav")},
+        headers={"X-DeChord-User-Id": str(user_id)},
+    )
+    assert stem_upload.status_code == 200
+
+    feed = client.get(
+        f"/api/projects/{project['id']}/activity", headers={"X-DeChord-User-Id": "1"}
+    )
+    assert feed.status_code == 200
+    payload = feed.json()
+    assert payload["unread_count"] == 4
+    assert payload["presence_state"] == "not_live"
+    assert payload["activity"][0]["author_name"] == f"Alicja {tmp_path.name}"
+    assert {item["event_type"] for item in payload["activity"]} == {
+        "song_created",
+        "note_created",
+        "note_resolved",
+        "note_unresolved",
+        "stem_uploaded",
+    }
+    assert [item["author_name"] for item in payload["activity"][:3]] == [
+        f"Alicja {tmp_path.name}",
+        f"Alicja {tmp_path.name}",
+        "Wojtek",
+    ]
+
+    marked = client.post(
+        f"/api/projects/{project['id']}/activity/read",
+        headers={"X-DeChord-User-Id": "1"},
+    )
+    assert marked.status_code == 200
+    assert marked.json()["unread_count"] == 0
+
+    after_read = client.post(
+        f"/api/songs/{song_id}/notes",
+        json={"type": "time", "text": "Count in", "timestamp_sec": 1.0},
+        headers={"X-DeChord-User-Id": str(user_id)},
+    )
+    assert after_read.status_code == 200
+
+    latest_event_id = int(
+        asyncio.run(
+            main.execute(
+                "SELECT MAX(id) FROM project_activity_events WHERE project_id = ?",
+                [project["id"]],
+            )
+        ).rows[0][0]
+    )
+    asyncio.run(
+        main.execute(
+            "UPDATE project_activity_events SET created_at = '2001-01-01 00:00:00' WHERE id = ?",
+            [latest_event_id],
+        )
+    )
+
+    refreshed = client.get(
+        f"/api/projects/{project['id']}/activity", headers={"X-DeChord-User-Id": "1"}
+    )
+    assert refreshed.status_code == 200
+    assert refreshed.json()["unread_count"] == 1
+    assert refreshed.json()["activity"][0]["author_name"] == f"Alicja {tmp_path.name}"
+
+
+def test_collaboration_routes_reject_users_who_are_not_band_members(
+    tmp_path, monkeypatch
+):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    band = client.post("/api/bands", json={"name": f"Band {tmp_path.name}"}).json()[
+        "band"
+    ]
+    project = client.post(
+        f"/api/bands/{band['id']}/projects",
+        json={"name": "Restricted", "description": ""},
+    ).json()["project"]
+
+    outsider = asyncio.run(
+        main.execute(
+            "INSERT INTO users (display_name, fingerprint_token) VALUES ('Outsider', 'fp-outsider') RETURNING id"
+        )
+    )
+    outsider_id = int(outsider.rows[0][0])
+
+    for method, path in (
+        (client.get, f"/api/bands/{band['id']}/members"),
+        (client.get, f"/api/bands/{band['id']}/projects"),
+        (client.get, f"/api/projects/{project['id']}/activity"),
+        (client.post, f"/api/projects/{project['id']}/activity/read"),
+    ):
+        response = method(path, headers={"X-DeChord-User-Id": str(outsider_id)})
+        assert response.status_code == 403
+
+
+def test_tab_from_demucs_stems_uses_request_identity_and_records_activity_when_creating_song(
+    tmp_path, monkeypatch
+):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+    from app.services.alphatex_exporter import SyncPoint
+    from app.services.rhythm_grid import Bar
+    from app.services.tab_pipeline import TabPipelineResult
+
+    band = client.post("/api/bands", json={"name": f"Band {tmp_path.name}"}).json()[
+        "band"
+    ]
+    project = client.post(
+        f"/api/bands/{band['id']}/projects",
+        json={"name": "Demucs", "description": ""},
+    ).json()["project"]
+
+    inserted_user = asyncio.run(
+        main.execute(
+            "INSERT INTO users (display_name, fingerprint_token) VALUES ('Stem User', 'fp-stem-user') RETURNING id"
+        )
+    )
+    user_id = int(inserted_user.rows[0][0])
+    asyncio.run(
+        main.execute(
+            "INSERT INTO band_memberships (band_id, user_id, role) VALUES (?, ?, 'member')",
+            [band["id"], user_id],
+        )
+    )
+
+    def fake_run(*_args, **_kwargs):
+        return TabPipelineResult(
+            alphatex="\\tempo 120\n\\sync(0 0 0 0)",
+            tempo_used=120.0,
+            bars=[
+                Bar(index=0, start_sec=0.0, end_sec=2.0, beats_sec=[0.0, 0.5, 1.0, 1.5])
+            ],
+            sync_points=[SyncPoint(bar_index=0, millisecond_offset=0)],
+            midi_bytes=b"MThd\x00\x00\x00\x06",
+            fingered_notes=[],
+            debug_info={"rhythm_source": "madmom"},
+        )
+
+    monkeypatch.setattr(main.tab_pipeline, "run", fake_run)
+
+    response = client.post(
+        "/api/tab/from-demucs-stems",
+        data={"project_id": str(project["id"]), "bpm": "120"},
+        files={
+            "bass": ("bass.wav", b"bass-bytes", "audio/wav"),
+            "drums": ("drums.wav", b"drums-bytes", "audio/wav"),
+        },
+        headers={"X-DeChord-User-Id": str(user_id)},
+    )
+
+    assert response.status_code == 200
+    song_id = response.json()["song_id"]
+
+    song_rs = asyncio.run(
+        main.execute("SELECT user_id, project_id FROM songs WHERE id = ?", [song_id])
+    )
+    assert tuple(song_rs.rows[0]) == (user_id, project["id"])
+
+    activity = client.get(
+        f"/api/projects/{project['id']}/activity", headers={"X-DeChord-User-Id": "1"}
+    )
+    assert activity.status_code == 200
+    assert activity.json()["activity"][0]["event_type"] == "song_created"
+    assert activity.json()["activity"][0]["author_name"] == "Stem User"
+
+
+def test_project_activity_reads_reject_cross_project_event_pointers(
+    tmp_path, monkeypatch
+):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    band = client.post("/api/bands", json={"name": f"Band {tmp_path.name}"}).json()[
+        "band"
+    ]
+    first_project = client.post(
+        f"/api/bands/{band['id']}/projects",
+        json={"name": "One", "description": ""},
+    ).json()["project"]
+    second_project = client.post(
+        f"/api/bands/{band['id']}/projects",
+        json={"name": "Two", "description": ""},
+    ).json()["project"]
+
+    second_project_event_id = int(
+        asyncio.run(
+            main.execute(
+                """
+                INSERT INTO project_activity_events (
+                    project_id, actor_user_id, actor_name, actor_avatar, event_type, song_id, song_title, message
+                ) VALUES (?, 1, 'Wojtek', 'W', 'song_created', NULL, NULL, 'made event')
+                RETURNING id
+                """,
+                [second_project["id"]],
+            )
+        ).rows[0][0]
+    )
+    foreign_project_event_id = int(
+        asyncio.run(
+            main.execute(
+                """
+                INSERT INTO project_activity_events (
+                    project_id, actor_user_id, actor_name, actor_avatar, event_type, song_id, song_title, message
+                ) VALUES (?, 1, 'Wojtek', 'W', 'song_created', NULL, NULL, 'foreign event')
+                RETURNING id
+                """,
+                [first_project["id"]],
+            )
+        ).rows[0][0]
+    )
+    assert foreign_project_event_id > second_project_event_id
+
+    asyncio.run(
+        main.execute(
+            "INSERT INTO project_activity_reads (project_id, user_id, last_read_event_id) VALUES (?, 1, ?)",
+            [second_project["id"], foreign_project_event_id],
+        )
+    )
+
+    collaborator = asyncio.run(
+        main.execute(
+            "INSERT INTO users (display_name, fingerprint_token) VALUES ('Cursor User', 'fp-cursor-user') RETURNING id"
+        )
+    )
+    collaborator_id = int(collaborator.rows[0][0])
+    asyncio.run(
+        main.execute(
+            "INSERT INTO band_memberships (band_id, user_id, role) VALUES (?, ?, 'member')",
+            [band["id"], collaborator_id],
+        )
+    )
+
+    song = client.post(
+        "/api/analyze",
+        files={"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")},
+        data={"process_mode": "analysis_only", "project_id": str(second_project["id"])},
+        headers={"X-DeChord-User-Id": str(collaborator_id)},
+    )
+    assert song.status_code == 200
+
+    guarded = client.get(
+        f"/api/projects/{second_project['id']}/activity",
+        headers={"X-DeChord-User-Id": "1"},
+    )
+    assert guarded.status_code == 200
+    assert guarded.json()["unread_count"] == 1
+
+
+def test_outsider_write_routes_cannot_mutate_project_collaboration_state(
+    tmp_path, monkeypatch
+):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    band = client.post("/api/bands", json={"name": f"Band {tmp_path.name}"}).json()[
+        "band"
+    ]
+    project = client.post(
+        f"/api/bands/{band['id']}/projects",
+        json={"name": "Protected", "description": ""},
+    ).json()["project"]
+
+    outsider = asyncio.run(
+        main.execute(
+            "INSERT INTO users (display_name, fingerprint_token) VALUES ('Outsider Writer', 'fp-outsider-writer') RETURNING id"
+        )
+    )
+    outsider_id = int(outsider.rows[0][0])
+
+    blocked_song = client.post(
+        "/api/analyze",
+        files={"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")},
+        data={"process_mode": "analysis_only", "project_id": str(project["id"])},
+        headers={"X-DeChord-User-Id": str(outsider_id)},
+    )
+    assert blocked_song.status_code == 403
+
+    songs_in_project = asyncio.run(
+        main.execute("SELECT COUNT(*) FROM songs WHERE project_id = ?", [project["id"]])
+    )
+    assert songs_in_project.rows[0][0] == 0
+
+    owner_song = client.post(
+        "/api/analyze",
+        files={"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")},
+        data={"process_mode": "analysis_only", "project_id": str(project["id"])},
+        headers={"X-DeChord-User-Id": "1"},
+    )
+    assert owner_song.status_code == 200
+    song_id = owner_song.json()["song_id"]
+
+    blocked_note = client.post(
+        f"/api/songs/{song_id}/notes",
+        json={"type": "chord", "text": "Sneaky note", "chord_index": 0},
+        headers={"X-DeChord-User-Id": str(outsider_id)},
+    )
+    assert blocked_note.status_code == 403
+
+    note = client.post(
+        f"/api/songs/{song_id}/notes",
+        json={"type": "chord", "text": "Owner note", "chord_index": 0},
+        headers={"X-DeChord-User-Id": "1"},
+    )
+    assert note.status_code == 200
+    note_id = note.json()["id"]
+
+    blocked_update = client.patch(
+        f"/api/notes/{note_id}",
+        json={"text": "Hijacked"},
+        headers={"X-DeChord-User-Id": str(outsider_id)},
+    )
+    assert blocked_update.status_code == 403
+
+    blocked_resolve = client.patch(
+        f"/api/notes/{note_id}/resolve",
+        json={"resolved": True},
+        headers={"X-DeChord-User-Id": str(outsider_id)},
+    )
+    assert blocked_resolve.status_code == 403
+
+    blocked_delete = client.delete(
+        f"/api/notes/{note_id}", headers={"X-DeChord-User-Id": str(outsider_id)}
+    )
+    assert blocked_delete.status_code == 403
+
+    blocked_stem = client.post(
+        f"/api/songs/{song_id}/stems/upload",
+        data={"stem_key": "bass"},
+        files={"file": ("bass.wav", b"bass-audio", "audio/wav")},
+        headers={"X-DeChord-User-Id": str(outsider_id)},
+    )
+    assert blocked_stem.status_code == 403
+
+    note_rs = asyncio.run(
+        main.execute("SELECT text, resolved FROM notes WHERE id = ?", [note_id])
+    )
+    assert tuple(note_rs.rows[0]) == ("Owner note", 0)
+
+    activity_rs = asyncio.run(
+        main.execute(
+            "SELECT event_type, message FROM project_activity_events WHERE project_id = ? ORDER BY id ASC",
+            [project["id"]],
+        )
+    )
+    assert [tuple(row) for row in activity_rs.rows] == [
+        ("song_created", "uploaded a song"),
+        ("note_created", "left a note"),
+    ]
 
 
 def test_analyze_persists_song_in_requested_project(tmp_path, monkeypatch):

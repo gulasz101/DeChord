@@ -1,3 +1,5 @@
+PRAGMA foreign_keys = ON;
+
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     display_name TEXT NOT NULL UNIQUE,
@@ -111,6 +113,34 @@ CREATE TABLE IF NOT EXISTS notes (
     FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS project_activity_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL,
+    actor_user_id INTEGER NOT NULL,
+    actor_name TEXT NOT NULL,
+    actor_avatar TEXT,
+    event_type TEXT NOT NULL,
+    song_id INTEGER,
+    song_title TEXT,
+    message TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (id, project_id),
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS project_activity_reads (
+    project_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    last_read_event_id INTEGER,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (project_id, user_id),
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (last_read_event_id, project_id) REFERENCES project_activity_events(id, project_id) ON DELETE SET NULL
+);
+
 CREATE TABLE IF NOT EXISTS song_stems (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     song_id INTEGER NOT NULL,
@@ -175,6 +205,8 @@ CREATE INDEX IF NOT EXISTS idx_projects_band_id ON projects(band_id);
 CREATE INDEX IF NOT EXISTS idx_analyses_song_id ON analyses(song_id);
 CREATE INDEX IF NOT EXISTS idx_chords_analysis_id ON analysis_chords(analysis_id);
 CREATE INDEX IF NOT EXISTS idx_notes_song_id ON notes(song_id);
+CREATE INDEX IF NOT EXISTS idx_project_activity_events_project_id ON project_activity_events(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_activity_events_actor_user_id ON project_activity_events(actor_user_id);
 CREATE INDEX IF NOT EXISTS idx_song_stems_song_id ON song_stems(song_id);
 CREATE INDEX IF NOT EXISTS idx_song_midis_song_id ON song_midis(song_id);
 CREATE INDEX IF NOT EXISTS idx_song_tabs_song_id ON song_tabs(song_id);

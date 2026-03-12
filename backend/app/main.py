@@ -14,7 +14,7 @@ from typing import Literal
 
 logger = logging.getLogger(__name__)
 
-from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -204,14 +204,207 @@ async def _load_song_notes(song_id: int) -> list[dict]:
     ]
 
 
+async def _get_request_user(request: Request) -> dict:
+    raw_user_id = request.headers.get("X-DeChord-User-Id")
+    if raw_user_id is None:
+        return await get_default_user()
+    try:
+        user_id = int(raw_user_id)
+    except ValueError as exc:
+        raise HTTPException(400, "Invalid user id") from exc
+    user = await get_user_by_id(user_id)
+    if user is None:
+        raise HTTPException(404, "User not found")
+    return user
+
+
+async def _get_song_project_context(song_id: int) -> dict | None:
+    rs = await execute(
+        """
+        SELECT s.project_id, s.title, p.name
+        FROM songs s
+        LEFT JOIN projects p ON p.id = s.project_id
+        WHERE s.id = ?
+        LIMIT 1
+        """,
+        [song_id],
+    )
+    if not rs.rows or rs.rows[0][0] is None:
+        return None
+    row = rs.rows[0]
+    return {
+        "project_id": int(row[0]),
+        "song_title": row[1],
+        "project_name": row[2],
+    }
+
+
+async def _record_project_activity_event(
+    project_id: int,
+    *,
+    actor_user: dict,
+    event_type: str,
+    message: str,
+    song_id: int | None = None,
+    song_title: str | None = None,
+) -> int:
+    actor_name = str(actor_user["display_name"])
+    rs = await execute(
+        """
+        INSERT INTO project_activity_events (
+            project_id,
+            actor_user_id,
+            actor_name,
+            actor_avatar,
+            event_type,
+            song_id,
+            song_title,
+            message
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        RETURNING id
+        """,
+        [
+            project_id,
+            actor_user["id"],
+            actor_name,
+            _build_author_avatar(actor_name),
+            event_type,
+            song_id,
+            song_title,
+            message,
+        ],
+    )
+    return int(rs.rows[0][0])
+
+
+async def _record_song_project_activity(
+    song_id: int,
+    *,
+    actor_user: dict,
+    event_type: str,
+    message: str,
+) -> None:
+    context = await _get_song_project_context(song_id)
+    if context is None:
+        return
+    await _record_project_activity_event(
+        int(context["project_id"]),
+        actor_user=actor_user,
+        event_type=event_type,
+        message=message,
+        song_id=song_id,
+        song_title=context["song_title"],
+    )
+
+
+async def _get_latest_project_activity_event_id(project_id: int) -> int | None:
+    rs = await execute(
+        "SELECT id FROM project_activity_events WHERE project_id = ? ORDER BY id DESC LIMIT 1",
+        [project_id],
+    )
+    if not rs.rows:
+        return None
+    return int(rs.rows[0][0])
+
+
+async def _get_project_unread_count(project_id: int, user_id: int) -> int:
+    rs = await execute(
+        """
+        SELECT COUNT(*)
+        FROM project_activity_events e
+        LEFT JOIN project_activity_reads r
+          ON r.project_id = e.project_id AND r.user_id = ?
+        LEFT JOIN project_activity_events read_cursor
+          ON read_cursor.id = r.last_read_event_id AND read_cursor.project_id = e.project_id
+        WHERE e.project_id = ?
+          AND e.actor_user_id != ?
+          AND e.id > COALESCE(read_cursor.id, 0)
+        """,
+        [user_id, project_id, user_id],
+    )
+    return int(rs.rows[0][0])
+
+
+async def _load_project_activity_rows(project_id: int) -> list[dict]:
+    rs = await execute(
+        """
+        SELECT id, event_type, message, actor_name, actor_avatar, created_at, song_id, song_title
+        FROM project_activity_events
+        WHERE project_id = ?
+        ORDER BY id DESC
+        """,
+        [project_id],
+    )
+    return [
+        {
+            "id": int(row[0]),
+            "event_type": row[1],
+            "message": row[2],
+            "author_name": row[3],
+            "author_avatar": row[4],
+            "timestamp": row[5],
+            "song_id": row[6],
+            "song_title": row[7],
+        }
+        for row in rs.rows
+    ]
+
+
+async def _mark_project_activity_read(project_id: int, user_id: int) -> None:
+    await execute(
+        """
+        INSERT INTO project_activity_reads (project_id, user_id, last_read_event_id)
+        VALUES (?, ?, ?)
+        ON CONFLICT(project_id, user_id) DO UPDATE SET
+            last_read_event_id = excluded.last_read_event_id,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        [project_id, user_id, await _get_latest_project_activity_event_id(project_id)],
+    )
+
+
+async def _require_band_membership(band_id: int, user_id: int) -> None:
+    band_rs = await execute("SELECT id FROM bands WHERE id = ? LIMIT 1", [band_id])
+    if not band_rs.rows:
+        raise HTTPException(404, "Band not found")
+    membership_rs = await execute(
+        "SELECT 1 FROM band_memberships WHERE band_id = ? AND user_id = ? LIMIT 1",
+        [band_id, user_id],
+    )
+    if not membership_rs.rows:
+        raise HTTPException(403, "Band membership required")
+
+
+async def _require_project_membership(project_id: int, user_id: int) -> None:
+    project_rs = await execute(
+        "SELECT band_id FROM projects WHERE id = ? LIMIT 1", [project_id]
+    )
+    if not project_rs.rows:
+        raise HTTPException(404, "Project not found")
+    await _require_band_membership(int(project_rs.rows[0][0]), user_id)
+
+
+async def _require_song_project_membership(song_id: int, user_id: int) -> dict | None:
+    context = await _get_song_project_context(song_id)
+    if context is None:
+        return None
+    await _require_project_membership(int(context["project_id"]), user_id)
+    return context
+
+
 async def _create_song_record(
     filename: str | None,
     mime_type: str | None,
     audio_blob: bytes,
     *,
     project_id: int | None = None,
+    user_id: int | None = None,
 ) -> int:
-    user = await get_default_user()
+    resolved_user_id = user_id
+    if resolved_user_id is None:
+        user = await get_default_user()
+        resolved_user_id = int(user["id"])
     resolved_project_id = project_id
     if resolved_project_id is None:
         project = await get_default_project()
@@ -223,7 +416,7 @@ async def _create_song_record(
         VALUES (?, ?, ?, ?, ?, ?)
         RETURNING id
         """,
-        [user["id"], resolved_project_id, title, filename, mime_type, audio_blob],
+        [resolved_user_id, resolved_project_id, title, filename, mime_type, audio_blob],
     )
     return int(rs.rows[0][0])
 
@@ -935,8 +1128,8 @@ async def claim_identity(payload: IdentityClaimRequest):
 
 
 @app.post("/api/bands")
-async def create_band(payload: BandCreateRequest):
-    user = await get_default_user()
+async def create_band(payload: BandCreateRequest, request: Request):
+    user = await _get_request_user(request)
     created = await execute(
         """
         INSERT INTO bands (name, owner_user_id)
@@ -1009,11 +1202,13 @@ def _parse_time_signature(time_signature: str) -> tuple[int, int]:
 
 @app.post("/api/tab/from-demucs-stems")
 async def tab_from_demucs_stems(
+    request: Request,
     bass: UploadFile = File(...),
     drums: UploadFile = File(...),
     other: UploadFile | None = File(None),
     guitar: UploadFile | None = File(None),
     song_id: int | None = Form(None),
+    project_id: int | None = Form(None),
     bpm: float | None = Form(None),
     time_signature: str = Form("4/4"),
     subdivision: int = Form(16),
@@ -1034,12 +1229,24 @@ async def tab_from_demucs_stems(
     if not drums_bytes:
         raise HTTPException(400, "drums file is empty")
 
+    user = await _get_request_user(request)
+    if project_id is not None:
+        await _require_project_membership(project_id, int(user["id"]))
+
     resolved_song_id = song_id
     if resolved_song_id is None:
         resolved_song_id = await _create_song_record(
             bass.filename or "demucs-bass.wav",
             bass.content_type or "audio/wav",
             bass_bytes,
+            project_id=project_id,
+            user_id=int(user["id"]),
+        )
+        await _record_song_project_activity(
+            resolved_song_id,
+            actor_user=user,
+            event_type="song_created",
+            message="uploaded a song",
         )
 
     stem_tmp_dir = STEMS_DIR / "_tmp" / uuid.uuid4().hex[:12]
@@ -1160,6 +1367,7 @@ async def tab_from_demucs_stems(
 
 @app.post("/api/analyze")
 async def analyze(
+    request: Request,
     file: UploadFile,
     process_mode: ProcessMode = Form("analysis_only"),
     tabGenerationQuality: Literal[
@@ -1176,11 +1384,21 @@ async def analyze(
     with open(audio_path, "wb") as f:
         f.write(content)
 
+    user = await _get_request_user(request)
+    if project_id is not None:
+        await _require_project_membership(project_id, int(user["id"]))
     song_id = await _create_song_record(
         file.filename,
         file.content_type,
         content,
         project_id=project_id,
+        user_id=int(user["id"]),
+    )
+    await _record_song_project_activity(
+        song_id,
+        actor_user=user,
+        event_type="song_created",
+        message="uploaded a song",
     )
 
     jobs[job_id] = {
@@ -1330,7 +1548,9 @@ async def list_bands():
 
 
 @app.get("/api/bands/{band_id}/projects")
-async def list_band_projects(band_id: int):
+async def list_band_projects(band_id: int, request: Request):
+    user = await _get_request_user(request)
+    await _require_band_membership(band_id, int(user["id"]))
     rows = await execute(
         """
         SELECT
@@ -1350,18 +1570,70 @@ async def list_band_projects(band_id: int):
         """,
         [band_id],
     )
-    projects = [
-        {
-            "id": int(row[0]),
-            "band_id": int(row[1]),
-            "name": row[2],
-            "description": row[3],
-            "created_at": row[4],
-            "song_count": int(row[5]),
-        }
-        for row in rows.rows
-    ]
+    projects = []
+    for row in rows.rows:
+        project_id = int(row[0])
+        projects.append(
+            {
+                "id": project_id,
+                "band_id": int(row[1]),
+                "name": row[2],
+                "description": row[3],
+                "created_at": row[4],
+                "song_count": int(row[5]),
+                "unread_count": await _get_project_unread_count(
+                    project_id, int(user["id"])
+                ),
+            }
+        )
     return {"projects": projects}
+
+
+@app.get("/api/bands/{band_id}/members")
+async def list_band_members(band_id: int, request: Request):
+    user = await _get_request_user(request)
+    await _require_band_membership(band_id, int(user["id"]))
+    rows = await execute(
+        """
+        SELECT u.id, u.display_name, bm.role
+        FROM band_memberships bm
+        JOIN users u ON u.id = bm.user_id
+        WHERE bm.band_id = ?
+        ORDER BY CASE WHEN bm.role = 'owner' THEN 0 ELSE 1 END, bm.created_at ASC, bm.id ASC
+        """,
+        [band_id],
+    )
+    return {
+        "members": [
+            {
+                "id": str(row[0]),
+                "name": row[1],
+                "role": row[2],
+                "avatar": _build_author_avatar(row[1]),
+                "presence_state": "not_live",
+            }
+            for row in rows.rows
+        ]
+    }
+
+
+@app.get("/api/projects/{project_id}/activity")
+async def get_project_activity(project_id: int, request: Request):
+    user = await _get_request_user(request)
+    await _require_project_membership(project_id, int(user["id"]))
+    return {
+        "activity": await _load_project_activity_rows(project_id),
+        "unread_count": await _get_project_unread_count(project_id, int(user["id"])),
+        "presence_state": "not_live",
+    }
+
+
+@app.post("/api/projects/{project_id}/activity/read")
+async def mark_project_activity_read(project_id: int, request: Request):
+    user = await _get_request_user(request)
+    await _require_project_membership(project_id, int(user["id"]))
+    await _mark_project_activity_read(project_id, int(user["id"]))
+    return {"project_id": project_id, "unread_count": 0}
 
 
 @app.get("/api/projects/{project_id}/songs")
@@ -1460,7 +1732,10 @@ async def get_song_stems(song_id: int):
 
 @app.post("/api/songs/{song_id}/stems/upload")
 async def upload_song_stem(
-    song_id: int, stem_key: str = Form(...), file: UploadFile = File(...)
+    request: Request,
+    song_id: int,
+    stem_key: str = Form(...),
+    file: UploadFile = File(...),
 ):
     song = await _load_song_row(song_id)
     if song is None:
@@ -1470,7 +1745,8 @@ async def upload_song_stem(
     if not content:
         raise HTTPException(400, "Stem file is empty")
 
-    user = await get_default_user()
+    user = await _get_request_user(request)
+    await _require_song_project_membership(song_id, int(user["id"]))
     safe_name = Path(file.filename or f"{stem_key}.wav").name or f"{stem_key}.wav"
     upload_dir = STEMS_DIR / str(song_id) / "uploads"
     upload_dir.mkdir(parents=True, exist_ok=True)
@@ -1488,14 +1764,22 @@ async def upload_song_stem(
         version_label=_build_version_label("upload"),
         uploaded_by_name=str(user["display_name"]),
     )
+    await _record_song_project_activity(
+        song_id,
+        actor_user=user,
+        event_type="stem_uploaded",
+        message=f"uploaded a {stem_key} stem",
+    )
     return {"stems": await _load_song_stems(song_id)}
 
 
 @app.post("/api/songs/{song_id}/stems/regenerate")
-async def regenerate_song_stems(song_id: int):
+async def regenerate_song_stems(song_id: int, request: Request):
     song = await _load_song_row(song_id)
     if song is None:
         raise HTTPException(404, "Song not found")
+    user = await _get_request_user(request)
+    await _require_song_project_membership(song_id, int(user["id"]))
 
     audio_path = _write_song_audio_tempfile(
         song_id,
@@ -1508,6 +1792,12 @@ async def regenerate_song_stems(song_id: int):
             output_dir=STEMS_DIR / str(song_id),
         )
         await _persist_stems(song_id, stems)
+        await _record_song_project_activity(
+            song_id,
+            actor_user=user,
+            event_type="stems_regenerated",
+            message="regenerated stems",
+        )
     finally:
         shutil.rmtree(audio_path.parent, ignore_errors=True)
 
@@ -1730,12 +2020,13 @@ async def stem_audio(song_id: int, stem_key: str):
 
 
 @app.post("/api/songs/{song_id}/notes")
-async def create_note(song_id: int, payload: NoteCreate):
+async def create_note(song_id: int, payload: NoteCreate, request: Request):
     if payload.type == "time" and payload.timestamp_sec is None:
         raise HTTPException(400, "timestamp_sec is required for time notes")
     if payload.type == "chord" and payload.chord_index is None:
         raise HTTPException(400, "chord_index is required for chord notes")
-    author = await get_default_user()
+    author = await _get_request_user(request)
+    await _require_song_project_membership(song_id, int(author["id"]))
     author_name = str(author["display_name"])
     author_avatar = _build_author_avatar(author_name)
 
@@ -1769,6 +2060,12 @@ async def create_note(song_id: int, payload: NoteCreate):
         ],
     )
     note_id = int(inserted.rows[0][0])
+    await _record_song_project_activity(
+        song_id,
+        actor_user=author,
+        event_type="note_created",
+        message="left a note",
+    )
     return {
         "id": note_id,
         "song_id": song_id,
@@ -1781,19 +2078,21 @@ async def create_note(song_id: int, payload: NoteCreate):
 
 
 @app.patch("/api/notes/{note_id}")
-async def update_note(note_id: int, payload: NoteUpdate):
+async def update_note(note_id: int, payload: NoteUpdate, request: Request):
     row_rs = await execute(
-        "SELECT text, toast_duration_sec FROM notes WHERE id = ?", [note_id]
+        "SELECT song_id, text, toast_duration_sec FROM notes WHERE id = ?", [note_id]
     )
     if not row_rs.rows:
         raise HTTPException(404, "Note not found")
 
+    user = await _get_request_user(request)
+    await _require_song_project_membership(int(row_rs.rows[0][0]), int(user["id"]))
     current = row_rs.rows[0]
-    text = payload.text if payload.text is not None else current[0]
+    text = payload.text if payload.text is not None else current[1]
     toast_duration_sec = (
         payload.toast_duration_sec
         if payload.toast_duration_sec is not None
-        else current[1]
+        else current[2]
     )
 
     await execute(
@@ -1808,11 +2107,15 @@ async def update_note(note_id: int, payload: NoteUpdate):
 
 
 @app.patch("/api/notes/{note_id}/resolve")
-async def resolve_note(note_id: int, payload: NoteResolveUpdate):
-    note_rs = await execute("SELECT id, resolved FROM notes WHERE id = ?", [note_id])
+async def resolve_note(note_id: int, payload: NoteResolveUpdate, request: Request):
+    note_rs = await execute(
+        "SELECT id, song_id, resolved FROM notes WHERE id = ?", [note_id]
+    )
     if not note_rs.rows:
         raise HTTPException(404, "Note not found")
-    if bool(note_rs.rows[0][1]) == payload.resolved:
+    actor = await _get_request_user(request)
+    await _require_song_project_membership(int(note_rs.rows[0][1]), int(actor["id"]))
+    if bool(note_rs.rows[0][2]) == payload.resolved:
         return {"id": note_id, "resolved": payload.resolved}
 
     await execute(
@@ -1823,11 +2126,21 @@ async def resolve_note(note_id: int, payload: NoteResolveUpdate):
         """,
         [1 if payload.resolved else 0, note_id],
     )
+    await _record_song_project_activity(
+        int(note_rs.rows[0][1]),
+        actor_user=actor,
+        event_type="note_resolved" if payload.resolved else "note_unresolved",
+        message="resolved a note" if payload.resolved else "reopened a note",
+    )
     return {"id": note_id, "resolved": payload.resolved}
 
 
 @app.delete("/api/notes/{note_id}")
-async def delete_note(note_id: int):
+async def delete_note(note_id: int, request: Request):
+    note_rs = await execute("SELECT song_id FROM notes WHERE id = ?", [note_id])
+    if note_rs.rows:
+        user = await _get_request_user(request)
+        await _require_song_project_membership(int(note_rs.rows[0][0]), int(user["id"]))
     await execute("DELETE FROM notes WHERE id = ?", [note_id])
     return {"status": "ok"}
 
