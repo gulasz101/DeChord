@@ -248,7 +248,7 @@ git commit -m "feat: adopt opus 5-3 route-driven frontend shell (docs/plans/2026
 - Modify: `frontend/src/components/TransportBar.tsx`
 - Modify: `frontend/src/components/TabViewerPanel.tsx`
 - Test: `frontend/src/components/__tests__/StemMixerPanel.test.tsx`
-- Test: `frontend/src/components/__tests__/TransportBarSpeed.test.tsx`
+- Test: `frontend/src/components/__tests__/TransportBar.transport.test.tsx`
 
 **Step 1: Write failing tests**
 
@@ -258,7 +258,7 @@ Add tests for:
 
 **Step 2: Run RED tests**
 
-Run: `npm --prefix frontend test -- StemMixerPanel TransportBarSpeed`
+Run: `npm --prefix frontend test -- --run src/components/__tests__/StemMixerPanel.test.tsx src/components/__tests__/TransportBar.transport.test.tsx`
 Expected: fail.
 
 **Step 3: Implement minimal page/component integration**
@@ -267,13 +267,13 @@ Ensure player remains separate route and receives full song/stem payload.
 
 **Step 4: Run GREEN tests**
 
-Run: `npm --prefix frontend test -- StemMixerPanel TransportBarSpeed`
+Run: `npm --prefix frontend test -- --run src/components/__tests__/StemMixerPanel.test.tsx src/components/__tests__/TransportBar.transport.test.tsx`
 Expected: pass.
 
 **Step 5: Commit**
 
 ```bash
-git add frontend/src/pages/SongDetailPage.tsx frontend/src/pages/PlayerPage.tsx frontend/src/components/StemMixerPanel.tsx frontend/src/components/TransportBar.tsx frontend/src/components/TabViewerPanel.tsx frontend/src/components/__tests__/StemMixerPanel.test.tsx frontend/src/components/__tests__/TransportBarSpeed.test.tsx
+git add frontend/src/pages/SongDetailPage.tsx frontend/src/pages/PlayerPage.tsx frontend/src/components/StemMixerPanel.tsx frontend/src/components/TransportBar.tsx frontend/src/components/TabViewerPanel.tsx frontend/src/components/__tests__/StemMixerPanel.test.tsx frontend/src/components/__tests__/TransportBar.transport.test.tsx
 git commit -m "feat: separate song detail and player flows with opus layout (docs/plans/2026-03-09-opus53-frontend-redesign-implementation.md)"
 ```
 
