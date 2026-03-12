@@ -309,7 +309,7 @@ function getJourneyErrorMessage(error: unknown): string {
   return "Processing status is temporarily unavailable.";
 }
 
-async function loadBandHierarchy(currentUser: User | null): Promise<Band[]> {
+async function loadBandHierarchy(): Promise<Band[]> {
   const bandsResponse = await listBands();
   const mappedBands: Band[] = [];
 
@@ -352,8 +352,8 @@ export default function App() {
   const [identityUserId, setIdentityUserId] = useState<number | null>(null);
   const [isClaimed, setIsClaimed] = useState(false);
 
-  const refreshBands = useCallback(async (currentUser: User) => {
-    const loadedBands = await loadBandHierarchy(currentUser);
+  const refreshBands = useCallback(async () => {
+    const loadedBands = await loadBandHierarchy();
     setBands(loadedBands);
     return loadedBands;
   }, []);
@@ -373,7 +373,7 @@ export default function App() {
       setUser(mappedUser);
       setIdentityUserId(identity.user.id);
       setIsClaimed(identity.user.is_claimed);
-      await refreshBands(mappedUser);
+      await refreshBands();
     } catch {
       setApiIdentityUserId(null);
       setUser(null);
@@ -613,7 +613,7 @@ export default function App() {
           const result = await getResult(processingRoute.jobId);
           if (cancelled) return;
 
-          const loadedBands = await refreshBands(user);
+          const loadedBands = await refreshBands();
           if (cancelled) return;
 
           const refreshedBand = findBandInHierarchy(loadedBands, processingRoute.band.id) ?? processingRoute.band;
@@ -683,7 +683,7 @@ export default function App() {
           onCreateBand={async ({ name }) => {
             if (!user) return;
             await createBand({ name });
-            await refreshBands(user);
+            await refreshBands();
           }}
           onClaimAccount={() => {
             if (identityUserId === null || typeof window === "undefined") return;
@@ -723,7 +723,7 @@ export default function App() {
           onCreateProject={async ({ name, description }) => {
             if (!user) return;
             const created = await createProject(Number(route.band.id), { name, description });
-            const loadedBands = await refreshBands(user);
+            const loadedBands = await refreshBands();
             const refreshedBand = findBandInHierarchy(loadedBands, route.band.id);
             const refreshedProject = findProjectInBand(refreshedBand, String(created.project.id));
             if (!refreshedBand) return;

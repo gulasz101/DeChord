@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import App from "../App";
-import { resolveSongNote } from "../lib/api";
 import { resolvePlaybackSources } from "../lib/playbackSources";
 
 const {

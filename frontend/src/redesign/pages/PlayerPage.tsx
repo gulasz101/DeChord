@@ -78,7 +78,7 @@ export function PlayerPage({
   const player = useAudioPlayer(audioSrc, stemSources);
   const tabSourceUrl = song.tab && Number.isFinite(songId) ? getTabFileUrl(songId) : null;
 
-  const currentIndex = useMemo(() => {
+    const currentIndex = useMemo(() => {
     for (let i = song.chords.length - 1; i >= 0; i--) {
       if (player.currentTime >= song.chords[i].start) return i;
     }
@@ -99,8 +99,10 @@ export function PlayerPage({
     [song.notes],
   );
 
-  const activeStemCount = song.stems.filter((s) => !s.isArchived).length;
-  const openCommentCount = song.notes.filter((n) => !n.resolved).length;
+    const activeStemCount = song.stems.filter((s) => !s.isArchived).length;
+    const openCommentCount = song.notes.filter((n) => !n.resolved).length;
+    const resolveNote = onResolveNote;
+    const deleteNote = onDeleteNote;
   const openComments = song.notes.filter((note) => !note.resolved);
   const resolvedComments = song.notes.filter((note) => note.resolved);
   const canCreateNotes = Boolean(onCreateNote);
@@ -424,11 +426,11 @@ export function PlayerPage({
                               Edit
                             </button>
                           ) : null}
-                          {canResolveNotes ? (
+                          {canResolveNotes && resolveNote ? (
                             <button
                               type="button"
                               aria-label={`Resolve note ${note.id}`}
-                              onClick={() => void runAction(async () => { await onResolveNote(note.id, true); }, "Note resolved.")}
+                              onClick={() => void runAction(async () => { await resolveNote(note.id, true); }, "Note resolved.")}
                               disabled={isSubmitting}
                               className="border px-2 py-1 disabled:opacity-60"
                               style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.35)", color: "#14b8a6" }}
@@ -436,11 +438,11 @@ export function PlayerPage({
                               Resolve
                             </button>
                           ) : null}
-                          {canDeleteNotes ? (
+                          {canDeleteNotes && deleteNote ? (
                             <button
                               type="button"
                               aria-label={`Delete note ${note.id}`}
-                              onClick={() => void runAction(async () => { await onDeleteNote(note.id); }, "Note deleted.")}
+                              onClick={() => void runAction(async () => { await deleteNote(note.id); }, "Note deleted.")}
                               disabled={isSubmitting}
                               className="border px-2 py-1 disabled:opacity-60"
                               style={{ borderRadius: "3px", borderColor: "rgba(239, 68, 68, 0.3)", color: "#ef4444" }}
@@ -472,11 +474,11 @@ export function PlayerPage({
                             <p className="text-xs" style={{ color: "#5a5a6e" }}>{note.text}</p>
                             {canResolveNotes || canDeleteNotes ? (
                               <div className="mt-2 flex gap-2 text-[10px]">
-                                {canResolveNotes ? (
+                                {canResolveNotes && resolveNote ? (
                                   <button
                                     type="button"
                                     aria-label={`Reopen note ${note.id}`}
-                                    onClick={() => void runAction(async () => { await onResolveNote(note.id, false); }, "Note reopened.")}
+                                    onClick={() => void runAction(async () => { await resolveNote(note.id, false); }, "Note reopened.")}
                                     disabled={isSubmitting}
                                     className="border px-2 py-1 disabled:opacity-60"
                                     style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.35)", color: "#14b8a6" }}
@@ -484,11 +486,11 @@ export function PlayerPage({
                                     Reopen
                                   </button>
                                 ) : null}
-                                {canDeleteNotes ? (
+                                {canDeleteNotes && deleteNote ? (
                                   <button
                                     type="button"
                                     aria-label={`Delete note ${note.id}`}
-                                    onClick={() => void runAction(async () => { await onDeleteNote(note.id); }, "Note deleted.")}
+                                    onClick={() => void runAction(async () => { await deleteNote(note.id); }, "Note deleted.")}
                                     disabled={isSubmitting}
                                     className="border px-2 py-1 disabled:opacity-60"
                                     style={{ borderRadius: "3px", borderColor: "rgba(239, 68, 68, 0.3)", color: "#ef4444" }}

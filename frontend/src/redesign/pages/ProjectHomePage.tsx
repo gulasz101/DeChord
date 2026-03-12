@@ -78,7 +78,7 @@ export function ProjectHomePage({ user, band, project, onSelectProject, onCreate
                 style={{ background: p.id === project?.id ? "rgba(124, 58, 237, 0.15)" : "transparent", color: p.id === project?.id ? "#a78bfa" : "#c0c0c0" }}>
                 <span>{p.name}</span>
                 {p.unreadCount > 0 && (
-                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold text-white" style={{ background: "#7c3aed" }}>
+                  <span aria-label="project-unread-count" className="flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold text-white" style={{ background: "#7c3aed" }}>
                     {p.unreadCount}
                   </span>
                 )}
@@ -88,16 +88,16 @@ export function ProjectHomePage({ user, band, project, onSelectProject, onCreate
 
           {/* Band members */}
           <h3 className="mb-3 mt-8 text-xs font-medium" style={{ fontFamily: "Playfair Display, serif", color: "#7a7a90" }}>Members</h3>
+          <p className="mb-3 text-[10px]" style={{ color: "#5a5a6e" }}>
+            Presence updates are not live yet.
+          </p>
           <div className="space-y-2">
             {band.members.map((m) => (
-              <div key={m.id} className="flex items-center gap-2">
-                <div className="relative">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#1e1e3a" }}>{m.avatar}</div>
-                  {m.isOnline && <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2" style={{ background: "#14b8a6", borderColor: "#0a0e27" }} />}
-                </div>
+              <div key={m.id} aria-label={`band-member-${m.id}`} className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#1e1e3a" }}>{m.avatar}</div>
                 <div>
                   <div className="text-xs font-medium" style={{ color: "#e2e2f0" }}>{m.name}</div>
-                  <div className="text-[10px]" style={{ color: "#5a5a6e" }}>{m.instrument}</div>
+                  <div className="text-[10px] uppercase tracking-[0.12em]" style={{ color: "#5a5a6e" }}>{m.role}</div>
                 </div>
               </div>
             ))}
