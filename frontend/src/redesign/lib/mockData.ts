@@ -41,7 +41,19 @@ const MOCK_STEMS: StemInfo[] = [
 ];
 
 function note(id: number, type: "time" | "chord", ts: number | null, ci: number | null, text: string, author: string, avatar: string, resolved = false): SongNote {
-  return { id, type, timestampSec: ts, chordIndex: ci, text, authorName: author, authorAvatar: avatar, resolved, createdAt: "2026-03-05T14:30:00Z" };
+  return {
+    id,
+    type,
+    timestampSec: ts,
+    chordIndex: ci,
+    text,
+    toastDurationSec: null,
+    authorName: author,
+    authorAvatar: avatar,
+    resolved,
+    createdAt: "2026-03-05T14:30:00Z",
+    updatedAt: "2026-03-05T14:30:00Z",
+  };
 }
 
 const MOCK_NOTES: SongNote[] = [
@@ -106,19 +118,19 @@ export const MOCK_BANDS: Band[] = [
   {
     id: "band-1", name: "The Rust Belt", avatarColor: "#b45309",
     members: [
-      { id: "u1", name: "Jake T.", instrument: "Bass", avatar: "JT", isOnline: true },
-      { id: "u2", name: "Mike R.", instrument: "Guitar", avatar: "MR", isOnline: true },
-      { id: "u3", name: "Sarah K.", instrument: "Drums", avatar: "SK", isOnline: false },
-      { id: "u4", name: "Tom L.", instrument: "Vocals", avatar: "TL", isOnline: false },
+      { id: "u1", name: "Jake T.", role: "member", instrument: "Bass", avatar: "JT", presenceState: "not_live", isOnline: true },
+      { id: "u2", name: "Mike R.", role: "member", instrument: "Guitar", avatar: "MR", presenceState: "not_live", isOnline: true },
+      { id: "u3", name: "Sarah K.", role: "member", instrument: "Drums", avatar: "SK", presenceState: "not_live", isOnline: false },
+      { id: "u4", name: "Tom L.", role: "member", instrument: "Vocals", avatar: "TL", presenceState: "not_live", isOnline: false },
     ],
     projects,
   },
   {
     id: "band-2", name: "Midnight Signal", avatarColor: "#6b7234",
     members: [
-      { id: "u1", name: "Jake T.", instrument: "Bass", avatar: "JT", isOnline: true },
-      { id: "u5", name: "Ava P.", instrument: "Keys", avatar: "AP", isOnline: false },
-      { id: "u6", name: "Dan W.", instrument: "Guitar", avatar: "DW", isOnline: true },
+      { id: "u1", name: "Jake T.", role: "member", instrument: "Bass", avatar: "JT", presenceState: "not_live", isOnline: true },
+      { id: "u5", name: "Ava P.", role: "member", instrument: "Keys", avatar: "AP", presenceState: "not_live", isOnline: false },
+      { id: "u6", name: "Dan W.", role: "member", instrument: "Guitar", avatar: "DW", presenceState: "not_live", isOnline: true },
     ],
     projects: [{
       id: "proj-3", name: "Demo Sessions", description: "Working on original material",
