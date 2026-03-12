@@ -1517,7 +1517,8 @@ async def list_songs():
 
 
 @app.get("/api/bands")
-async def list_bands():
+async def list_bands(request: Request):
+    user = await _get_request_user(request)
     rows = await execute(
         """
         SELECT
@@ -1531,8 +1532,11 @@ async def list_bands():
                 WHERE p.band_id = b.id
             ) AS project_count
         FROM bands b
+        JOIN band_memberships bm ON bm.band_id = b.id
+        WHERE bm.user_id = ?
         ORDER BY b.created_at DESC, b.id DESC
-        """
+        """,
+        [int(user["id"])],
     )
     bands = [
         {

@@ -207,6 +207,18 @@ async def get_user_by_id(user_id: int) -> dict[str, Any] | None:
     return _row_as_user_dict(rs.rows[0])
 
 
+async def _ensure_default_band_membership(user_id: int) -> None:
+    project = await get_default_project()
+    await execute(
+        """
+        INSERT INTO band_memberships (band_id, user_id, role)
+        VALUES (?, ?, 'member')
+        ON CONFLICT(band_id, user_id) DO NOTHING
+        """,
+        [project["band_id"], user_id],
+    )
+
+
 async def resolve_identity_user(fingerprint_token: str) -> dict[str, Any]:
     existing = await execute(
         """
@@ -217,7 +229,9 @@ async def resolve_identity_user(fingerprint_token: str) -> dict[str, Any]:
         [fingerprint_token],
     )
     if existing.rows:
-        return _row_as_user_dict(existing.rows[0])
+        user = _row_as_user_dict(existing.rows[0])
+        await _ensure_default_band_membership(int(user["id"]))
+        return user
 
     for _ in range(10):
         display_name = _generate_guest_display_name()
@@ -238,7 +252,9 @@ async def resolve_identity_user(fingerprint_token: str) -> dict[str, Any]:
             [fingerprint_token],
         )
         if created.rows:
-            return _row_as_user_dict(created.rows[0])
+            user = _row_as_user_dict(created.rows[0])
+            await _ensure_default_band_membership(int(user["id"]))
+            return user
 
     raise RuntimeError("Failed to allocate guest identity")
 

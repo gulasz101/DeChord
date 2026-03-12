@@ -287,7 +287,7 @@ export async function claimIdentity(payload: IdentityClaimPayload): Promise<Iden
 }
 
 export async function listBands(): Promise<BandsListResponse> {
-  const res = await fetch(`${BASE}/api/bands`);
+  const res = await fetchWithIdentity(`${BASE}/api/bands`);
   if (!res.ok) throw new Error("Failed to fetch bands");
   return res.json();
 }

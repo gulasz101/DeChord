@@ -38,6 +38,28 @@ describe("api bands/projects/songs contract", () => {
     }
   });
 
+  it("attaches the acting-user header when fetching bands", async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ bands: [] }),
+    });
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      setApiIdentityUserId(12);
+
+      await listBands();
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/bands",
+        expect.objectContaining({ headers: expect.objectContaining({ "X-DeChord-User-Id": "12" }) }),
+      );
+    } finally {
+      (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
+    }
+  });
+
   it("fetches projects for a band", async () => {
     const originalFetch = globalThis.fetch;
     const fetchMock = vi.fn().mockResolvedValue({

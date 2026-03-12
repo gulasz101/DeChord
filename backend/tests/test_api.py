@@ -81,6 +81,69 @@ def test_identity_resolve_creates_guest_user(tmp_path, monkeypatch):
     assert len(payload["user"]["display_name"]) > 0
 
 
+def test_identity_resolve_bootstraps_truthful_default_band_access(
+    tmp_path, monkeypatch
+):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    created_band = client.post(
+        "/api/bands",
+        json={"name": f"Private Band {tmp_path.name}"},
+    )
+    assert created_band.status_code == 200
+
+    resolved = client.post(
+        "/api/identity/resolve",
+        json={"fingerprint_token": f"fp-bootstrap-{tmp_path.name}"},
+    )
+    assert resolved.status_code == 200
+    user_id = resolved.json()["user"]["id"]
+
+    bands_response = client.get(
+        "/api/bands",
+        headers={"X-DeChord-User-Id": str(user_id)},
+    )
+    assert bands_response.status_code == 200
+    assert bands_response.json() == {
+        "bands": [
+            {
+                "id": 1,
+                "name": "Default Band",
+                "owner_user_id": 1,
+                "created_at": bands_response.json()["bands"][0]["created_at"],
+                "project_count": 1,
+            }
+        ]
+    }
+
+    members_response = client.get(
+        "/api/bands/1/members",
+        headers={"X-DeChord-User-Id": str(user_id)},
+    )
+    assert members_response.status_code == 200
+    assert any(
+        member["id"] == str(user_id) for member in members_response.json()["members"]
+    )
+
+    projects_response = client.get(
+        "/api/bands/1/projects",
+        headers={"X-DeChord-User-Id": str(user_id)},
+    )
+    assert projects_response.status_code == 200
+    assert [project["name"] for project in projects_response.json()["projects"]] == [
+        "Default Project"
+    ]
+
+    membership_rs = asyncio.run(
+        main.execute(
+            "SELECT role FROM band_memberships WHERE band_id = 1 AND user_id = ?",
+            [user_id],
+        )
+    )
+    assert [tuple(row) for row in membership_rs.rows] == [("member",)]
+
+
 def test_identity_claim_sets_username_and_password_hash(tmp_path, monkeypatch):
     client = _build_client(tmp_path, monkeypatch)
 
