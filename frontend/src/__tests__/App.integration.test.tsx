@@ -1015,6 +1015,64 @@ describe("App integration", () => {
     expect(screen.queryByText("Processing hit a recoverable problem.")).toBeNull();
   });
 
+  it("retries a transient polling fetch failure before showing reset-loss copy", async () => {
+    vi.useFakeTimers();
+    listProjectSongsMock.mockResolvedValueOnce({ songs: [] }).mockResolvedValue({ songs: [] });
+    getJobStatusMock
+      .mockResolvedValueOnce({
+        status: "processing",
+        stage: "splitting_stems",
+        progress_pct: 45,
+        stage_history: ["queued", "splitting_stems"],
+        message: "Splitting stems...",
+      })
+      .mockRejectedValueOnce(new Error("Failed to fetch"))
+      .mockRejectedValueOnce(new Error("Processing job no longer available after reset"));
+
+    render(<App />);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    expect(screen.getByText("Default Band")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Default Band"));
+    expect(screen.getByText("Song Library →")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    expect(screen.getByText("+ Upload Song")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("+ Upload Song"));
+    const file = new File(["bass"], "new-song.mp3", { type: "audio/mpeg" });
+    fireEvent.change(screen.getByLabelText("Song File"), { target: { files: [file] } });
+    await act(async () => {
+      fireEvent.click(screen.getByText("Start Upload"));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("Splitting stems...")).toBeTruthy();
+    expect(screen.getAllByText("splitting_stems").length).toBeGreaterThan(0);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(/lost after a reset/i)).toBeTruthy();
+    expect(screen.getByText(/re-upload the song or return to the library/i)).toBeTruthy();
+    expect(screen.queryByText("Failed to fetch")).toBeNull();
+    expect(screen.queryByText("Processing failed")).toBeNull();
+    expect(screen.queryByText("Processing hit a recoverable problem.")).toBeNull();
+  });
+
   it("replaces stale completion copy when reset removes a finished result", async () => {
     vi.useFakeTimers();
     listProjectSongsMock.mockResolvedValueOnce({ songs: [] }).mockResolvedValue({ songs: [] });

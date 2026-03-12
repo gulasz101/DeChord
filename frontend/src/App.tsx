@@ -392,6 +392,10 @@ function isJourneyResetLossError(error: string | null): boolean {
     || error === "The finished job result was lost after a reset. Refresh the library or return to the library.";
 }
 
+function isTransientJourneyPollingError(error: unknown): boolean {
+  return error instanceof Error && error.message === "Failed to fetch";
+}
+
 async function loadBandHierarchy(): Promise<Band[]> {
   const bandsResponse = await listBands();
   const mappedBands: Band[] = [];
@@ -687,8 +691,25 @@ export default function App() {
     };
 
     const poll = async () => {
+      let status;
+
       try {
-        const status = await getJobStatus(processingRoute.jobId);
+        status = await getJobStatus(processingRoute.jobId);
+      } catch (error) {
+        if (cancelled) return;
+
+        if (isTransientJourneyPollingError(error)) {
+          timeoutHandle = window.setTimeout(() => {
+            void poll();
+          }, 1000);
+          return;
+        }
+
+        failJourney(error);
+        return;
+      }
+
+      try {
         if (cancelled) return;
 
         setRoute((current) => {
