@@ -134,12 +134,18 @@ const {
 
 vi.mock("../redesign/pages/PlayerPage", () => ({
   PlayerPage: ({
+    project,
     song,
     onCreateNote,
     onEditNote,
     onResolveNote,
     onDeleteNote,
+    onBack,
   }: {
+    project: {
+      unreadCount: number;
+      recentActivity?: Array<{ message: string }>;
+    };
     song: {
       id: string;
       stems: Array<unknown>;
@@ -151,6 +157,7 @@ vi.mock("../redesign/pages/PlayerPage", () => ({
     onEditNote?: (noteId: number, payload: { text: string; toastDurationSec?: number }) => Promise<void> | void;
     onResolveNote?: (noteId: number, resolved: boolean) => Promise<void> | void;
     onDeleteNote?: (noteId: number) => Promise<void> | void;
+    onBack?: () => void;
   }) => {
     playerPagePropsSpy(song);
     const openNotes = song.notes?.filter((note) => !note.resolved) ?? [];
@@ -164,6 +171,8 @@ vi.mock("../redesign/pages/PlayerPage", () => ({
           data-chord-count={String(song.chords.length)}
           data-tab-source-stem-key={song.tab?.sourceStemKey ?? ""}
         />
+        <span>Player unread count: {project.unreadCount}</span>
+        <span>Player latest activity: {project.recentActivity?.[0]?.message ?? "none"}</span>
         <span>Player open notes: {openNotes.length}</span>
         <span>Player resolved notes: {resolvedNotes.length}</span>
         {song.notes?.map((note) => <span key={note.id}>{note.text}</span>)}
@@ -184,6 +193,9 @@ vi.mock("../redesign/pages/PlayerPage", () => ({
         </button>
         <button type="button" onClick={() => void onDeleteNote?.(11)}>
           Mock player delete note
+        </button>
+        <button type="button" onClick={() => onBack?.()}>
+          Mock player back
         </button>
       </div>
     );
@@ -413,6 +425,294 @@ describe("App integration", () => {
       expect(screen.getAllByText("2").length).toBeGreaterThan(0);
       expect(screen.getByText(/left a note/i)).toBeTruthy();
       expect(screen.getByText(/in Demo/i)).toBeTruthy();
+    });
+  });
+
+  it("shows truthful unread and activity state after song-detail and player collaboration mutations", async () => {
+    const firstEvent = {
+      id: 1,
+      event_type: "note_created",
+      message: "left a note",
+      author_name: "Alicja",
+      author_avatar: "A",
+      timestamp: "2026-03-10T10:00:00Z",
+      song_title: "Demo Song",
+      song_id: 30,
+    };
+    const secondEvent = {
+      id: 2,
+      event_type: "note_resolved",
+      message: "resolved a note",
+      author_name: "Alicja",
+      author_avatar: "A",
+      timestamp: "2026-03-10T11:00:00Z",
+      song_title: "Demo Song",
+      song_id: 30,
+    };
+    const thirdEvent = {
+      id: 3,
+      event_type: "note_created",
+      message: "added a player note",
+      author_name: "Alicja",
+      author_avatar: "A",
+      timestamp: "2026-03-10T12:00:00Z",
+      song_title: "Demo Song",
+      song_id: 30,
+    };
+
+    listBandsMock.mockResolvedValue({
+      bands: [{ id: 3, name: "Demo Band", owner_user_id: 1, created_at: "2026-03-10", project_count: 1 }],
+    });
+    listBandMembersMock.mockResolvedValue({
+      members: [
+        { id: "1", name: "Wojtek", role: "owner", avatar: "W", presenceState: "not_live" },
+        { id: "2", name: "Alicja", role: "member", avatar: "A", presenceState: "not_live" },
+      ],
+    });
+    listBandProjectsMock
+      .mockResolvedValueOnce({
+        projects: [{ id: 9, band_id: 3, name: "Collab", description: "", created_at: "2026-03-10", song_count: 1, unread_count: 2 }],
+      })
+      .mockResolvedValueOnce({
+        projects: [{ id: 9, band_id: 3, name: "Collab", description: "", created_at: "2026-03-10", song_count: 1, unread_count: 0 }],
+      })
+      .mockResolvedValueOnce({
+        projects: [{ id: 9, band_id: 3, name: "Collab", description: "", created_at: "2026-03-10", song_count: 1, unread_count: 1 }],
+      })
+      .mockResolvedValueOnce({
+        projects: [{ id: 9, band_id: 3, name: "Collab", description: "", created_at: "2026-03-10", song_count: 1, unread_count: 0 }],
+      })
+      .mockResolvedValueOnce({
+        projects: [{ id: 9, band_id: 3, name: "Collab", description: "", created_at: "2026-03-10", song_count: 1, unread_count: 1 }],
+      })
+      .mockResolvedValueOnce({
+        projects: [{ id: 9, band_id: 3, name: "Collab", description: "", created_at: "2026-03-10", song_count: 1, unread_count: 0 }],
+      });
+    listProjectSongsMock.mockResolvedValue({
+      songs: [{ id: 30, project_id: 9, title: "Demo Song", original_filename: "demo.mp3", created_at: "2026-03-10", key: "Em", tempo: 120, duration: 20 }],
+    });
+    getProjectActivityMock
+      .mockResolvedValueOnce({
+        activity: [firstEvent],
+        unread_count: 2,
+        presence_state: "not_live",
+      })
+      .mockResolvedValueOnce({
+        activity: [secondEvent, firstEvent],
+        unread_count: 1,
+        presence_state: "not_live",
+      })
+      .mockResolvedValueOnce({
+        activity: [secondEvent, firstEvent],
+        unread_count: 0,
+        presence_state: "not_live",
+      })
+      .mockResolvedValueOnce({
+        activity: [thirdEvent, secondEvent, firstEvent],
+        unread_count: 1,
+        presence_state: "not_live",
+      })
+      .mockResolvedValueOnce({
+        activity: [thirdEvent, secondEvent, firstEvent],
+        unread_count: 0,
+        presence_state: "not_live",
+      });
+    getSongMock
+      .mockResolvedValueOnce({
+        song: { id: 30, title: "Demo Song", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-10" },
+        analysis: { key: "Em", tempo: 120, duration: 20, chords: [{ start: 0, end: 2, label: "Em" }] },
+        notes: [{
+          id: 11,
+          type: "chord",
+          timestamp_sec: null,
+          chord_index: 0,
+          text: "Lock verse entry",
+          toast_duration_sec: null,
+          resolved: false,
+          author_name: "Wojtek",
+          author_avatar: "WG",
+          created_at: "2026-03-10T10:00:00Z",
+          updated_at: "2026-03-10T10:00:00Z",
+        }],
+        playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+      })
+      .mockResolvedValueOnce({
+        song: { id: 30, title: "Demo Song", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-10" },
+        analysis: { key: "Em", tempo: 120, duration: 20, chords: [{ start: 0, end: 2, label: "Em" }] },
+        notes: [{
+          id: 11,
+          type: "chord",
+          timestamp_sec: null,
+          chord_index: 0,
+          text: "Lock verse entry",
+          toast_duration_sec: null,
+          resolved: true,
+          author_name: "Wojtek",
+          author_avatar: "WG",
+          created_at: "2026-03-10T10:00:00Z",
+          updated_at: "2026-03-10T10:10:00Z",
+        }],
+        playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+      })
+      .mockResolvedValueOnce({
+        song: { id: 30, title: "Demo Song", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-10" },
+        analysis: { key: "Em", tempo: 120, duration: 20, chords: [{ start: 0, end: 2, label: "Em" }] },
+        notes: [{
+          id: 11,
+          type: "chord",
+          timestamp_sec: null,
+          chord_index: 0,
+          text: "Lock verse entry",
+          toast_duration_sec: null,
+          resolved: true,
+          author_name: "Wojtek",
+          author_avatar: "WG",
+          created_at: "2026-03-10T10:00:00Z",
+          updated_at: "2026-03-10T10:10:00Z",
+        }],
+        playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+      })
+      .mockResolvedValueOnce({
+        song: { id: 30, title: "Demo Song", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-10" },
+        analysis: { key: "Em", tempo: 120, duration: 20, chords: [{ start: 0, end: 2, label: "Em" }] },
+        notes: [
+          {
+            id: 11,
+            type: "chord",
+            timestamp_sec: null,
+            chord_index: 0,
+            text: "Lock verse entry",
+            toast_duration_sec: null,
+            resolved: true,
+            author_name: "Wojtek",
+            author_avatar: "WG",
+            created_at: "2026-03-10T10:00:00Z",
+            updated_at: "2026-03-10T10:10:00Z",
+          },
+          {
+            id: 12,
+            type: "time",
+            timestamp_sec: 18.5,
+            chord_index: null,
+            text: "Player time note",
+            toast_duration_sec: null,
+            resolved: false,
+            author_name: "Wojtek",
+            author_avatar: "WG",
+            created_at: "2026-03-10T12:00:00Z",
+            updated_at: "2026-03-10T12:00:00Z",
+          },
+        ],
+        playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+      });
+
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ project_id: 9, unread_count: 0 }),
+    } as Response);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Demo Band")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Demo Band"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/presence updates are not live yet/i)).toBeTruthy();
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText("project-unread-count")).toBeNull();
+      expect(screen.getByText(/left a note/i)).toBeTruthy();
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/projects/9/activity/read",
+      expect.objectContaining({
+        method: "POST",
+        headers: { "X-DeChord-User-Id": "1" },
+      }),
+    );
+
+    fireEvent.click(screen.getByText(/song library/i));
+
+    await waitFor(() => {
+      expect(screen.getByText("Demo Song")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Demo Song"));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /resolve note 11/i })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /resolve note 11/i }));
+
+    await waitFor(() => {
+      expect(resolveSongNoteMock).toHaveBeenCalledWith(11, true);
+    });
+
+    fireEvent.click(screen.getByText(/song library/i));
+    await waitFor(() => {
+      expect(screen.getByText("Demo Song")).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /collab/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/resolved a note/i)).toBeTruthy();
+      expect(screen.queryByLabelText("project-unread-count")).toBeNull();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /song library/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Demo Song")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Demo Song"));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /open player/i })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /open player/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("player-page")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /mock player create note/i }));
+
+    await waitFor(() => {
+      expect(createSongNoteMock).toHaveBeenCalledWith(30, {
+        type: "time",
+        text: "Player time note",
+        timestamp_sec: 18.5,
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/player latest activity: added a player note/i)).toBeTruthy();
+      expect(screen.getByText(/player unread count: 1/i)).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /mock player back/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/song library/i)).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText(/song library/i));
+    await waitFor(() => {
+      expect(screen.getByText("Demo Song")).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /collab/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/added a player note/i)).toBeTruthy();
+      expect(screen.queryByLabelText("project-unread-count")).toBeNull();
     });
   });
 

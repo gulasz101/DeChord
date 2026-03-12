@@ -234,6 +234,65 @@ function mapActivityItem(activity: Awaited<ReturnType<typeof getProjectActivity>
   };
 }
 
+function applyProjectCollaborationToBand(
+  band: Band,
+  projectId: string,
+  recentActivity: Project["recentActivity"],
+  unreadCount: number,
+): Band {
+  return {
+    ...band,
+    projects: band.projects.map((project) => (
+      project.id === projectId
+        ? {
+            ...project,
+            recentActivity,
+            unreadCount,
+          }
+        : project
+    )),
+  };
+}
+
+function updateRouteProjectCollaboration(
+  current: Route,
+  bandId: string,
+  projectId: string,
+  recentActivity: Project["recentActivity"],
+  unreadCount: number,
+): Route {
+  switch (current.page) {
+    case "project": {
+      if (!current.project || current.band.id !== bandId || current.project.id !== projectId) {
+        return current;
+      }
+      const band = applyProjectCollaborationToBand(current.band, projectId, recentActivity, unreadCount);
+      return {
+        page: "project",
+        band,
+        project: band.projects.find((project) => project.id === projectId) ?? current.project,
+      };
+    }
+    case "songs":
+    case "song-detail":
+    case "player":
+    case "processing-journey": {
+      if (current.band.id !== bandId || current.project.id !== projectId) {
+        return current;
+      }
+      const band = applyProjectCollaborationToBand(current.band, projectId, recentActivity, unreadCount);
+      const project = band.projects.find((candidate) => candidate.id === projectId) ?? current.project;
+      return {
+        ...current,
+        band,
+        project,
+      };
+    }
+    default:
+      return current;
+  }
+}
+
 function mergeSongWithDetails(
   song: Song,
   songDetail: Awaited<ReturnType<typeof getSong>>,
@@ -357,6 +416,58 @@ export default function App() {
     setBands(loadedBands);
     return loadedBands;
   }, []);
+
+  const applyProjectCollaborationState = useCallback((
+    bandId: string,
+    projectId: string,
+    recentActivity: Project["recentActivity"],
+    unreadCount: number,
+    sourceBands?: Band[],
+  ) => {
+    const updateBands = (candidateBands: Band[]) => candidateBands.map((band) => (
+      band.id === bandId
+        ? applyProjectCollaborationToBand(band, projectId, recentActivity, unreadCount)
+        : band
+    ));
+
+    const nextBands = sourceBands ? updateBands(sourceBands) : null;
+    if (nextBands) {
+      setBands(nextBands);
+    } else {
+      setBands((currentBands) => updateBands(currentBands));
+    }
+
+    setRoute((current) => updateRouteProjectCollaboration(current, bandId, projectId, recentActivity, unreadCount));
+    return nextBands;
+  }, []);
+
+  const refreshProjectCollaboration = useCallback(async (bandId: string, projectId: string) => {
+    const [activityResponse, loadedBands] = await Promise.all([
+      getProjectActivity(Number(projectId)),
+      refreshBands(),
+    ]);
+    const recentActivity = activityResponse.activity.map(mapActivityItem);
+    applyProjectCollaborationState(
+      bandId,
+      projectId,
+      recentActivity,
+      activityResponse.unread_count,
+      loadedBands,
+    );
+    return { activityResponse, recentActivity };
+  }, [applyProjectCollaborationState, refreshBands]);
+
+  const markProjectActivityRead = useCallback(async (projectId: string) => {
+    const headers = identityUserId === null ? undefined : { "X-DeChord-User-Id": String(identityUserId) };
+    const response = await fetch(`/api/projects/${projectId}/activity/read`, {
+      method: "POST",
+      ...(headers ? { headers } : {}),
+    });
+    if (!response.ok) {
+      throw new Error("Failed to mark project activity as read");
+    }
+    return response.json() as Promise<{ unread_count: number }>;
+  }, [identityUserId]);
 
   const bootstrap = useCallback(async () => {
     try {
@@ -503,53 +614,13 @@ export default function App() {
         if (cancelled) return;
 
         const recentActivity = activityResponse.activity.map(mapActivityItem);
+        applyProjectCollaborationState(bandId, projectId, recentActivity, activityResponse.unread_count);
 
-        setBands((currentBands) => currentBands.map((band) => {
-          if (band.id !== bandId) {
-            return band;
-          }
+        const markedRead = await markProjectActivityRead(projectId);
+        if (cancelled) return;
 
-          return {
-            ...band,
-            projects: band.projects.map((project) => (
-              project.id === projectId
-                ? {
-                    ...project,
-                    recentActivity,
-                    unreadCount: activityResponse.unread_count,
-                  }
-                : project
-            )),
-          };
-        }));
-
-        setRoute((current) => {
-          if (current.page !== "project" || !current.project) {
-            return current;
-          }
-          if (current.band.id !== bandId || current.project.id !== projectId) {
-            return current;
-          }
-
-          const hydratedProjects = current.band.projects.map((project) => (
-            project.id === projectId
-              ? {
-                  ...project,
-                  recentActivity,
-                  unreadCount: activityResponse.unread_count,
-                }
-              : project
-          ));
-
-          return {
-            page: "project",
-            band: {
-              ...current.band,
-              projects: hydratedProjects,
-            },
-            project: hydratedProjects.find((project) => project.id === projectId) ?? current.project,
-          };
-        });
+        applyProjectCollaborationState(bandId, projectId, recentActivity, markedRead.unread_count);
+        await refreshBands();
       } catch {
         // Leave existing route state untouched when collaboration hydration fails.
       }
@@ -558,7 +629,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [activeProjectBandId, activeProjectId]);
+  }, [activeProjectBandId, activeProjectId, applyProjectCollaborationState, markProjectActivityRead, refreshBands]);
 
   useEffect(() => {
     if (route.page !== "processing-journey" || !user) return;
@@ -822,12 +893,14 @@ export default function App() {
             if (Number.isNaN(songId)) return;
             await regenerateSongStems(songId);
             await refreshSongDetailRoute();
+            await refreshProjectCollaboration(route.band.id, route.project.id);
           }}
           onUploadStem={async ({ stemKey, file }) => {
             const songId = Number(route.song.id);
             if (Number.isNaN(songId)) return;
             await uploadSongStem(songId, { stemKey, file });
             await refreshSongDetailRoute();
+            await refreshProjectCollaboration(route.band.id, route.project.id);
           }}
           onGenerateBassTab={async (sourceStemKey) => {
             const songId = Number(route.song.id);
@@ -852,18 +925,22 @@ export default function App() {
               toast_duration_sec: toastDurationSec,
             });
             await refreshSongDetailRoute();
+            await refreshProjectCollaboration(route.band.id, route.project.id);
           }}
           onEditNote={async (noteId, payload: { text: string; toastDurationSec?: number }) => {
             await updateSongNote(noteId, { text: payload.text, toast_duration_sec: payload.toastDurationSec });
             await refreshSongDetailRoute();
+            await refreshProjectCollaboration(route.band.id, route.project.id);
           }}
           onResolveNote={async (noteId, resolved) => {
             await resolveSongNote(noteId, resolved);
             await refreshSongDetailRoute();
+            await refreshProjectCollaboration(route.band.id, route.project.id);
           }}
           onDeleteNote={async (noteId) => {
             await deleteSongNote(noteId);
             await refreshSongDetailRoute();
+            await refreshProjectCollaboration(route.band.id, route.project.id);
           }}
           onOpenPlayer={() => {
             void openPlayerForSong(route.band, route.project, route.song);
@@ -895,18 +972,22 @@ export default function App() {
               toast_duration_sec: toastDurationSec,
             });
             await refreshPlayerRoute();
+            await refreshProjectCollaboration(route.band.id, route.project.id);
           }}
           onEditNote={async (noteId, payload: { text: string; toastDurationSec?: number }) => {
             await updateSongNote(noteId, { text: payload.text, toast_duration_sec: payload.toastDurationSec });
             await refreshPlayerRoute();
+            await refreshProjectCollaboration(route.band.id, route.project.id);
           }}
           onResolveNote={async (noteId, resolved) => {
             await resolveSongNote(noteId, resolved);
             await refreshPlayerRoute();
+            await refreshProjectCollaboration(route.band.id, route.project.id);
           }}
           onDeleteNote={async (noteId) => {
             await deleteSongNote(noteId);
             await refreshPlayerRoute();
+            await refreshProjectCollaboration(route.band.id, route.project.id);
           }}
           onBack={goBack}
         />
