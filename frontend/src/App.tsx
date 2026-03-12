@@ -5,10 +5,12 @@ import {
   createProject,
   createSongNote,
   deleteSongNote,
+  getProjectActivity,
   getJobStatus,
   getResult,
   getSong,
   getSongTabs,
+  listBandMembers,
   uploadAudio,
   uploadSongStem,
   regenerateSongStems,
@@ -21,6 +23,7 @@ import {
   listSongStems,
   resolveSongNote,
   resolveIdentity,
+  setApiIdentityUserId,
   updateSongNote,
 } from "./lib/api";
 import type { ProcessMode, TabGenerationQuality } from "./lib/types";
@@ -191,6 +194,46 @@ function mapChord(chord: { start: number; end: number; label: string }): Chord {
   };
 }
 
+function mapBandMember(member: Awaited<ReturnType<typeof listBandMembers>>["members"][number]): Band["members"][number] {
+  return {
+    id: member.id,
+    name: member.name,
+    role: member.role,
+    avatar: member.avatar,
+    presenceState: member.presenceState,
+    instrument: member.role,
+    isOnline: member.presenceState !== "not_live",
+  };
+}
+
+function mapActivityType(eventType: string): Project["recentActivity"][number]["type"] {
+  switch (eventType) {
+    case "song_created":
+      return "song_added";
+    case "stem_uploaded":
+    case "stems_regenerated":
+      return "stem_upload";
+    case "note_created":
+      return "comment";
+    case "note_resolved":
+      return "comment_resolved";
+    default:
+      return "status_change";
+  }
+}
+
+function mapActivityItem(activity: Awaited<ReturnType<typeof getProjectActivity>>["activity"][number]): Project["recentActivity"][number] {
+  return {
+    id: String(activity.id),
+    type: mapActivityType(activity.event_type),
+    message: activity.message,
+    authorName: activity.author_name,
+    authorAvatar: activity.author_avatar ?? avatarFromName(activity.author_name),
+    timestamp: activity.timestamp,
+    songTitle: activity.song_title ?? undefined,
+  };
+}
+
 function mergeSongWithDetails(
   song: Song,
   songDetail: Awaited<ReturnType<typeof getSong>>,
@@ -271,7 +314,10 @@ async function loadBandHierarchy(currentUser: User | null): Promise<Band[]> {
   const mappedBands: Band[] = [];
 
   for (const band of bandsResponse.bands) {
-    const projectsResponse = await listBandProjects(band.id);
+    const [membersResponse, projectsResponse] = await Promise.all([
+      listBandMembers(band.id),
+      listBandProjects(band.id),
+    ]);
     const mappedProjects: Project[] = [];
 
     for (const project of projectsResponse.projects) {
@@ -283,7 +329,7 @@ async function loadBandHierarchy(currentUser: User | null): Promise<Band[]> {
         description: project.description ?? "",
         songs,
         recentActivity: [],
-        unreadCount: 0,
+        unreadCount: project.unread_count,
       });
     }
 
@@ -292,17 +338,7 @@ async function loadBandHierarchy(currentUser: User | null): Promise<Band[]> {
       name: band.name,
       avatarColor: "#7c3aed",
       projects: mappedProjects,
-      members: currentUser
-        ? [
-            {
-              id: currentUser.id,
-              name: currentUser.name,
-              instrument: currentUser.instrument,
-              avatar: currentUser.avatar,
-              isOnline: true,
-            },
-          ]
-        : [],
+      members: membersResponse.members.map(mapBandMember),
     });
   }
 
@@ -326,6 +362,7 @@ export default function App() {
     try {
       const fingerprint = getOrCreateFingerprint();
       const identity = await resolveIdentity(fingerprint);
+      setApiIdentityUserId(identity.user.id);
       const mappedUser: User = {
         id: String(identity.user.id),
         name: identity.user.display_name,
@@ -338,6 +375,7 @@ export default function App() {
       setIsClaimed(identity.user.is_claimed);
       await refreshBands(mappedUser);
     } catch {
+      setApiIdentityUserId(null);
       setUser(null);
       setBands([]);
       setIdentityUserId(null);
@@ -448,6 +486,79 @@ export default function App() {
   const findProjectInBand = useCallback((band: Band | null, projectId: string) => {
     return band?.projects.find((project) => project.id === projectId) ?? null;
   }, []);
+
+  const activeProjectBandId = route.page === "project" ? route.band.id : null;
+  const activeProjectId = route.page === "project" && route.project ? route.project.id : null;
+
+  useEffect(() => {
+    if (route.page !== "project" || !route.project || activeProjectBandId === null || activeProjectId === null) return;
+
+    let cancelled = false;
+    const bandId = activeProjectBandId;
+    const projectId = activeProjectId;
+
+    void (async () => {
+      try {
+        const activityResponse = await getProjectActivity(Number(projectId));
+        if (cancelled) return;
+
+        const recentActivity = activityResponse.activity.map(mapActivityItem);
+
+        setBands((currentBands) => currentBands.map((band) => {
+          if (band.id !== bandId) {
+            return band;
+          }
+
+          return {
+            ...band,
+            projects: band.projects.map((project) => (
+              project.id === projectId
+                ? {
+                    ...project,
+                    recentActivity,
+                    unreadCount: activityResponse.unread_count,
+                  }
+                : project
+            )),
+          };
+        }));
+
+        setRoute((current) => {
+          if (current.page !== "project" || !current.project) {
+            return current;
+          }
+          if (current.band.id !== bandId || current.project.id !== projectId) {
+            return current;
+          }
+
+          const hydratedProjects = current.band.projects.map((project) => (
+            project.id === projectId
+              ? {
+                  ...project,
+                  recentActivity,
+                  unreadCount: activityResponse.unread_count,
+                }
+              : project
+          ));
+
+          return {
+            page: "project",
+            band: {
+              ...current.band,
+              projects: hydratedProjects,
+            },
+            project: hydratedProjects.find((project) => project.id === projectId) ?? current.project,
+          };
+        });
+      } catch {
+        // Leave existing route state untouched when collaboration hydration fails.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeProjectBandId, activeProjectId]);
 
   useEffect(() => {
     if (route.page !== "processing-journey" || !user) return;
@@ -724,7 +835,13 @@ export default function App() {
             await regenerateSongTabs(songId, { source_stem_key: sourceStemKey });
             await refreshSongDetailRoute();
           }}
-          onCreateNote={async ({ type, text, timestampSec, chordIndex }) => {
+          onCreateNote={async ({ type, text, timestampSec, chordIndex, toastDurationSec }: {
+            type: "time" | "chord";
+            text: string;
+            timestampSec?: number;
+            chordIndex?: number;
+            toastDurationSec?: number;
+          }) => {
             const songId = Number(route.song.id);
             if (Number.isNaN(songId)) return;
             await createSongNote(songId, {
@@ -732,11 +849,12 @@ export default function App() {
               text,
               timestamp_sec: timestampSec,
               chord_index: chordIndex,
+              toast_duration_sec: toastDurationSec,
             });
             await refreshSongDetailRoute();
           }}
-          onEditNote={async (noteId, payload) => {
-            await updateSongNote(noteId, { text: payload.text });
+          onEditNote={async (noteId, payload: { text: string; toastDurationSec?: number }) => {
+            await updateSongNote(noteId, { text: payload.text, toast_duration_sec: payload.toastDurationSec });
             await refreshSongDetailRoute();
           }}
           onResolveNote={async (noteId, resolved) => {
@@ -760,7 +878,13 @@ export default function App() {
           band={route.band}
           project={route.project}
           song={route.song}
-          onCreateNote={async ({ type, text, timestampSec, chordIndex }) => {
+          onCreateNote={async ({ type, text, timestampSec, chordIndex, toastDurationSec }: {
+            type: "time" | "chord";
+            text: string;
+            timestampSec?: number;
+            chordIndex?: number;
+            toastDurationSec?: number;
+          }) => {
             const songId = Number(route.song.id);
             if (Number.isNaN(songId)) return;
             await createSongNote(songId, {
@@ -768,11 +892,12 @@ export default function App() {
               text,
               timestamp_sec: timestampSec,
               chord_index: chordIndex,
+              toast_duration_sec: toastDurationSec,
             });
             await refreshPlayerRoute();
           }}
-          onEditNote={async (noteId, payload) => {
-            await updateSongNote(noteId, { text: payload.text });
+          onEditNote={async (noteId, payload: { text: string; toastDurationSec?: number }) => {
+            await updateSongNote(noteId, { text: payload.text, toast_duration_sec: payload.toastDurationSec });
             await refreshPlayerRoute();
           }}
           onResolveNote={async (noteId, resolved) => {

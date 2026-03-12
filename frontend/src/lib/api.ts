@@ -14,8 +14,10 @@ import type {
   IdentityResponse,
   IdentityClaimPayload,
   BandsListResponse,
+  BandMembersListResponse,
   BandCreatePayload,
   BandCreateResponse,
+  ProjectActivityResponse,
   ProjectsListResponse,
   ProjectCreatePayload,
   ProjectCreateResponse,
@@ -23,6 +25,34 @@ import type {
 } from "./types";
 
 const BASE = "";
+
+let apiIdentityUserId: number | null = null;
+
+export function setApiIdentityUserId(userId: number | null): void {
+  apiIdentityUserId = userId;
+}
+
+function withIdentityHeaders(init?: RequestInit): RequestInit | undefined {
+  if (apiIdentityUserId === null) {
+    return init;
+  }
+
+  return {
+    ...init,
+    headers: {
+      ...(init?.headers ?? {}),
+      "X-DeChord-User-Id": String(apiIdentityUserId),
+    },
+  };
+}
+
+function fetchWithIdentity(input: string, init?: RequestInit): Promise<Response> {
+  const nextInit = withIdentityHeaders(init);
+  if (nextInit === undefined) {
+    return fetch(input);
+  }
+  return fetch(input, nextInit);
+}
 
 export async function uploadAudio(
   file: File,
@@ -136,7 +166,7 @@ export async function uploadSongStem(
   form.append("stem_key", payload.stemKey);
   form.append("file", payload.file);
 
-  const res = await fetch(`${BASE}/api/songs/${songId}/stems/upload`, {
+  const res = await fetchWithIdentity(`${BASE}/api/songs/${songId}/stems/upload`, {
     method: "POST",
     body: form,
   });
@@ -151,7 +181,7 @@ export async function getSongTabs(songId: number): Promise<SongTabsResponse> {
 }
 
 export async function regenerateSongStems(songId: number): Promise<SongStemsResponse> {
-  const res = await fetch(`${BASE}/api/songs/${songId}/stems/regenerate`, {
+  const res = await fetchWithIdentity(`${BASE}/api/songs/${songId}/stems/regenerate`, {
     method: "POST",
   });
   if (!res.ok) throw new Error("Failed to regenerate stems");
@@ -181,7 +211,7 @@ export async function createSongNote(
     toast_duration_sec?: number;
   },
 ): Promise<SongNote> {
-  const res = await fetch(`${BASE}/api/songs/${songId}/notes`, {
+  const res = await fetchWithIdentity(`${BASE}/api/songs/${songId}/notes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -194,7 +224,7 @@ export async function updateSongNote(
   noteId: number,
   payload: { text?: string; toast_duration_sec?: number },
 ): Promise<{ id: number; text: string; toast_duration_sec: number | null }> {
-  const res = await fetch(`${BASE}/api/notes/${noteId}`, {
+  const res = await fetchWithIdentity(`${BASE}/api/notes/${noteId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -207,7 +237,7 @@ export async function resolveSongNote(
   noteId: number,
   resolved: boolean,
 ): Promise<{ id: number; resolved: boolean }> {
-  const res = await fetch(`${BASE}/api/notes/${noteId}/resolve`, {
+  const res = await fetchWithIdentity(`${BASE}/api/notes/${noteId}/resolve`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ resolved }),
@@ -217,7 +247,7 @@ export async function resolveSongNote(
 }
 
 export async function deleteSongNote(noteId: number): Promise<void> {
-  const res = await fetch(`${BASE}/api/notes/${noteId}`, {
+  const res = await fetchWithIdentity(`${BASE}/api/notes/${noteId}`, {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to delete note");
@@ -263,13 +293,44 @@ export async function listBands(): Promise<BandsListResponse> {
 }
 
 export async function listBandProjects(bandId: number): Promise<ProjectsListResponse> {
-  const res = await fetch(`${BASE}/api/bands/${bandId}/projects`);
+  const res = await fetchWithIdentity(`${BASE}/api/bands/${bandId}/projects`);
   if (!res.ok) throw new Error("Failed to fetch projects");
   return res.json();
 }
 
+export async function listBandMembers(bandId: number): Promise<BandMembersListResponse> {
+  const res = await fetchWithIdentity(`${BASE}/api/bands/${bandId}/members`);
+  if (!res.ok) throw new Error("Failed to fetch band members");
+
+  const payload = await res.json() as {
+    members: Array<{
+      id: string;
+      name: string;
+      role: string;
+      avatar: string;
+      presence_state: "not_live";
+    }>;
+  };
+
+  return {
+    members: payload.members.map((member) => ({
+      id: member.id,
+      name: member.name,
+      role: member.role,
+      avatar: member.avatar,
+      presenceState: member.presence_state,
+    })),
+  };
+}
+
+export async function getProjectActivity(projectId: number): Promise<ProjectActivityResponse> {
+  const res = await fetchWithIdentity(`${BASE}/api/projects/${projectId}/activity`);
+  if (!res.ok) throw new Error("Failed to fetch project activity");
+  return res.json();
+}
+
 export async function createBand(payload: BandCreatePayload): Promise<BandCreateResponse> {
-  const res = await fetch(`${BASE}/api/bands`, {
+  const res = await fetchWithIdentity(`${BASE}/api/bands`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

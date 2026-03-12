@@ -160,6 +160,8 @@ export interface IdentityClaimPayload {
   password: string;
 }
 
+export type PresenceState = "not_live";
+
 export interface BandSummary {
   id: number;
   name: string;
@@ -187,10 +189,20 @@ export interface ProjectSummary {
   description: string | null;
   created_at: string;
   song_count: number;
+  unread_count: number;
 }
 
 export interface ProjectsListResponse {
   projects: ProjectSummary[];
+}
+
+export interface ProjectCreateSummary {
+  id: number;
+  band_id: number;
+  name: string;
+  description: string | null;
+  created_at: string;
+  song_count: number;
 }
 
 export interface ProjectCreatePayload {
@@ -199,7 +211,7 @@ export interface ProjectCreatePayload {
 }
 
 export interface ProjectCreateResponse {
-  project: ProjectSummary;
+  project: ProjectCreateSummary;
 }
 
 export interface ProjectSongSummary {
@@ -215,4 +227,33 @@ export interface ProjectSongSummary {
 
 export interface ProjectSongsListResponse {
   songs: ProjectSongSummary[];
+}
+
+export interface BandMemberSummary {
+  id: string;
+  name: string;
+  role: string;
+  avatar: string;
+  presenceState: PresenceState;
+}
+
+export interface BandMembersListResponse {
+  members: BandMemberSummary[];
+}
+
+export interface ProjectActivityItem {
+  id: number;
+  event_type: string;
+  message: string;
+  author_name: string;
+  author_avatar: string | null;
+  timestamp: string;
+  song_id: number | null;
+  song_title: string | null;
+}
+
+export interface ProjectActivityResponse {
+  activity: ProjectActivityItem[];
+  unread_count: number;
+  presence_state: PresenceState;
 }

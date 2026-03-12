@@ -92,9 +92,11 @@ export interface Band {
 export interface BandMember {
   id: string;
   name: string;
-  instrument: string;
+  role: string;
   avatar: string;
-  isOnline: boolean;
+  presenceState: "not_live";
+  instrument?: string;
+  isOnline?: boolean;
 }
 
 export interface ActivityItem {

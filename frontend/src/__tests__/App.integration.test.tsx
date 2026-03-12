@@ -17,7 +17,9 @@ const {
   getSongTabsMock,
   listSongStemsMock,
   listBandsMock,
+  listBandMembersMock,
   listBandProjectsMock,
+  getProjectActivityMock,
   listProjectSongsMock,
   createBandMock,
   createProjectMock,
@@ -104,8 +106,16 @@ const {
   listBandsMock: vi.fn().mockResolvedValue({
     bands: [{ id: 10, name: "Default Band", owner_user_id: 1, created_at: "2026-03-09", project_count: 1 }],
   }),
+  listBandMembersMock: vi.fn().mockResolvedValue({
+    members: [{ id: "1", name: "Groove Bassline", role: "owner", avatar: "GB", presenceState: "not_live" }],
+  }),
   listBandProjectsMock: vi.fn().mockResolvedValue({
-    projects: [{ id: 20, band_id: 10, name: "Default Project", description: "", created_at: "2026-03-09", song_count: 1 }],
+    projects: [{ id: 20, band_id: 10, name: "Default Project", description: "", created_at: "2026-03-09", song_count: 1, unread_count: 0 }],
+  }),
+  getProjectActivityMock: vi.fn().mockResolvedValue({
+    activity: [],
+    unread_count: 0,
+    presence_state: "not_live",
   }),
   listProjectSongsMock: vi.fn().mockResolvedValue({
     songs: [{ id: 30, project_id: 20, title: "The Trooper", original_filename: "demo.mp3", created_at: "2026-03-09", key: "Em", tempo: 160, duration: 48 }],
@@ -138,8 +148,8 @@ vi.mock("../redesign/pages/PlayerPage", () => ({
       tab?: { sourceStemKey?: string | null } | null;
       notes?: Array<{ id: number; text: string; resolved: boolean }>;
     };
-    onCreateNote?: (payload: { type: "time" | "chord"; text: string; timestampSec?: number; chordIndex?: number }) => Promise<void> | void;
-    onEditNote?: (noteId: number, payload: { text: string }) => Promise<void> | void;
+    onCreateNote?: (payload: { type: "time" | "chord"; text: string; timestampSec?: number; chordIndex?: number; toastDurationSec?: number }) => Promise<void> | void;
+    onEditNote?: (noteId: number, payload: { text: string; toastDurationSec?: number }) => Promise<void> | void;
     onResolveNote?: (noteId: number, resolved: boolean) => Promise<void> | void;
     onDeleteNote?: (noteId: number) => Promise<void> | void;
   }) => {
@@ -163,6 +173,12 @@ vi.mock("../redesign/pages/PlayerPage", () => ({
         </button>
         <button type="button" onClick={() => void onEditNote?.(11, { text: "Player note edited" })}>
           Mock player edit note
+        </button>
+        <button type="button" onClick={() => void onCreateNote?.({ type: "time", text: "Player timed toast note", timestampSec: 21, toastDurationSec: 5 })}>
+          Mock player create toast note
+        </button>
+        <button type="button" onClick={() => void onEditNote?.(11, { text: "Player note with toast", toastDurationSec: 7 })}>
+          Mock player edit toast note
         </button>
         <button type="button" onClick={() => void onResolveNote?.(11, true)}>
           Mock player resolve note
@@ -189,7 +205,9 @@ vi.mock("../lib/api", async (importOriginal) => {
       },
     }),
     listBands: listBandsMock,
+    listBandMembers: listBandMembersMock,
     listBandProjects: listBandProjectsMock,
+    getProjectActivity: getProjectActivityMock,
     listProjectSongs: listProjectSongsMock,
     getJobStatus: getJobStatusMock,
     getResult: getResultMock,
@@ -223,7 +241,9 @@ describe("App integration", () => {
     getSongTabsMock.mockReset();
     listSongStemsMock.mockReset();
     listBandsMock.mockReset();
+    listBandMembersMock.mockReset();
     listBandProjectsMock.mockReset();
+    getProjectActivityMock.mockReset();
     listProjectSongsMock.mockReset();
     createBandMock.mockReset();
     createProjectMock.mockReset();
@@ -252,8 +272,16 @@ describe("App integration", () => {
     listBandsMock.mockResolvedValue({
       bands: [{ id: 10, name: "Default Band", owner_user_id: 1, created_at: "2026-03-09", project_count: 1 }],
     });
+    listBandMembersMock.mockResolvedValue({
+      members: [{ id: "1", name: "Groove Bassline", role: "owner", avatar: "GB", presenceState: "not_live" }],
+    });
     listBandProjectsMock.mockResolvedValue({
-      projects: [{ id: 20, band_id: 10, name: "Default Project", description: "", created_at: "2026-03-09", song_count: 1 }],
+      projects: [{ id: 20, band_id: 10, name: "Default Project", description: "", created_at: "2026-03-09", song_count: 1, unread_count: 0 }],
+    });
+    getProjectActivityMock.mockResolvedValue({
+      activity: [],
+      unread_count: 0,
+      presence_state: "not_live",
     });
     listProjectSongsMock.mockResolvedValue({
       songs: [{ id: 30, project_id: 20, title: "The Trooper", original_filename: "demo.mp3", created_at: "2026-03-09", key: "Em", tempo: 160, duration: 48 }],
@@ -349,6 +377,46 @@ describe("App integration", () => {
     });
   });
 
+  it("hydrates real members, unread counts, and project activity for project home", async () => {
+    listBandsMock.mockResolvedValueOnce({
+      bands: [{ id: 3, name: "Demo Band", owner_user_id: 1, created_at: "2026-03-10", project_count: 1 }],
+    });
+    listBandMembersMock.mockResolvedValueOnce({
+      members: [
+        { id: "1", name: "Wojtek", role: "owner", avatar: "W", presenceState: "not_live" },
+        { id: "2", name: "Alicja", role: "member", avatar: "A", presenceState: "not_live" },
+      ],
+    });
+    listBandProjectsMock.mockResolvedValueOnce({
+      projects: [{ id: 9, band_id: 3, name: "Collab", description: "", created_at: "2026-03-10", song_count: 1, unread_count: 2 }],
+    });
+    listProjectSongsMock.mockResolvedValueOnce({
+      songs: [{ id: 30, project_id: 9, title: "Demo", original_filename: "demo.mp3", created_at: "2026-03-10", key: "Em", tempo: 120, duration: 20 }],
+    });
+    getProjectActivityMock.mockResolvedValueOnce({
+      activity: [{ id: 1, event_type: "note_created", message: "left a note", author_name: "Alicja", author_avatar: "A", timestamp: "2026-03-10T10:00:00Z", song_title: "Demo", song_id: 30 }],
+      unread_count: 2,
+      presence_state: "not_live",
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Demo Band")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Demo Band"));
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Alicja").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("2").length).toBeGreaterThan(0);
+      expect(screen.getByText(/left a note/i)).toBeTruthy();
+      expect(screen.getByText(/in Demo/i)).toBeTruthy();
+    });
+  });
+
   it("shows honest empty state instead of mock bands when backend is empty", async () => {
     listBandsMock.mockResolvedValueOnce({ bands: [] });
 
@@ -389,7 +457,7 @@ describe("App integration", () => {
       bands: [{ id: 11, name: "My Band", owner_user_id: 1, created_at: "2026-03-10", project_count: 0 }],
     });
     listBandProjectsMock.mockResolvedValueOnce({ projects: [] }).mockResolvedValueOnce({
-      projects: [{ id: 21, band_id: 11, name: "Debut", description: "", created_at: "2026-03-10", song_count: 0 }],
+      projects: [{ id: 21, band_id: 11, name: "Debut", description: "", created_at: "2026-03-10", song_count: 0, unread_count: 0 }],
     });
     listProjectSongsMock.mockResolvedValueOnce({ songs: [] });
 
@@ -816,7 +884,7 @@ describe("App integration", () => {
       bands: [{ id: 10, name: "Demo Band", owner_user_id: 1, created_at: "2026-03-09", project_count: 1 }],
     });
     listBandProjectsMock.mockResolvedValueOnce({
-      projects: [{ id: 20, band_id: 10, name: "Demo Project", description: "", created_at: "2026-03-09", song_count: 1 }],
+      projects: [{ id: 20, band_id: 10, name: "Demo Project", description: "", created_at: "2026-03-09", song_count: 1, unread_count: 0 }],
     });
     listProjectSongsMock.mockResolvedValueOnce({
       songs: [{ id: 30, project_id: 20, title: "Demo Song", original_filename: "demo.mp3", created_at: "2026-03-09", key: "C", tempo: 120, duration: 10 }],
@@ -1055,6 +1123,7 @@ describe("App integration", () => {
     } as Response);
 
     const actualApi = await vi.importActual<typeof import("../lib/api")>("../lib/api");
+    actualApi.setApiIdentityUserId(null);
 
     await actualApi.resolveSongNote(91, true);
 
@@ -1284,6 +1353,142 @@ describe("App integration", () => {
     });
 
     expect(getSongMock).toHaveBeenCalledTimes(5);
+  });
+
+  it("forwards toastDurationSec through player note mutations", async () => {
+    getSongMock
+      .mockResolvedValueOnce({
+        song: { id: 30, title: "The Trooper", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-09" },
+        analysis: { key: "Em", tempo: 160, duration: 48, chords: [{ start: 0, end: 2, label: "Em" }] },
+        notes: [
+          {
+            id: 11,
+            type: "chord",
+            timestamp_sec: null,
+            chord_index: 0,
+            text: "Lock verse entry",
+            toast_duration_sec: null,
+            resolved: false,
+            author_name: "Wojtek",
+            author_avatar: "WG",
+            created_at: "2026-03-10T10:00:00Z",
+            updated_at: "2026-03-10T10:00:00Z",
+          },
+        ],
+        playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+      })
+      .mockResolvedValueOnce({
+        song: { id: 30, title: "The Trooper", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-09" },
+        analysis: { key: "Em", tempo: 160, duration: 48, chords: [{ start: 0, end: 2, label: "Em" }] },
+        notes: [
+          {
+            id: 11,
+            type: "chord",
+            timestamp_sec: null,
+            chord_index: 0,
+            text: "Player note with toast",
+            toast_duration_sec: 7,
+            resolved: false,
+            author_name: "Wojtek",
+            author_avatar: "WG",
+            created_at: "2026-03-10T10:00:00Z",
+            updated_at: "2026-03-10T10:00:00Z",
+          },
+          {
+            id: 301,
+            type: "time",
+            timestamp_sec: 21,
+            chord_index: null,
+            text: "Player timed toast note",
+            toast_duration_sec: 5,
+            resolved: false,
+            author_name: "Wojtek",
+            author_avatar: "WG",
+            created_at: "2026-03-10T10:10:00Z",
+            updated_at: "2026-03-10T10:10:00Z",
+          },
+        ],
+        playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+      })
+      .mockResolvedValueOnce({
+        song: { id: 30, title: "The Trooper", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-09" },
+        analysis: { key: "Em", tempo: 160, duration: 48, chords: [{ start: 0, end: 2, label: "Em" }] },
+        notes: [
+          {
+            id: 11,
+            type: "chord",
+            timestamp_sec: null,
+            chord_index: 0,
+            text: "Player note with toast",
+            toast_duration_sec: 7,
+            resolved: false,
+            author_name: "Wojtek",
+            author_avatar: "WG",
+            created_at: "2026-03-10T10:00:00Z",
+            updated_at: "2026-03-10T10:00:00Z",
+          },
+          {
+            id: 301,
+            type: "time",
+            timestamp_sec: 21,
+            chord_index: null,
+            text: "Player timed toast note",
+            toast_duration_sec: 5,
+            resolved: false,
+            author_name: "Wojtek",
+            author_avatar: "WG",
+            created_at: "2026-03-10T10:10:00Z",
+            updated_at: "2026-03-10T10:10:00Z",
+          },
+        ],
+        playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+      });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    await waitFor(() => {
+      expect(screen.getByText("Your Bands")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Default Band"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library →")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    await waitFor(() => {
+      expect(screen.getByText("The Trooper")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("The Trooper"));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /open player/i })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /open player/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /mock player create toast note/i })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /mock player create toast note/i }));
+    fireEvent.click(screen.getByRole("button", { name: /mock player edit toast note/i }));
+
+    await waitFor(() => {
+      expect(createSongNoteMock).toHaveBeenCalledWith(30, {
+        type: "time",
+        text: "Player timed toast note",
+        timestamp_sec: 21,
+        toast_duration_sec: 5,
+      });
+    });
+    await waitFor(() => {
+      expect(updateSongNoteMock).toHaveBeenCalledWith(11, {
+        text: "Player note with toast",
+        toast_duration_sec: 7,
+      });
+    });
   });
 
   it("routes player note mutations through App and refreshes the active player route after each success", async () => {
