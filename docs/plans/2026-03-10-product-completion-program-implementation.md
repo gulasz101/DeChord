@@ -25,7 +25,7 @@
   <task>[x] Task 10: Plan the collaboration slice in detail.</task>
   <task>[x] Task 11: Implement and verify the collaboration slice.</task>
   <task>[x] Task 12: Plan the hardening-and-finish slice in detail.</task>
-  <task>[ ] Task 13: Implement and verify the hardening-and-finish slice.</task>
+  <task>[x] Task 13: Implement and verify the hardening-and-finish slice.</task>
   <task>[ ] Task 14: Run full reset-based verification, update the plan records, and prepare handoff.</task>
 </phase>
 
@@ -83,11 +83,11 @@ Use this section as the durable landing zone for each slice's linked docs, statu
 
 ### Slice 6: Hardening and Finish
 
-- Status: Planned in detail; reliability/hygiene-first implementation not started.
+- Status: Complete and verification-backed.
 - Design doc: `docs/plans/2026-03-10-hardening-finish-design.md`
 - Implementation doc: `docs/plans/2026-03-10-hardening-finish-implementation.md` (includes XML `<phase>` / `<task>` tracking for execution and an explicit hardening quality gate)
-- Verification notes: Not recorded yet.
-- Commit links: Not recorded yet.
+- Verification notes: On 2026-03-12, focused verification passed before reset with `uv run --project backend pytest backend/tests/test_db_bootstrap.py -k "runtime_paths_create_missing_dirs or app_uses_lifespan_instead_of_event_hooks" -q` (2 passed, 6 deselected), `npm --prefix frontend test -- --run src/__tests__/App.integration.test.tsx` (1 file passed, 25 tests passed), and `npm --prefix frontend run build` (build succeeded; existing Vite chunk-size warning for `alphaTab` only). `make reset` then passed, `make up` passed, readiness was confirmed after restart, and runtime directories `backend/uploads`, `backend/stems`, and `backend/cache` were present again after startup. The runtime after the final restart served frontend at `http://127.0.0.1:4746`, backend at `http://127.0.0.1:4166`, and used stable browser verification route `http://dechord.localhost`. After reset, the same focused backend pytest command passed again with 2 passed and 6 deselected, the same frontend Vitest command passed again with 1 file passed and 25 tests passed, and the same frontend build command succeeded again with the same `alphaTab` warning only. Manual verification confirmed runtime-dir recreation after `make reset` / `make up`, and active doc cleanup succeeded because `rg "TransportBarSpeed\.test\.tsx|TransportBarSpeed" docs/plans/2026-03-10-product-completion-program-implementation.md docs/plans/2026-03-09-opus53-frontend-redesign-implementation.md` returned no matches. The reset-loss honesty check on `http://dechord.localhost` also exposed an environment limitation: starting a processing journey and then running `make reset && make up` reloads the SPA back to the landing page when the frontend restarts, so the honest reset-loss copy is not directly observable manually on that stable route path. The canonical evidence for reset-loss honesty in this slice is therefore the focused integration coverage, including the transient-network retry regression added for the real reset sequence.
+- Commit links: local commits `cf911df`, `bd845a3`, `6a1592b`, `d93d78b`, and `dfbcdaf`. Pushed links not recorded yet.
 
 ## Task 1: Create Master Gap Matrix and Baseline
 

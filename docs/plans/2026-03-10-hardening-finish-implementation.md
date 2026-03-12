@@ -12,11 +12,11 @@
 
 ## XML Tracking
 
-<phase id="hardening-finish-plan-execution" status="planned">
-  <task>[ ] Task 1: Lock reset-safe backend runtime bootstrap with failing tests.</task>
-  <task>[ ] Task 2: Lock truthful reset-loss journey behavior in the frontend.</task>
-  <task>[ ] Task 3: Normalize misleading active verification references.</task>
-  <task>[ ] Task 4: Run the hardening quality gate and record slice status.</task>
+<phase id="hardening-finish-plan-execution" status="completed">
+  <task>[x] Task 1: Lock reset-safe backend runtime bootstrap with failing tests.</task>
+  <task>[x] Task 2: Lock truthful reset-loss journey behavior in the frontend.</task>
+  <task>[x] Task 3: Normalize misleading active verification references.</task>
+  <task>[x] Task 4: Run the hardening quality gate and record slice status.</task>
 </phase>
 
 ### Task 1: Lock reset-safe backend runtime bootstrap with failing tests
@@ -342,6 +342,34 @@ Expected: PASS. The only accepted warning-only note is the existing Vite chunk-s
 - `make reset` and `make up` succeed
 - rerun verification after reset matches the expected outcomes
 - Slice 6 ledger and XML tracking are updated with final status
+
+### Task 4 Verification Record
+
+- Focused verification before reset:
+  - `uv run --project backend pytest backend/tests/test_db_bootstrap.py -k "runtime_paths_create_missing_dirs or app_uses_lifespan_instead_of_event_hooks" -q` -> PASS (`2 passed, 6 deselected`)
+  - `npm --prefix frontend test -- --run src/__tests__/App.integration.test.tsx` -> PASS (`1 file passed, 25 tests passed`)
+  - `npm --prefix frontend run build` -> PASS (build succeeded; existing Vite chunk-size warning for `alphaTab` only)
+- Reset / restart evidence:
+  - `make reset` -> PASS
+  - `make up` -> PASS
+  - readiness was confirmed after restart
+  - runtime directories were confirmed present after restart: `backend/uploads`, `backend/stems`, and `backend/cache`
+  - runtime after the final restart served frontend at `http://127.0.0.1:4746`, backend at `http://127.0.0.1:4166`, and used stable browser verification route `http://dechord.localhost`
+- Focused verification after reset:
+  - `uv run --project backend pytest backend/tests/test_db_bootstrap.py -k "runtime_paths_create_missing_dirs or app_uses_lifespan_instead_of_event_hooks" -q` -> PASS again (`2 passed, 6 deselected`)
+  - `npm --prefix frontend test -- --run src/__tests__/App.integration.test.tsx` -> PASS again (`1 file passed, 25 tests passed`)
+  - `npm --prefix frontend run build` -> PASS again (build succeeded; same existing `alphaTab` warning only)
+- Manual verification record:
+  - runtime-dir recreation succeeded after `make reset` / `make up`: `backend/uploads`, `backend/stems`, and `backend/cache` all existed after readiness was confirmed
+  - active doc cleanup succeeded: `rg "TransportBarSpeed\.test\.tsx|TransportBarSpeed" docs/plans/2026-03-10-product-completion-program-implementation.md docs/plans/2026-03-09-opus53-frontend-redesign-implementation.md` returned no matches
+  - reset-loss honesty check on `http://dechord.localhost` exposed an environment limitation: starting a processing journey and then running `make reset && make up` reloads the SPA back to the landing page when the frontend restarts
+  - because client route state is lost during the real frontend restart, the honest reset-loss copy is not directly observable manually on that stable route path
+  - canonical evidence for reset-loss honesty in this slice is therefore the focused integration coverage, including the transient-network retry regression added for the real reset sequence
+
+### Quality-Gate Notes
+
+- Manual reset-loss verification on the stable route is limited by the full frontend restart returning the SPA to landing-page state.
+- The authoritative proof for the reset-loss copy path is the focused integration coverage, not a claimed manual observation.
 
 **Step 5: Commit**
 
