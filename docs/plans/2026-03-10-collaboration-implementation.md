@@ -12,12 +12,12 @@
 
 ## XML Tracking
 
-<phase id="collaboration-plan-execution" status="planned">
-  <task>[ ] Task 1: Lock the backend collaboration contract with failing schema and API tests.</task>
-  <task>[ ] Task 2: Align frontend collaboration API helpers, types, and route hydration with the backend contract.</task>
-  <task>[ ] Task 3: Render truthful member, activity, unread, and placeholder-presence state in project home.</task>
-  <task>[ ] Task 4: Wire read-marking and collaboration refresh behavior through the app shell.</task>
-  <task>[ ] Task 5: Run the collaboration quality gate and record slice status.</task>
+<phase id="collaboration-plan-execution" status="completed">
+  <task>[x] Task 1: Lock the backend collaboration contract with failing schema and API tests.</task>
+  <task>[x] Task 2: Align frontend collaboration API helpers, types, and route hydration with the backend contract.</task>
+  <task>[x] Task 3: Render truthful member, activity, unread, and placeholder-presence state in project home.</task>
+  <task>[x] Task 4: Wire read-marking and collaboration refresh behavior through the app shell.</task>
+  <task>[x] Task 5: Run the collaboration quality gate and record slice status.</task>
 </phase>
 
 ### Task 1: Lock the backend collaboration contract with failing schema and API tests
@@ -498,12 +498,12 @@ After code is green, record all of the following:
 
 **Step 4: Run test to verify it passes**
 
-Run: `uv run --project backend pytest backend/tests/test_api.py -k "band_members_and_project_unread_counts_are_backed_by_memberships_and_reads or project_activity_and_mark_read_use_acting_user_identity" -q && npm --prefix frontend test -- --run src/lib/__tests__/api.bands-projects.test.ts src/redesign/pages/__tests__/ProjectHomePage.collaboration.test.tsx src/__tests__/App.integration.test.tsx && make reset && make up && uv run --project backend pytest backend/tests/test_api.py -k "band_members_and_project_unread_counts_are_backed_by_memberships_and_reads or project_activity_and_mark_read_use_acting_user_identity" -q && npm --prefix frontend test -- --run src/lib/__tests__/api.bands-projects.test.ts src/redesign/pages/__tests__/ProjectHomePage.collaboration.test.tsx src/__tests__/App.integration.test.tsx`
+Run: `uv run --project backend pytest backend/tests/test_api.py -k "band_members_and_project_unread_counts_are_backed_by_memberships_and_reads or project_activity_and_mark_read_use_acting_user_identity or create_band_uses_request_identity_for_owner_membership or collaboration_routes_reject_users_who_are_not_band_members or tab_from_demucs_stems_uses_request_identity_and_records_activity_when_creating_song or project_activity_reads_reject_cross_project_event_pointers or outsider_write_routes_cannot_mutate_project_collaboration_state" -q && npm --prefix frontend test -- --run src/lib/__tests__/api.bands-projects.test.ts src/redesign/pages/__tests__/ProjectHomePage.collaboration.test.tsx src/__tests__/App.integration.test.tsx && make reset && make up && uv run --project backend pytest backend/tests/test_api.py -k "band_members_and_project_unread_counts_are_backed_by_memberships_and_reads or project_activity_and_mark_read_use_acting_user_identity or create_band_uses_request_identity_for_owner_membership or collaboration_routes_reject_users_who_are_not_band_members or tab_from_demucs_stems_uses_request_identity_and_records_activity_when_creating_song or project_activity_reads_reject_cross_project_event_pointers or outsider_write_routes_cannot_mutate_project_collaboration_state" -q && npm --prefix frontend test -- --run src/lib/__tests__/api.bands-projects.test.ts src/redesign/pages/__tests__/ProjectHomePage.collaboration.test.tsx src/__tests__/App.integration.test.tsx`
 Expected: PASS. Then manually verify the collaboration flow with at least two identities after `make up`.
 
 ## Collaboration Quality Gate
 
-- `uv run --project backend pytest backend/tests/test_api.py -k "band_members_and_project_unread_counts_are_backed_by_memberships_and_reads or project_activity_and_mark_read_use_acting_user_identity" -q`
+- `uv run --project backend pytest backend/tests/test_api.py -k "band_members_and_project_unread_counts_are_backed_by_memberships_and_reads or project_activity_and_mark_read_use_acting_user_identity or create_band_uses_request_identity_for_owner_membership or collaboration_routes_reject_users_who_are_not_band_members or tab_from_demucs_stems_uses_request_identity_and_records_activity_when_creating_song or project_activity_reads_reject_cross_project_event_pointers or outsider_write_routes_cannot_mutate_project_collaboration_state" -q`
 - `npm --prefix frontend test -- --run src/lib/__tests__/api.bands-projects.test.ts src/redesign/pages/__tests__/ProjectHomePage.collaboration.test.tsx src/__tests__/App.integration.test.tsx`
 - `make reset`
 - `make up`
@@ -516,10 +516,25 @@ Expected: PASS. Then manually verify the collaboration flow with at least two id
 
 ### Task 5 Verification Record
 
-- Record the pre-reset backend and frontend command results here once implementation is complete.
-- Record the post-`make reset` / `make up` rerun results here once implementation is complete.
-- Record manual two-identity verification here once implementation is complete.
-- Record the supporting local commits for this slice here once implementation is complete.
+- Focused verification before reset:
+  - `uv run --project backend pytest backend/tests/test_api.py -k "band_members_and_project_unread_counts_are_backed_by_memberships_and_reads or project_activity_and_mark_read_use_acting_user_identity or create_band_uses_request_identity_for_owner_membership or collaboration_routes_reject_users_who_are_not_band_members or tab_from_demucs_stems_uses_request_identity_and_records_activity_when_creating_song or project_activity_reads_reject_cross_project_event_pointers or outsider_write_routes_cannot_mutate_project_collaboration_state" -q` passed with 7 passed, 45 deselected, and warnings limited to the existing FastAPI `on_event` deprecations.
+  - `npm --prefix frontend test -- --run src/lib/__tests__/api.bands-projects.test.ts src/redesign/pages/__tests__/ProjectHomePage.collaboration.test.tsx src/__tests__/App.integration.test.tsx` passed with 3 files passed and 30 tests passed.
+  - `npm --prefix frontend run build` succeeded; the only note was the existing Vite chunk-size warning for `alphaTab`.
+- Reset and restart evidence:
+  - `make reset` passed.
+  - `make up` passed.
+  - After the final restart, the runtime served frontend at `http://127.0.0.1:4073` and backend at `http://127.0.0.1:4300`.
+- Focused verification after reset:
+  - The same backend pytest command passed again with 7 passed, 45 deselected, and the same FastAPI `on_event` deprecation warnings only.
+  - The same frontend Vitest command passed again with 3 files passed and 30 tests passed.
+  - The same frontend build command succeeded again with the same `alphaTab` warning only.
+- Manual verification with two identities:
+  - The current browser identity resolved to user `3` / `Analog Vocalist`, and the second identity used to create collaboration activity was user `1` / `Wojtek`.
+  - Before opening project home as user `3`, `GET /api/bands/1/projects` returned `unread_count: 1` for `Default Project`, and `GET /api/projects/1/activity` returned `unread_count: 1` with activity authored by `Wojtek` for song `Clara Luciani - La grenade`.
+  - Opening `Default Band` in the browser showed `Wojtek` as `OWNER` and `Analog Vocalist` as `MEMBER`, explicit copy `Presence updates are not live yet.`, no fake live indicators, recent activity `Wojtek uploaded a song` in `Clara Luciani - La grenade`, and project stats updated to `1` song and `0` unread after mark-read.
+  - After opening the project home as user `3`, `GET /api/projects/1/activity` returned `unread_count: 0`, confirming that the read marker cleared unread on open.
+  - This manual workflow verified truthful members, truthful activity attribution, truthful unread clearing, and honest placeholder presence.
+- Supporting local commits for this slice: `e5e4249`, `ac0cbe8`, `6d013c7`, `b1641a8`, and `ed6b586`.
 
 **Step 5: Commit**
 

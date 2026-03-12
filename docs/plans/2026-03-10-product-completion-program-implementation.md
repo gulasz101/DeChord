@@ -23,7 +23,7 @@
   <task>[x] Task 8: Plan the notes-and-rehearsal slice in detail.</task>
   <task>[x] Task 9: Implement and verify the notes-and-rehearsal slice.</task>
   <task>[x] Task 10: Plan the collaboration slice in detail.</task>
-  <task>[ ] Task 11: Implement and verify the collaboration slice.</task>
+  <task>[x] Task 11: Implement and verify the collaboration slice.</task>
   <task>[ ] Task 12: Plan the hardening-and-finish slice in detail.</task>
   <task>[ ] Task 13: Implement and verify the hardening-and-finish slice.</task>
   <task>[ ] Task 14: Run full reset-based verification, update the plan records, and prepare handoff.</task>
@@ -75,11 +75,11 @@ Use this section as the durable landing zone for each slice's linked docs, statu
 
 ### Slice 5: Collaboration
 
-- Status: Planned in detail; implementation not started.
+- Status: Complete and verification-backed.
 - Design doc: `docs/plans/2026-03-10-collaboration-design.md`
 - Implementation doc: `docs/plans/2026-03-10-collaboration-implementation.md` (includes XML `<phase>` / `<task>` tracking for execution and an explicit collaboration quality gate)
-- Verification notes: Planning only so far. The approved slice is truthful collaboration basics first: real member lists, real project activity, real unread counts, and an explicit placeholder presence strategy. Invites, permissions, role-management, live presence, and broader social features remain deferred until a later slice.
-- Commit links: Not recorded yet.
+- Verification notes: On 2026-03-12, focused verification passed before reset with `uv run --project backend pytest backend/tests/test_api.py -k "band_members_and_project_unread_counts_are_backed_by_memberships_and_reads or project_activity_and_mark_read_use_acting_user_identity or create_band_uses_request_identity_for_owner_membership or collaboration_routes_reject_users_who_are_not_band_members or tab_from_demucs_stems_uses_request_identity_and_records_activity_when_creating_song or project_activity_reads_reject_cross_project_event_pointers or outsider_write_routes_cannot_mutate_project_collaboration_state" -q` (7 passed, 45 deselected, warnings limited to the existing FastAPI `on_event` deprecations), `npm --prefix frontend test -- --run src/lib/__tests__/api.bands-projects.test.ts src/redesign/pages/__tests__/ProjectHomePage.collaboration.test.tsx src/__tests__/App.integration.test.tsx` (3 files passed, 30 tests passed), and `npm --prefix frontend run build` (build succeeded; existing Vite chunk-size warning for `alphaTab` only). `make reset` then passed, `make up` passed, and the runtime after the final restart served frontend at `http://127.0.0.1:4073` and backend at `http://127.0.0.1:4300`. After reset, the same backend pytest command passed again with 7 passed, 45 deselected, and the same warnings only, the same frontend Vitest command passed again with 3 files passed and 30 tests passed, and the same frontend build command succeeded again with the same `alphaTab` warning only. Manual verification then used two identities: the active browser resolved to user `3` / `Analog Vocalist`, while user `1` / `Wojtek` created the collaboration event. Before opening project home as user `3`, `GET /api/bands/1/projects` returned `unread_count: 1` for `Default Project`, and `GET /api/projects/1/activity` returned `unread_count: 1` with activity authored by `Wojtek` for song `Clara Luciani - La grenade`. Opening `Default Band` showed `Wojtek` as `OWNER`, `Analog Vocalist` as `MEMBER`, explicit copy `Presence updates are not live yet.`, no fake live indicators, recent activity `Wojtek uploaded a song` in `Clara Luciani - La grenade`, and project stats updated to `1` song and `0` unread after mark-read. A post-open API check for user `3` then showed `GET /api/projects/1/activity` unread_count `0`, confirming truthful unread clearing on open alongside truthful members, truthful activity attribution, and honest placeholder presence.
+- Commit links: local commits `e5e4249`, `ac0cbe8`, `6d013c7`, `b1641a8`, and `ed6b586`. Pushed links not recorded yet.
 
 ### Slice 6: Hardening and Finish
 
