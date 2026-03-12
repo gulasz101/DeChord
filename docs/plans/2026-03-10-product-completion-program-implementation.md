@@ -26,7 +26,7 @@
   <task>[x] Task 11: Implement and verify the collaboration slice.</task>
   <task>[x] Task 12: Plan the hardening-and-finish slice in detail.</task>
   <task>[x] Task 13: Implement and verify the hardening-and-finish slice.</task>
-  <task>[ ] Task 14: Run full reset-based verification, update the plan records, and prepare handoff.</task>
+  <task>[x] Task 14: Run full reset-based verification, update the plan records, and prepare handoff.</task>
 </phase>
 
 ## Program Rules
@@ -464,6 +464,18 @@ git commit -m "docs: plan hardening and finish slice (docs/plans/2026-03-10-prod
 **Step 3: Run `make reset` and verify again**
 
 **Step 4: Update this master plan with completion status and commit links**
+
+### Slice 7: Final Verification and Handoff (Task 14)
+
+- Status: Complete and verification-backed.
+- Verification date: 2026-03-12
+- Reset result: `make reset` completed without error. Runtime directories `backend/uploads`, `backend/stems` recreated on reset.
+- Backend pytest result after reset: `uv run --project backend pytest backend/tests/ -q` — **259 passed, 2 failed, 2 warnings**. The 2 failures are both pre-existing baseline issues: (1) `test_list_bands_projects_and_project_songs` — recorded as the known pre-existing baseline defect since Task 1; (2) `test_parse_gp5_bass_track_reads_bass_notes` — test fixture `test songs/Muse - Hysteria.gp5` is not present in the worktree environment; this is an environment/fixture gap, not a new regression.
+- Frontend Vitest result after reset: `npm --prefix frontend test -- --run` — **27 files passed, 112 tests passed** (all slices covered).
+- Handoff summary:
+  - **Completed:** All six vertical slices implemented and test-backed — processing journey, song detail completeness, real player, notes and rehearsal, collaboration, hardening and finish.
+  - **Deferred/known gaps:** (1) `test_list_bands_projects_and_project_songs` remains a known hierarchy/listing defect carried from Task 1 baseline; (2) stem playback mode switching not enabled in the player (the side-panel controls exist but stem-playback-mode switching was explicitly scoped out of Slice 3); (3) live presence is honest-placeholder only (deferred by design in Slice 5); (4) GP5 reference test fixture (`Muse - Hysteria.gp5`) not present in this environment.
+  - **Next best slice:** If work continues, the natural next slice would be either enabling real stem-playback-mode switching in the player or resolving the known songs-in-project listing defect.
 
 ## Task 14: Final Verification and Handoff
 
