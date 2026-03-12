@@ -24,7 +24,7 @@
   <task>[x] Task 9: Implement and verify the notes-and-rehearsal slice.</task>
   <task>[x] Task 10: Plan the collaboration slice in detail.</task>
   <task>[x] Task 11: Implement and verify the collaboration slice.</task>
-  <task>[ ] Task 12: Plan the hardening-and-finish slice in detail.</task>
+  <task>[x] Task 12: Plan the hardening-and-finish slice in detail.</task>
   <task>[ ] Task 13: Implement and verify the hardening-and-finish slice.</task>
   <task>[ ] Task 14: Run full reset-based verification, update the plan records, and prepare handoff.</task>
 </phase>
@@ -83,9 +83,9 @@ Use this section as the durable landing zone for each slice's linked docs, statu
 
 ### Slice 6: Hardening and Finish
 
-- Status: Planned, not started.
-- Design doc: `docs/plans/2026-03-10-hardening-finish-design.md` (to create)
-- Implementation doc: `docs/plans/2026-03-10-hardening-finish-implementation.md` (to create)
+- Status: Planned in detail; reliability/hygiene-first implementation not started.
+- Design doc: `docs/plans/2026-03-10-hardening-finish-design.md`
+- Implementation doc: `docs/plans/2026-03-10-hardening-finish-implementation.md` (includes XML `<phase>` / `<task>` tracking for execution and an explicit hardening quality gate)
 - Verification notes: Not recorded yet.
 - Commit links: Not recorded yet.
 
@@ -116,7 +116,7 @@ List the current targeted checks that will be used during the program, such as:
 
 ```bash
 npm --prefix frontend test -- --run src/__tests__/App.integration.test.tsx
-npm --prefix frontend test -- --run src/redesign/pages/__tests__/SongDetailPage.test.tsx src/components/__tests__/TabViewerPanel.test.tsx src/components/__tests__/TransportBarSpeed.test.tsx
+npm --prefix frontend test -- --run src/redesign/pages/__tests__/SongDetailPage.test.tsx src/components/__tests__/TabViewerPanel.test.tsx src/components/__tests__/TransportBar.transport.test.tsx
 uv run --project backend pytest backend/tests/test_api.py -q
 ```
 
