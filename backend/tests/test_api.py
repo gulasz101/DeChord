@@ -32,6 +32,9 @@ def _build_client(tmp_path: Path, monkeypatch):
 
     main = importlib.reload(main_mod)
 
+    import app.db as _db_mod
+    asyncio.run(_db_mod.reset_db_client_for_tests())
+
     def immediate_submit(fn, *args, **kwargs):
         thread = threading.Thread(target=fn, args=args, kwargs=kwargs)
         thread.start()
