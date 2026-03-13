@@ -553,30 +553,10 @@ async def _persist_generated_stems_blobs(
     actor_user: dict,
     version_label: str | None = None,
 ) -> str:
-    """INSERT all stems as new rows (additive). Skips stems where a user upload already exists. Prunes obsolete system-only stems. Returns the generation_id."""
+    """INSERT all stems as new rows — purely additive, never deletes existing rows. Returns the generation_id."""
     gen_id = str(uuid.uuid4())
-    label = version_label or _build_version_label("regen")
-    # Check for existing stems to preserve user uploads and prune obsolete system rows
-    existing = await _load_song_stems(song_id)
-    user_keys = {s["stem_key"] for s in existing if s["source_type"] == "user"}
-    generated_keys = {stem.stem_key for stem in stems}
-    # Prune system stems that are not in the new generation
-    for s in existing:
-        if s["source_type"] != "system":
-            continue
-        if s["stem_key"] not in generated_keys:
-            await execute(
-                "DELETE FROM song_stems WHERE id = ?",
-                [int(s["id"])],
-            )
+    label = version_label or _build_version_label("gen")
     for stem in stems:
-        if stem.stem_key in user_keys:
-            continue
-        # Replace old system rows for this key before inserting the new one
-        await execute(
-            "DELETE FROM song_stems WHERE song_id = ? AND stem_key = ? AND source_type = 'system'",
-            [song_id, stem.stem_key],
-        )
         display_name = _build_stem_display_name(stem.stem_key, "system")
         await _insert_stem_blob(
             song_id,

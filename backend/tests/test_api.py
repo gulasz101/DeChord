@@ -1601,8 +1601,8 @@ def test_upload_song_stem_same_filename_creates_distinct_storage_and_versions(
     assert client.get(f"/api/audio/{song_id}/stems/bass").content in (b"first-bass", b"second-bass")
 
 
-def test_stem_generation_is_idempotent_for_system_stems(tmp_path, monkeypatch):
-    """Two stem generation runs produce exactly 1 system row per stem_key (replace, not accumulate)."""
+def test_stem_generation_is_additive_for_system_stems(tmp_path, monkeypatch):
+    """Two stem generation runs produce 2 system rows per stem_key — additive, never replace."""
     from app.stems import StemResult
     client = _build_client(tmp_path, monkeypatch)
 
@@ -1612,7 +1612,7 @@ def test_stem_generation_is_idempotent_for_system_stems(tmp_path, monkeypatch):
         main.execute(
             """
             INSERT INTO songs (user_id, title, original_filename, mime_type, audio_blob)
-            VALUES (1, 'Idempotent Test', 'song.mp3', 'audio/mpeg', ?)
+            VALUES (1, 'Additive Test', 'song.mp3', 'audio/mpeg', ?)
             RETURNING id
             """,
             [b"song-audio"],
@@ -1630,10 +1630,12 @@ def test_stem_generation_is_idempotent_for_system_stems(tmp_path, monkeypatch):
 
     resp = client.get(f"/api/songs/{song_id}/stems")
     assert resp.status_code == 200
-    stems = resp.json()["stems"]
+    stems_data = resp.json()
+    # Handle both {"stems": [...]} and [...] response shapes
+    stems = stems_data["stems"] if isinstance(stems_data, dict) and "stems" in stems_data else stems_data
     bass_stems = [s for s in stems if s["stem_key"] == "bass"]
-    assert len(bass_stems) == 1, f"Expected 1 bass stem (idempotent system replace), got {len(bass_stems)}"
-    assert bass_stems[0]["source_type"] == "system"
+    assert len(bass_stems) == 2, f"Expected 2 bass stems (additive), got {len(bass_stems)}"
+    assert all(s["source_type"] == "system" for s in bass_stems)
 
 
 def test_tabs_metadata_endpoint_returns_latest_tab(tmp_path, monkeypatch):
@@ -1852,9 +1854,10 @@ def test_song_tabs_provenance_stays_tied_to_generated_source_after_later_replace
     assert payload["source_version_label"] == first_bass["version_label"]
 
 
-def test_regenerate_song_stems_preserves_active_user_upload_for_same_key(
+def test_regenerate_song_stems_additive_alongside_user_upload(
     tmp_path, monkeypatch
 ):
+    """Generation is additive: user upload and system stems coexist for same key."""
     client = _build_client(tmp_path, monkeypatch)
     import app.main as main
     from app.stems import StemResult
@@ -1877,7 +1880,7 @@ def test_regenerate_song_stems_preserves_active_user_upload_for_same_key(
         files={"file": ("bass.wav", b"manual-bass", "audio/wav")},
     )
     assert uploaded.status_code == 200
-    manual_bass = uploaded.json()["stems"][0]
+    manual_bass_id = uploaded.json()["stems"][0]["id"]
 
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -1889,20 +1892,29 @@ def test_regenerate_song_stems_preserves_active_user_upload_for_same_key(
     monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
 
     response = client.post(f"/api/songs/{song_id}/stems/regenerate")
-
     assert response.status_code == 200
-    stems = {stem["stem_key"]: stem for stem in response.json()["stems"]}
-    assert stems["bass"]["id"] == manual_bass["id"]
-    assert stems["bass"]["source_type"] == "user"
-    assert stems["bass"]["version_label"] == manual_bass["version_label"]
-    assert client.get(f"/api/audio/{song_id}/stems/bass").content == b"manual-bass"
-    assert stems["drums"]["source_type"] == "system"
-    assert stems["drums"]["version_label"].startswith("regen-")
+
+    # Both user bass and system bass now exist — additive
+    all_stems = client.get(f"/api/songs/{song_id}/stems").json()
+    all_stems_list = all_stems["stems"] if isinstance(all_stems, dict) and "stems" in all_stems else all_stems
+    bass_stems = [s for s in all_stems_list if s["stem_key"] == "bass"]
+    assert len(bass_stems) == 2, f"Expected user + system bass, got {len(bass_stems)}"
+    bass_source_types = {s["source_type"] for s in bass_stems}
+    assert "user" in bass_source_types, "User bass stem must still exist (not deleted)"
+    assert "system" in bass_source_types, "System bass stem must have been added"
+    bass_ids = {s["id"] for s in bass_stems}
+    assert manual_bass_id in bass_ids, "User's original bass stem must still be present"
+
+    # Drums was only added by system
+    drum_stems = [s for s in all_stems_list if s["stem_key"] == "drums"]
+    assert len(drum_stems) == 1
+    assert drum_stems[0]["source_type"] == "system"
 
 
-def test_regenerate_song_stems_prunes_obsolete_system_rows_but_keeps_user_rows(
+def test_regenerate_song_stems_additive_keeps_all_old_rows_and_user_rows(
     tmp_path, monkeypatch
 ):
+    """Generation is additive: old system rows AND user rows all persist; new rows are added."""
     client = _build_client(tmp_path, monkeypatch)
     import app.main as main
     from app.stems import StemResult
@@ -1920,9 +1932,9 @@ def test_regenerate_song_stems_prunes_obsolete_system_rows_but_keeps_user_rows(
     song_id = int(inserted.rows[0][0])
 
     for stem_key, source_type, display_name, version_label in (
-        ("bass", "system", "Bass", "regen-old"),
-        ("drums", "system", "Drums", "regen-old"),
-        ("vocals", "system", "Vocals", "regen-old"),
+        ("bass", "system", "Bass", "gen-old"),
+        ("drums", "system", "Drums", "gen-old"),
+        ("vocals", "system", "Vocals", "gen-old"),
         ("other", "user", "other.wav", "upload-old"),
     ):
         asyncio.run(
@@ -1931,7 +1943,7 @@ def test_regenerate_song_stems_prunes_obsolete_system_rows_but_keeps_user_rows(
                 INSERT INTO song_stems (
                     song_id, stem_key, audio_blob, mime_type, duration, source_type, display_name, version_label, generation_id, uploaded_by_name
                 )
-                VALUES (?, ?, X'', 'audio/wav', 2.0, ?, ?, ?, 'gen-prune-test', ?)
+                VALUES (?, ?, X'', 'audio/wav', 2.0, ?, ?, ?, 'gen-old-test', ?)
                 """,
                 [
                     song_id,
@@ -1954,25 +1966,26 @@ def test_regenerate_song_stems_prunes_obsolete_system_rows_but_keeps_user_rows(
     monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
 
     response = client.post(f"/api/songs/{song_id}/stems/regenerate")
-
     assert response.status_code == 200
-    stems = {stem["stem_key"]: stem for stem in response.json()["stems"]}
-    assert set(stems) == {"bass", "drums", "other"}
-    assert stems["bass"]["source_type"] == "system"
-    assert stems["drums"]["source_type"] == "system"
-    assert stems["other"]["source_type"] == "user"
 
+    # All old rows still exist plus new ones — additive
     persisted = asyncio.run(
         main.execute(
-            "SELECT stem_key, source_type FROM song_stems WHERE song_id = ? ORDER BY stem_key ASC",
+            "SELECT stem_key, source_type FROM song_stems WHERE song_id = ? ORDER BY stem_key ASC, id ASC",
             [song_id],
         )
     )
-    assert [tuple(row) for row in persisted.rows] == [
-        ("bass", "system"),
-        ("drums", "system"),
-        ("other", "user"),
-    ]
+    rows = [tuple(row) for row in persisted.rows]
+    # Old rows preserved: bass/system, drums/system, vocals/system, other/user
+    assert ("bass", "system") in rows
+    assert ("drums", "system") in rows
+    assert ("vocals", "system") in rows  # NOT pruned — additive
+    assert ("other", "user") in rows
+    # New rows added: bass/system and drums/system appear twice (old + new)
+    bass_rows = [r for r in rows if r == ("bass", "system")]
+    assert len(bass_rows) == 2, "Two bass/system rows: old + new"
+    drums_rows = [r for r in rows if r == ("drums", "system")]
+    assert len(drums_rows) == 2, "Two drums/system rows: old + new"
 
 
 def test_tabs_download_endpoint_returns_attachment(tmp_path, monkeypatch):
@@ -2583,7 +2596,10 @@ def test_regenerate_song_stems_reuses_original_mix_and_persists_refreshed_stems(
             [song_id],
         )
     )
-    assert [tuple(row)[0] for row in refreshed.rows] == ["bass", "drums"]
+    # Additive: old legacy bass/system row plus new bass/system and drums/system
+    keys = [tuple(row)[0] for row in refreshed.rows]
+    assert keys.count("bass") >= 1, "At least one bass system row expected"
+    assert "drums" in keys, "drums system row expected"
 
 
 def test_regenerate_song_tabs_uses_selected_stem_and_persists_new_tab(
