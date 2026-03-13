@@ -2827,3 +2827,145 @@ def test_regenerate_song_tabs_uses_selected_non_bass_stem_as_analysis_source(
     assert response.status_code == 200
     assert captured["bass_path"].endswith("guitar.wav")
     assert captured["drums_path"].endswith("drums.wav")
+
+
+def _upload_song_with_stem(client, monkeypatch, main_mod, fake_audio=b"stem-bytes"):
+    """Helper: upload a song, fake stem generation, return (song_id, stem_id)."""
+    from app.stems import StemResult
+    monkeypatch.setattr(main_mod, "split_to_stems", lambda *a, **k: [
+        StemResult(stem_key="bass", audio_data=fake_audio, mime_type="audio/wav", duration=2.5)
+    ])
+    resp = client.post(
+        "/api/analyze",
+        files={"file": ("s.mp3", b"\xff\xfb\x90\x00" * 50, "audio/mpeg")},
+        data={"process_mode": "analysis_and_stems"},
+    )
+    song_id = resp.json()["song_id"]
+    stems_resp = client.get(f"/api/songs/{song_id}/stems")
+    stems_list = stems_resp.json()
+    if isinstance(stems_list, dict):
+        stems_list = stems_list.get("stems", stems_list)
+    stem_id = stems_list[0]["id"]
+    return song_id, stem_id
+
+
+def test_get_stem_audio_returns_blob(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+    song_id, stem_id = _upload_song_with_stem(client, monkeypatch, main, b"real-wav-bytes")
+
+    resp = client.get(f"/api/stems/{stem_id}/audio")
+    assert resp.status_code == 200
+    assert resp.content == b"real-wav-bytes"
+    assert "audio" in resp.headers["content-type"]
+
+
+def test_get_stem_audio_legacy_returns_404(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    # Insert a legacy row with empty blob
+    inserted = asyncio.run(main.execute(
+        "INSERT INTO songs (user_id, title, audio_blob) VALUES (1, 'L', X'') RETURNING id"
+    ))
+    song_id = int(inserted.rows[0][0])
+    stem_inserted = asyncio.run(main.execute(
+        "INSERT INTO song_stems (song_id, stem_key, audio_blob, mime_type, source_type, display_name, version_label)"
+        " VALUES (?, 'bass', X'', 'audio/wav', 'system', 'Bass', 'legacy') RETURNING id",
+        [song_id],
+    ))
+    stem_id = int(stem_inserted.rows[0][0])
+
+    resp = client.get(f"/api/stems/{stem_id}/audio")
+    assert resp.status_code == 404
+    assert "legacy" in resp.json()["detail"].lower()
+
+
+def test_patch_stem_rename_updates_display_name(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+    song_id, stem_id = _upload_song_with_stem(client, monkeypatch, main)
+
+    resp = client.patch(f"/api/stems/{stem_id}", json={"display_name": "Clean Bass"})
+    assert resp.status_code == 200
+    assert resp.json()["display_name"] == "Clean Bass"
+
+
+def test_patch_stem_rename_fires_activity(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+    song_id, stem_id = _upload_song_with_stem(client, monkeypatch, main)
+
+    client.patch(f"/api/stems/{stem_id}", json={"display_name": "Slap Bass"})
+
+    activity = client.get("/api/projects/1/activity").json()
+    messages = [e["message"] for e in activity.get("activity", [])]
+    assert any("Slap Bass" in m for m in messages), f"No rename event in: {messages}"
+
+
+def test_patch_stem_description_updates(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+    song_id, stem_id = _upload_song_with_stem(client, monkeypatch, main)
+
+    resp = client.patch(f"/api/stems/{stem_id}", json={"description": "Recorded on Fender Jazz"})
+    assert resp.status_code == 200
+    assert resp.json()["description"] == "Recorded on Fender Jazz"
+
+
+def test_delete_stem_removes_row(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+    song_id, stem_id = _upload_song_with_stem(client, monkeypatch, main)
+
+    resp = client.delete(f"/api/stems/{stem_id}")
+    assert resp.status_code == 204
+
+    audio_resp = client.get(f"/api/stems/{stem_id}/audio")
+    assert audio_resp.status_code == 404
+
+
+def test_delete_stem_fires_activity(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+    song_id, stem_id = _upload_song_with_stem(client, monkeypatch, main)
+
+    # Get display name before deletion
+    stems = client.get(f"/api/songs/{song_id}/stems").json()
+    stems_list = stems if isinstance(stems, list) else stems.get("stems", stems)
+    display_name = stems_list[0]["display_name"]
+
+    client.delete(f"/api/stems/{stem_id}")
+
+    activity = client.get("/api/projects/1/activity").json()
+    messages = [e["message"] for e in activity.get("activity", [])]
+    assert any("deleted" in m.lower() for m in messages), f"No delete event in: {messages}"
+
+
+def test_delete_stem_does_not_cascade_to_other_stems(tmp_path, monkeypatch):
+    from app.stems import StemResult
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    monkeypatch.setattr(main, "split_to_stems", lambda *a, **k: [
+        StemResult(stem_key="bass", audio_data=b"v1", mime_type="audio/wav")
+    ])
+    resp = client.post(
+        "/api/analyze",
+        files={"file": ("s.mp3", b"\xff\xfb\x90\x00"*50, "audio/mpeg")},
+        data={"process_mode": "analysis_and_stems"},
+    )
+    song_id = resp.json()["song_id"]
+    client.post(f"/api/songs/{song_id}/stems/regenerate")
+
+    stems_resp = client.get(f"/api/songs/{song_id}/stems").json()
+    stems_list = stems_resp if isinstance(stems_resp, list) else stems_resp.get("stems", stems_resp)
+    assert len(stems_list) == 2
+
+    stem_id_to_delete = stems_list[0]["id"]
+    client.delete(f"/api/stems/{stem_id_to_delete}")
+
+    remaining = client.get(f"/api/songs/{song_id}/stems").json()
+    remaining_list = remaining if isinstance(remaining, list) else remaining.get("stems", remaining)
+    assert len(remaining_list) == 1
+    assert remaining_list[0]["id"] != stem_id_to_delete

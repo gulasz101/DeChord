@@ -1912,6 +1912,93 @@ async def download_song_stems_zip(song_id: int):
     )
 
 
+@app.get("/api/stems/{stem_id}/audio")
+async def get_stem_audio(stem_id: int):
+    """Stream stem audio blob. Returns 404 for legacy rows with empty blob."""
+    stem = await _load_stem_by_id(stem_id)
+    if stem is None:
+        raise HTTPException(status_code=404, detail="Stem not found.")
+    audio_blob = await _load_stem_audio_blob(stem_id)
+    if not audio_blob:
+        raise HTTPException(
+            status_code=404,
+            detail="Stem audio not available — this stem was stored on disk before the legacy database migration.",
+        )
+    return Response(
+        content=audio_blob,
+        media_type=stem["mime_type"] or "audio/wav",
+    )
+
+
+class StemUpdateRequest(BaseModel):
+    display_name: str | None = None
+    description: str | None = None
+
+
+@app.patch("/api/stems/{stem_id}")
+async def patch_stem(stem_id: int, body: StemUpdateRequest, request: Request):
+    """Rename or describe a stem. Fires a stem_updated activity event."""
+    stem = await _load_stem_by_id(stem_id)
+    if stem is None:
+        raise HTTPException(status_code=404, detail="Stem not found.")
+    current_user = await _get_request_user(request)
+
+    updates: dict = {}
+    if body.display_name is not None:
+        updates["display_name"] = body.display_name
+    if body.description is not None:
+        updates["description"] = body.description
+    if not updates:
+        return stem
+
+    set_clause = ", ".join(f"{k} = ?" for k in updates)
+    await execute(
+        f"UPDATE song_stems SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        list(updates.values()) + [stem_id],
+    )
+
+    old_name = stem["display_name"]
+    new_name = updates.get("display_name", old_name)
+    if "display_name" in updates and new_name != old_name:
+        msg = f"{current_user['display_name']} renamed stem '{old_name}' \u2192 '{new_name}'"
+    else:
+        msg = f"{current_user['display_name']} updated description of stem '{new_name}'"
+
+    rs = await execute("SELECT song_id FROM song_stems WHERE id = ?", [stem_id])
+    if rs.rows:
+        await _record_song_project_activity(
+            int(rs.rows[0][0]),
+            actor_user=current_user,
+            event_type="stem_updated",
+            message=msg,
+        )
+
+    return await _load_stem_by_id(stem_id)
+
+
+@app.delete("/api/stems/{stem_id}", status_code=204)
+async def delete_stem(stem_id: int, request: Request):
+    """Explicitly delete a stem. Fires a stem_deleted activity event."""
+    stem = await _load_stem_by_id(stem_id)
+    if stem is None:
+        raise HTTPException(status_code=404, detail="Stem not found.")
+    current_user = await _get_request_user(request)
+    display_name = stem["display_name"]
+
+    rs = await execute("SELECT song_id FROM song_stems WHERE id = ?", [stem_id])
+    song_id = int(rs.rows[0][0]) if rs.rows else None
+
+    await execute("DELETE FROM song_stems WHERE id = ?", [stem_id])
+
+    if song_id:
+        await _record_song_project_activity(
+            song_id,
+            actor_user=current_user,
+            event_type="stem_deleted",
+            message=f"{current_user['display_name']} deleted stem '{display_name}'",
+        )
+
+
 @app.get("/api/songs/{song_id}/tabs")
 async def get_song_tabs(song_id: int):
     return {"tab": await _load_song_tab_meta(song_id)}
