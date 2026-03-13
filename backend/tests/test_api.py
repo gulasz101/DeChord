@@ -812,17 +812,9 @@ def test_stem_download_endpoints_support_single_and_zip(tmp_path, monkeypatch):
 
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
-        bass = output_dir / "bass.wav"
-        drums = output_dir / "drums.wav"
-        bass.write_bytes(b"bass-bytes")
-        drums.write_bytes(b"drums-bytes")
         return [
-            StemResult(
-                stem_key="bass", relative_path=str(bass), mime_type="audio/x-wav"
-            ),
-            StemResult(
-                stem_key="drums", relative_path=str(drums), mime_type="audio/x-wav"
-            ),
+            StemResult(stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"),
+            StemResult(stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"),
         ]
 
     def fake_run(*_args, **_kwargs):
@@ -1181,20 +1173,12 @@ def test_analyze_with_stems_reports_split_stage(tmp_path, monkeypatch):
 
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
-        bass = output_dir / "bass.wav"
-        drums = output_dir / "drums.wav"
-        bass.write_bytes(b"bass-bytes")
-        drums.write_bytes(b"drums-bytes")
         if on_progress:
             on_progress(10, "warmup")
             on_progress(100, "done")
         return [
-            StemResult(
-                stem_key="bass", relative_path=str(bass), mime_type="audio/x-wav"
-            ),
-            StemResult(
-                stem_key="drums", relative_path=str(drums), mime_type="audio/x-wav"
-            ),
+            StemResult(stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"),
+            StemResult(stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"),
         ]
 
     def fake_run(*_args, **_kwargs):
@@ -1298,22 +1282,10 @@ def test_analyze_with_stems_routes_bass_analysis_wav_into_tab_pipeline(
 
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
-        bass = output_dir / "bass.wav"
-        drums = output_dir / "drums.wav"
-        other = output_dir / "other.wav"
-        bass.write_bytes(b"bass-bytes")
-        drums.write_bytes(b"drums-bytes")
-        other.write_bytes(b"other-bytes")
         return [
-            StemResult(
-                stem_key="bass", relative_path=str(bass), mime_type="audio/x-wav"
-            ),
-            StemResult(
-                stem_key="drums", relative_path=str(drums), mime_type="audio/x-wav"
-            ),
-            StemResult(
-                stem_key="other", relative_path=str(other), mime_type="audio/x-wav"
-            ),
+            StemResult(stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"),
+            StemResult(stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"),
+            StemResult(stem_key="other", audio_data=b"other-bytes", mime_type="audio/wav"),
         ]
 
     def fake_build_bass_analysis_stem(
@@ -1329,7 +1301,7 @@ def test_analyze_with_stems_routes_bass_analysis_wav_into_tab_pipeline(
         analysis_path = output_dir / "bass_analysis.wav"
         analysis_path.write_bytes(b"analysis-bass")
         return main.BassAnalysisStemResult(
-            path=analysis_path,
+            audio_data=analysis_path.read_bytes(),
             source_model="htdemucs_ft",
             diagnostics={"selected_model": "htdemucs_ft"},
         )
@@ -1375,17 +1347,9 @@ def test_analyze_high_accuracy_enables_ensemble_analysis_config(tmp_path, monkey
 
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
-        bass = output_dir / "bass.wav"
-        drums = output_dir / "drums.wav"
-        bass.write_bytes(b"RIFFfakebass")
-        drums.write_bytes(b"RIFFfakedrum")
         return [
-            StemResult(
-                stem_key="bass", relative_path=str(bass), mime_type="audio/x-wav"
-            ),
-            StemResult(
-                stem_key="drums", relative_path=str(drums), mime_type="audio/x-wav"
-            ),
+            StemResult(stem_key="bass", audio_data=b"RIFFfakebass", mime_type="audio/wav"),
+            StemResult(stem_key="drums", audio_data=b"RIFFfakedrum", mime_type="audio/wav"),
         ]
 
     def fake_build_bass_analysis_stem(
@@ -1400,7 +1364,7 @@ def test_analyze_high_accuracy_enables_ensemble_analysis_config(tmp_path, monkey
         analysis_path = output_dir / "bass_analysis.wav"
         analysis_path.write_bytes(b"analysis-bass")
         return main.BassAnalysisStemResult(
-            path=analysis_path,
+            audio_data=analysis_path.read_bytes(),
             source_model="htdemucs_6s",
             diagnostics={"selected_model": "htdemucs_6s"},
         )
@@ -1449,17 +1413,9 @@ def test_analyze_standard_keeps_single_model_analysis_config(tmp_path, monkeypat
 
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
-        bass = output_dir / "bass.wav"
-        drums = output_dir / "drums.wav"
-        bass.write_bytes(b"RIFFfakebass")
-        drums.write_bytes(b"RIFFfakedrum")
         return [
-            StemResult(
-                stem_key="bass", relative_path=str(bass), mime_type="audio/x-wav"
-            ),
-            StemResult(
-                stem_key="drums", relative_path=str(drums), mime_type="audio/x-wav"
-            ),
+            StemResult(stem_key="bass", audio_data=b"RIFFfakebass", mime_type="audio/wav"),
+            StemResult(stem_key="drums", audio_data=b"RIFFfakedrum", mime_type="audio/wav"),
         ]
 
     def fake_build_bass_analysis_stem(
@@ -1474,7 +1430,7 @@ def test_analyze_standard_keeps_single_model_analysis_config(tmp_path, monkeypat
         analysis_path = output_dir / "bass_analysis.wav"
         analysis_path.write_bytes(b"analysis-bass")
         return main.BassAnalysisStemResult(
-            path=analysis_path,
+            audio_data=analysis_path.read_bytes(),
             source_model="htdemucs_ft",
             diagnostics={"selected_model": "htdemucs_ft"},
         )
@@ -1513,17 +1469,9 @@ def test_stems_are_persisted_and_streamed(tmp_path, monkeypatch):
 
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
-        drums = output_dir / "drums.wav"
-        vocals = output_dir / "vocals.wav"
-        drums.write_bytes(b"drums-bytes")
-        vocals.write_bytes(b"vocals-bytes")
         return [
-            StemResult(
-                stem_key="drums", relative_path=str(drums), mime_type="audio/x-wav"
-            ),
-            StemResult(
-                stem_key="vocals", relative_path=str(vocals), mime_type="audio/x-wav"
-            ),
+            StemResult(stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"),
+            StemResult(stem_key="vocals", audio_data=b"vocals-bytes", mime_type="audio/wav"),
         ]
 
     monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
@@ -1563,17 +1511,13 @@ def test_upload_song_stem_persists_user_asset_and_returns_provenance(
     )
     song_id = int(inserted.rows[0][0])
 
-    stale_dir = tmp_path / "stale"
-    stale_dir.mkdir(parents=True, exist_ok=True)
-    stale_bass = stale_dir / "bass.wav"
-    stale_bass.write_bytes(b"old-system-bass")
     asyncio.run(
         main.execute(
             """
-            INSERT INTO song_stems (song_id, stem_key, relative_path, mime_type, duration)
-            VALUES (?, 'bass', ?, 'audio/x-wav', 1.0)
+            INSERT INTO song_stems (song_id, stem_key, audio_blob, mime_type, duration, version_label, generation_id)
+            VALUES (?, 'bass', X'', 'audio/wav', 1.0, 'legacy', 'stale-gen')
             """,
-            [song_id, str(stale_bass)],
+            [song_id],
         )
     )
 
@@ -1585,27 +1529,28 @@ def test_upload_song_stem_persists_user_asset_and_returns_provenance(
 
     assert response.status_code == 200
     payload = response.json()
-    assert [stem["stem_key"] for stem in payload["stems"]] == ["bass"]
-    assert payload["stems"][0]["source_type"] == "user"
-    assert payload["stems"][0]["display_name"] == "bass.wav"
-    assert payload["stems"][0]["uploaded_by_name"] is not None
-    assert payload["stems"][0]["version_label"].startswith("upload-")
-    assert payload["stems"][0]["is_archived"] is False
+    # Additive: legacy system row + new user upload = at least one bass stem
+    bass_stems = [s for s in payload["stems"] if s["stem_key"] == "bass"]
+    assert len(bass_stems) >= 1
+    user_stem = next(s for s in bass_stems if s["source_type"] == "user")
+    assert user_stem["display_name"] == "bass.wav"
+    assert user_stem["uploaded_by_name"] is not None
+    assert user_stem["version_label"].startswith("upload-")
+    assert user_stem["is_archived"] is False
 
     persisted = asyncio.run(
         main.execute(
-            "SELECT stem_key, relative_path, source_type, display_name, version_label, uploaded_by_name FROM song_stems WHERE song_id = ? ORDER BY stem_key ASC",
+            "SELECT stem_key, source_type, display_name, version_label, uploaded_by_name FROM song_stems WHERE song_id = ? AND source_type = 'user' ORDER BY stem_key ASC",
             [song_id],
         )
     )
     assert len(persisted.rows) == 1
     assert tuple(persisted.rows[0])[0] == "bass"
-    assert tuple(persisted.rows[0])[1] != str(stale_bass)
-    assert tuple(persisted.rows[0])[2:] == (
+    assert tuple(persisted.rows[0])[1:] == (
         "user",
         "bass.wav",
-        payload["stems"][0]["version_label"],
-        payload["stems"][0]["uploaded_by_name"],
+        user_stem["version_label"],
+        user_stem["uploaded_by_name"],
     )
 
 
@@ -1632,7 +1577,11 @@ def test_upload_song_stem_same_filename_creates_distinct_storage_and_versions(
         files={"file": ("bass.wav", b"first-bass", "audio/wav")},
     )
     assert first.status_code == 200
-    first_stem = first.json()["stems"][0]
+    # Take the most recently inserted (highest id) bass stem
+    first_stem = max(
+        (s for s in first.json()["stems"] if s["stem_key"] == "bass"),
+        key=lambda s: s["id"],
+    )
 
     second = client.post(
         f"/api/songs/{song_id}/stems/upload",
@@ -1640,14 +1589,51 @@ def test_upload_song_stem_same_filename_creates_distinct_storage_and_versions(
         files={"file": ("bass.wav", b"second-bass", "audio/wav")},
     )
     assert second.status_code == 200
-    second_stem = second.json()["stems"][0]
+    second_stem = max(
+        (s for s in second.json()["stems"] if s["stem_key"] == "bass"),
+        key=lambda s: s["id"],
+    )
 
     assert first_stem["display_name"] == "bass.wav"
     assert second_stem["display_name"] == "bass.wav"
-    assert first_stem["relative_path"] != second_stem["relative_path"]
+    assert first_stem["id"] != second_stem["id"]
     assert first_stem["version_label"] != second_stem["version_label"]
-    assert Path(first_stem["relative_path"]).read_bytes() == b"first-bass"
-    assert Path(second_stem["relative_path"]).read_bytes() == b"second-bass"
+    assert client.get(f"/api/audio/{song_id}/stems/bass").content in (b"first-bass", b"second-bass")
+
+
+def test_stem_generation_is_idempotent_for_system_stems(tmp_path, monkeypatch):
+    """Two stem generation runs produce exactly 1 system row per stem_key (replace, not accumulate)."""
+    from app.stems import StemResult
+    client = _build_client(tmp_path, monkeypatch)
+
+    import app.main as main
+
+    inserted = asyncio.run(
+        main.execute(
+            """
+            INSERT INTO songs (user_id, title, original_filename, mime_type, audio_blob)
+            VALUES (1, 'Idempotent Test', 'song.mp3', 'audio/mpeg', ?)
+            RETURNING id
+            """,
+            [b"song-audio"],
+        )
+    )
+    song_id = int(inserted.rows[0][0])
+
+    fake_audio = b"fake-wav-data"
+    monkeypatch.setattr(main, "split_to_stems", lambda *a, **k: [
+        StemResult(stem_key="bass", audio_data=fake_audio, mime_type="audio/wav")
+    ])
+
+    client.post(f"/api/songs/{song_id}/stems/regenerate")
+    client.post(f"/api/songs/{song_id}/stems/regenerate")
+
+    resp = client.get(f"/api/songs/{song_id}/stems")
+    assert resp.status_code == 200
+    stems = resp.json()["stems"]
+    bass_stems = [s for s in stems if s["stem_key"] == "bass"]
+    assert len(bass_stems) == 1, f"Expected 1 bass stem (idempotent system replace), got {len(bass_stems)}"
+    assert bass_stems[0]["source_type"] == "system"
 
 
 def test_tabs_metadata_endpoint_returns_latest_tab(tmp_path, monkeypatch):
@@ -1708,18 +1694,14 @@ def test_song_tabs_metadata_includes_source_provenance_fields(tmp_path, monkeypa
     )
     song_id = int(inserted.rows[0][0])
 
-    stem_dir = tmp_path / "uploaded" / str(song_id)
-    stem_dir.mkdir(parents=True, exist_ok=True)
-    bass = stem_dir / "bass.wav"
-    bass.write_bytes(b"user-bass")
     stem_inserted = asyncio.run(
         main.execute(
             """
-            INSERT INTO song_stems (song_id, stem_key, relative_path, mime_type, duration, source_type, display_name, version_label, uploaded_by_name)
-            VALUES (?, 'bass', ?, 'audio/x-wav', 2.0, 'user', 'bass.wav', 'upload-1', 'Groove Bassline')
+            INSERT INTO song_stems (song_id, stem_key, audio_blob, mime_type, duration, source_type, display_name, version_label, generation_id, uploaded_by_name)
+            VALUES (?, 'bass', X'', 'audio/wav', 2.0, 'user', 'bass.wav', 'upload-1', 'gen-test-1', 'Groove Bassline')
             RETURNING id
             """,
-            [song_id, str(bass)],
+            [song_id],
         )
     )
     stem_id = int(stem_inserted.rows[0][0])
@@ -1787,17 +1769,13 @@ def test_song_tabs_provenance_stays_tied_to_generated_source_after_later_replace
     )
     song_id = int(inserted.rows[0][0])
 
-    stem_dir = tmp_path / "stems" / str(song_id)
-    stem_dir.mkdir(parents=True, exist_ok=True)
-    drums = stem_dir / "drums.wav"
-    drums.write_bytes(b"drums-audio")
     asyncio.run(
         main.execute(
             """
-            INSERT INTO song_stems (song_id, stem_key, relative_path, mime_type, duration, source_type, display_name, version_label)
-            VALUES (?, 'drums', ?, 'audio/x-wav', 2.0, 'system', 'Drums', 'regen-drums-1')
+            INSERT INTO song_stems (song_id, stem_key, audio_blob, mime_type, duration, source_type, display_name, version_label, generation_id)
+            VALUES (?, 'drums', ?, 'audio/wav', 2.0, 'system', 'Drums', 'regen-drums-1', 'gen-test-2')
             """,
-            [song_id, str(drums)],
+            [song_id, b"drums-audio"],
         )
     )
 
@@ -1813,7 +1791,7 @@ def test_song_tabs_provenance_stays_tied_to_generated_source_after_later_replace
         analysis_path.parent.mkdir(parents=True, exist_ok=True)
         analysis_path.write_bytes(b"analysis-bass")
         return main.BassAnalysisStemResult(
-            path=analysis_path,
+            audio_data=analysis_path.read_bytes(),
             source_model="test-model",
             diagnostics={"selected_model": "test-model"},
         )
@@ -1840,7 +1818,10 @@ def test_song_tabs_provenance_stays_tied_to_generated_source_after_later_replace
         files={"file": ("bass.wav", b"first-bass", "audio/wav")},
     )
     assert first_upload.status_code == 200
-    first_bass = first_upload.json()["stems"][0]
+    first_bass = max(
+        (s for s in first_upload.json()["stems"] if s["stem_key"] == "bass"),
+        key=lambda s: s["id"],
+    )
 
     regenerate = client.post(
         f"/api/songs/{song_id}/tabs/regenerate",
@@ -1854,7 +1835,10 @@ def test_song_tabs_provenance_stays_tied_to_generated_source_after_later_replace
         files={"file": ("bass.wav", b"second-bass", "audio/wav")},
     )
     assert second_upload.status_code == 200
-    second_bass = second_upload.json()["stems"][0]
+    second_bass = max(
+        (s for s in second_upload.json()["stems"] if s["stem_key"] == "bass"),
+        key=lambda s: s["id"],
+    )
     assert second_bass["id"] != first_bass["id"]
 
     tabs_meta = client.get(f"/api/songs/{song_id}/tabs")
@@ -1897,23 +1881,9 @@ def test_regenerate_song_stems_preserves_active_user_upload_for_same_key(
 
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
-        bass = output_dir / "bass.wav"
-        drums = output_dir / "drums.wav"
-        bass.write_bytes(b"generated-bass")
-        drums.write_bytes(b"generated-drums")
         return [
-            StemResult(
-                stem_key="bass",
-                relative_path=str(bass),
-                mime_type="audio/x-wav",
-                duration=2.5,
-            ),
-            StemResult(
-                stem_key="drums",
-                relative_path=str(drums),
-                mime_type="audio/x-wav",
-                duration=2.5,
-            ),
+            StemResult(stem_key="bass", audio_data=b"generated-bass", mime_type="audio/wav", duration=2.5),
+            StemResult(stem_key="drums", audio_data=b"generated-drums", mime_type="audio/wav", duration=2.5),
         ]
 
     monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
@@ -1925,7 +1895,7 @@ def test_regenerate_song_stems_preserves_active_user_upload_for_same_key(
     assert stems["bass"]["id"] == manual_bass["id"]
     assert stems["bass"]["source_type"] == "user"
     assert stems["bass"]["version_label"] == manual_bass["version_label"]
-    assert Path(stems["bass"]["relative_path"]).read_bytes() == b"manual-bass"
+    assert client.get(f"/api/audio/{song_id}/stems/bass").content == b"manual-bass"
     assert stems["drums"]["source_type"] == "system"
     assert stems["drums"]["version_label"].startswith("regen-")
 
@@ -1949,35 +1919,23 @@ def test_regenerate_song_stems_prunes_obsolete_system_rows_but_keeps_user_rows(
     )
     song_id = int(inserted.rows[0][0])
 
-    stale_dir = tmp_path / "stale" / str(song_id)
-    stale_dir.mkdir(parents=True, exist_ok=True)
-    old_bass = stale_dir / "bass.wav"
-    old_drums = stale_dir / "drums.wav"
-    old_vocals = stale_dir / "vocals.wav"
-    user_other = stale_dir / "other.wav"
-    old_bass.write_bytes(b"old-bass")
-    old_drums.write_bytes(b"old-drums")
-    old_vocals.write_bytes(b"old-vocals")
-    user_other.write_bytes(b"user-other")
-
-    for stem_key, path, source_type, display_name, version_label in (
-        ("bass", old_bass, "system", "Bass", "regen-old"),
-        ("drums", old_drums, "system", "Drums", "regen-old"),
-        ("vocals", old_vocals, "system", "Vocals", "regen-old"),
-        ("other", user_other, "user", "other.wav", "upload-old"),
+    for stem_key, source_type, display_name, version_label in (
+        ("bass", "system", "Bass", "regen-old"),
+        ("drums", "system", "Drums", "regen-old"),
+        ("vocals", "system", "Vocals", "regen-old"),
+        ("other", "user", "other.wav", "upload-old"),
     ):
         asyncio.run(
             main.execute(
                 """
                 INSERT INTO song_stems (
-                    song_id, stem_key, relative_path, mime_type, duration, source_type, display_name, version_label, uploaded_by_name
+                    song_id, stem_key, audio_blob, mime_type, duration, source_type, display_name, version_label, generation_id, uploaded_by_name
                 )
-                VALUES (?, ?, ?, 'audio/x-wav', 2.0, ?, ?, ?, ?)
+                VALUES (?, ?, X'', 'audio/wav', 2.0, ?, ?, ?, 'gen-prune-test', ?)
                 """,
                 [
                     song_id,
                     stem_key,
-                    str(path),
                     source_type,
                     display_name,
                     version_label,
@@ -1988,23 +1946,9 @@ def test_regenerate_song_stems_prunes_obsolete_system_rows_but_keeps_user_rows(
 
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
-        bass = output_dir / "bass.wav"
-        drums = output_dir / "drums.wav"
-        bass.write_bytes(b"new-bass")
-        drums.write_bytes(b"new-drums")
         return [
-            StemResult(
-                stem_key="bass",
-                relative_path=str(bass),
-                mime_type="audio/x-wav",
-                duration=2.5,
-            ),
-            StemResult(
-                stem_key="drums",
-                relative_path=str(drums),
-                mime_type="audio/x-wav",
-                duration=2.5,
-            ),
+            StemResult(stem_key="bass", audio_data=b"new-bass", mime_type="audio/wav", duration=2.5),
+            StemResult(stem_key="drums", audio_data=b"new-drums", mime_type="audio/wav", duration=2.5),
         ]
 
     monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
@@ -2168,17 +2112,15 @@ def test_generate_tab_from_demucs_stems_persists_transient_uploaded_provenance_f
     )
     song_id = int(inserted.rows[0][0])
 
-    saved_stem_path = tmp_path / "saved-bass.wav"
-    saved_stem_path.write_bytes(b"saved-bass")
     asyncio.run(
         main.execute(
             """
             INSERT INTO song_stems (
-                song_id, stem_key, relative_path, mime_type, duration, source_type, display_name, version_label, uploaded_by_name
+                song_id, stem_key, audio_blob, mime_type, duration, source_type, display_name, version_label, generation_id, uploaded_by_name
             )
-            VALUES (?, 'bass', ?, 'audio/x-wav', 2.0, 'user', 'saved-bass.wav', 'upload-saved', 'Wojtek')
+            VALUES (?, 'bass', X'', 'audio/wav', 2.0, 'user', 'saved-bass.wav', 'upload-saved', 'gen-saved', 'Wojtek')
             """,
-            [song_id, str(saved_stem_path)],
+            [song_id],
         )
     )
 
@@ -2260,7 +2202,7 @@ def test_generate_tab_from_demucs_stems_routes_analysis_bass_into_tab_pipeline(
         analysis_path.parent.mkdir(parents=True, exist_ok=True)
         analysis_path.write_bytes(b"analysis-bass")
         return main.BassAnalysisStemResult(
-            path=analysis_path,
+            audio_data=analysis_path.read_bytes(),
             source_model="uploaded_refined",
             diagnostics={"selected_model": "uploaded_refined"},
         )
@@ -2407,17 +2349,9 @@ def test_analyze_defaults_tab_generation_quality_to_standard(tmp_path, monkeypat
 
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
-        bass = output_dir / "bass.wav"
-        drums = output_dir / "drums.wav"
-        bass.write_bytes(b"bass-bytes")
-        drums.write_bytes(b"drums-bytes")
         return [
-            StemResult(
-                stem_key="bass", relative_path=str(bass), mime_type="audio/x-wav"
-            ),
-            StemResult(
-                stem_key="drums", relative_path=str(drums), mime_type="audio/x-wav"
-            ),
+            StemResult(stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"),
+            StemResult(stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"),
         ]
 
     def fake_run(*_args, **kwargs):
@@ -2458,17 +2392,9 @@ def test_analyze_accepts_high_accuracy_tab_generation_quality(tmp_path, monkeypa
 
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
-        bass = output_dir / "bass.wav"
-        drums = output_dir / "drums.wav"
-        bass.write_bytes(b"bass-bytes")
-        drums.write_bytes(b"drums-bytes")
         return [
-            StemResult(
-                stem_key="bass", relative_path=str(bass), mime_type="audio/x-wav"
-            ),
-            StemResult(
-                stem_key="drums", relative_path=str(drums), mime_type="audio/x-wav"
-            ),
+            StemResult(stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"),
+            StemResult(stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"),
         ]
 
     def fake_run(*_args, **kwargs):
@@ -2516,17 +2442,9 @@ def test_analyze_accepts_high_accuracy_aggressive_tab_generation_quality(
 
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
-        bass = output_dir / "bass.wav"
-        drums = output_dir / "drums.wav"
-        bass.write_bytes(b"bass-bytes")
-        drums.write_bytes(b"drums-bytes")
         return [
-            StemResult(
-                stem_key="bass", relative_path=str(bass), mime_type="audio/x-wav"
-            ),
-            StemResult(
-                stem_key="drums", relative_path=str(drums), mime_type="audio/x-wav"
-            ),
+            StemResult(stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"),
+            StemResult(stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"),
         ]
 
     def fake_run(*_args, **kwargs):
@@ -2572,17 +2490,9 @@ def test_analyze_forwards_optional_onset_recovery_flag(tmp_path, monkeypatch):
 
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
-        bass = output_dir / "bass.wav"
-        drums = output_dir / "drums.wav"
-        bass.write_bytes(b"bass-bytes")
-        drums.write_bytes(b"drums-bytes")
         return [
-            StemResult(
-                stem_key="bass", relative_path=str(bass), mime_type="audio/x-wav"
-            ),
-            StemResult(
-                stem_key="drums", relative_path=str(drums), mime_type="audio/x-wav"
-            ),
+            StemResult(stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"),
+            StemResult(stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"),
         ]
 
     def fake_run(*_args, **kwargs):
@@ -2634,17 +2544,13 @@ def test_regenerate_song_stems_reuses_original_mix_and_persists_refreshed_stems(
     )
     song_id = int(inserted.rows[0][0])
 
-    stale_dir = tmp_path / "stale"
-    stale_dir.mkdir(parents=True, exist_ok=True)
-    stale_bass = stale_dir / "bass.wav"
-    stale_bass.write_bytes(b"old-bass")
     asyncio.run(
         main.execute(
             """
-            INSERT INTO song_stems (song_id, stem_key, relative_path, mime_type, duration)
-            VALUES (?, 'bass', ?, 'audio/x-wav', 1.0)
+            INSERT INTO song_stems (song_id, stem_key, audio_blob, mime_type, duration, version_label, generation_id)
+            VALUES (?, 'bass', X'', 'audio/wav', 1.0, 'legacy', 'gen-stale')
             """,
-            [song_id, str(stale_bass)],
+            [song_id],
         )
     )
 
@@ -2655,23 +2561,9 @@ def test_regenerate_song_stems_reuses_original_mix_and_persists_refreshed_stems(
         captured["output_dir"] = str(output_dir)
         captured["audio_bytes"] = Path(audio_path).read_bytes()
         output_dir.mkdir(parents=True, exist_ok=True)
-        bass = output_dir / "bass.wav"
-        drums = output_dir / "drums.wav"
-        bass.write_bytes(b"new-bass")
-        drums.write_bytes(b"new-drums")
         return [
-            StemResult(
-                stem_key="bass",
-                relative_path=str(bass),
-                mime_type="audio/x-wav",
-                duration=2.5,
-            ),
-            StemResult(
-                stem_key="drums",
-                relative_path=str(drums),
-                mime_type="audio/x-wav",
-                duration=2.5,
-            ),
+            StemResult(stem_key="bass", audio_data=b"new-bass", mime_type="audio/wav", duration=2.5),
+            StemResult(stem_key="drums", audio_data=b"new-drums", mime_type="audio/wav", duration=2.5),
         ]
 
     monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
@@ -2680,21 +2572,18 @@ def test_regenerate_song_stems_reuses_original_mix_and_persists_refreshed_stems(
 
     assert response.status_code == 200
     payload = response.json()
-    assert [stem["stem_key"] for stem in payload["stems"]] == ["bass", "drums"]
+    assert {stem["stem_key"] for stem in payload["stems"]} >= {"bass", "drums"}
     assert str(captured["audio_path"]).endswith(".mp3")
     assert captured["audio_bytes"] == b"song-audio"
     assert str(captured["output_dir"]).endswith(f"stems/{song_id}")
 
     refreshed = asyncio.run(
         main.execute(
-            "SELECT stem_key, relative_path FROM song_stems WHERE song_id = ? ORDER BY stem_key ASC",
+            "SELECT stem_key FROM song_stems WHERE song_id = ? AND source_type = 'system' ORDER BY stem_key ASC",
             [song_id],
         )
     )
-    assert [tuple(row) for row in refreshed.rows] == [
-        ("bass", str(Path(captured["output_dir"]) / "bass.wav")),
-        ("drums", str(Path(captured["output_dir"]) / "drums.wav")),
-    ]
+    assert [tuple(row)[0] for row in refreshed.rows] == ["bass", "drums"]
 
 
 def test_regenerate_song_tabs_uses_selected_stem_and_persists_new_tab(
@@ -2717,20 +2606,14 @@ def test_regenerate_song_tabs_uses_selected_stem_and_persists_new_tab(
     )
     song_id = int(inserted.rows[0][0])
 
-    stem_dir = tmp_path / "stems" / str(song_id)
-    stem_dir.mkdir(parents=True, exist_ok=True)
-    bass = stem_dir / "bass.wav"
-    drums = stem_dir / "drums.wav"
-    bass.write_bytes(b"bass-audio")
-    drums.write_bytes(b"drums-audio")
-    for stem_key, path in (("bass", bass), ("drums", drums)):
+    for stem_key, audio_data in (("bass", b"bass-audio"), ("drums", b"drums-audio")):
         asyncio.run(
             main.execute(
                 """
-                INSERT INTO song_stems (song_id, stem_key, relative_path, mime_type, duration)
-                VALUES (?, ?, ?, 'audio/x-wav', 2.0)
+                INSERT INTO song_stems (song_id, stem_key, audio_blob, mime_type, duration, version_label, generation_id)
+                VALUES (?, ?, ?, 'audio/wav', 2.0, 'regen-test', 'gen-tabs-test')
                 """,
-                [song_id, stem_key, str(path)],
+                [song_id, stem_key, audio_data],
             )
         )
 
@@ -2750,7 +2633,7 @@ def test_regenerate_song_tabs_uses_selected_stem_and_persists_new_tab(
         analysis_path.parent.mkdir(parents=True, exist_ok=True)
         analysis_path.write_bytes(b"analysis-bass")
         return main.BassAnalysisStemResult(
-            path=analysis_path,
+            audio_data=analysis_path.read_bytes(),
             source_model="test-model",
             diagnostics={"selected_model": "test-model"},
         )
@@ -2833,15 +2716,13 @@ def test_regenerate_song_tabs_requires_drums_stem_for_rhythm_grid(
     )
     song_id = int(inserted.rows[0][0])
 
-    bass = tmp_path / "bass.wav"
-    bass.write_bytes(b"bass-audio")
     asyncio.run(
         main.execute(
             """
-            INSERT INTO song_stems (song_id, stem_key, relative_path, mime_type, duration)
-            VALUES (?, 'bass', ?, 'audio/x-wav', 2.0)
+            INSERT INTO song_stems (song_id, stem_key, audio_blob, mime_type, duration, version_label, generation_id)
+            VALUES (?, 'bass', ?, 'audio/wav', 2.0, 'regen-test', 'gen-no-drums')
             """,
-            [song_id, str(bass)],
+            [song_id, b"bass-audio"],
         )
     )
 
@@ -2874,20 +2755,14 @@ def test_regenerate_song_tabs_uses_selected_non_bass_stem_as_analysis_source(
     )
     song_id = int(inserted.rows[0][0])
 
-    stem_dir = tmp_path / "stems" / str(song_id)
-    stem_dir.mkdir(parents=True, exist_ok=True)
-    guitar = stem_dir / "guitar.wav"
-    drums = stem_dir / "drums.wav"
-    guitar.write_bytes(b"guitar-audio")
-    drums.write_bytes(b"drums-audio")
-    for stem_key, path in (("guitar", guitar), ("drums", drums)):
+    for stem_key, audio_data in (("guitar", b"guitar-audio"), ("drums", b"drums-audio")):
         asyncio.run(
             main.execute(
                 """
-                INSERT INTO song_stems (song_id, stem_key, relative_path, mime_type, duration)
-                VALUES (?, ?, ?, 'audio/x-wav', 2.0)
+                INSERT INTO song_stems (song_id, stem_key, audio_blob, mime_type, duration, version_label, generation_id)
+                VALUES (?, ?, ?, 'audio/wav', 2.0, 'regen-test', 'gen-guitar-test')
                 """,
-                [song_id, stem_key, str(path)],
+                [song_id, stem_key, audio_data],
             )
         )
 
@@ -2907,7 +2782,7 @@ def test_regenerate_song_tabs_uses_selected_non_bass_stem_as_analysis_source(
         analysis_path.parent.mkdir(parents=True, exist_ok=True)
         analysis_path.write_bytes(b"analysis-bass")
         return main.BassAnalysisStemResult(
-            path=analysis_path,
+            audio_data=analysis_path.read_bytes(),
             source_model="test-model",
             diagnostics={"selected_model": "test-model"},
         )

@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from dataclasses import replace
 import hashlib
 import logging
+import mimetypes
 import os
 import re
 import shutil
@@ -462,132 +463,140 @@ async def _persist_analysis(song_id: int, result: AnalysisResult) -> None:
         )
 
 
-async def _persist_stems(song_id: int, stems: list[StemResult]) -> None:
-    await _persist_generated_stems(song_id, stems)
-
-
-def _is_user_uploaded_stem_path(relative_path: str) -> bool:
-    path = Path(relative_path)
-    return any(part in {"upload", "uploads", "uploaded"} for part in path.parts)
-
-
-def _build_stem_display_name(
-    stem_key: str, relative_path: str, source_type: str
-) -> str:
-    path = Path(relative_path)
-    if source_type == "user" and path.name:
-        return path.name
+def _build_stem_display_name(stem_key: str, source_type: str) -> str:
     return stem_key.replace("_", " ").title()
+
+
+_SYSTEM_ACTOR = {"id": 1, "display_name": "system"}
 
 
 def _build_version_label(prefix: str) -> str:
     return f"{prefix}-{uuid.uuid4().hex[:8]}"
 
 
-async def _serialize_song_stem(row) -> dict:
-    source_type = str(row[5] or "system")
-    display_name = row[6] or _build_stem_display_name(
-        str(row[1]), str(row[2]), source_type
-    )
-    version_label = row[7] or "legacy"
-    uploaded_by_name = row[8]
+_STEM_SELECT = """
+    SELECT id, stem_key, mime_type, duration, source_type, display_name, description,
+           version_label, generation_id, uploaded_by_name, created_by_name, created_at, updated_at
+    FROM song_stems
+"""
+
+
+def _serialize_song_stem(row) -> dict:
+    source_type = str(row[4] or "system")
+    display_name = str(row[5]) if row[5] else _build_stem_display_name(str(row[1]), source_type)
     return {
         "id": int(row[0]),
-        "stem_key": row[1],
+        "stem_key": str(row[1]),
+        "mime_type": str(row[2]) if row[2] else "audio/wav",
+        "duration": row[3],
         "source_type": source_type,
         "display_name": display_name,
-        "version_label": version_label,
-        "uploaded_by_name": uploaded_by_name,
+        "description": row[6],
+        "version_label": str(row[7]) if row[7] else "legacy",
+        "generation_id": row[8],
+        "uploaded_by_name": row[9],
+        "created_by_name": row[10],
+        "created_at": row[11],
+        "updated_at": row[12],
         "is_archived": False,
-        "relative_path": row[2],
-        "mime_type": row[3],
-        "duration": row[4],
-        "created_at": row[9],
     }
 
 
-async def _load_active_song_stem(song_id: int, stem_key: str) -> dict | None:
-    rs = await execute(
-        """
-        SELECT id, stem_key, relative_path, mime_type, duration, source_type, display_name, version_label, uploaded_by_name, created_at
-        FROM song_stems
-        WHERE song_id = ? AND stem_key = ?
-        LIMIT 1
-        """,
-        [song_id, stem_key],
-    )
+async def _load_stem_audio_blob(stem_id: int) -> bytes | None:
+    rs = await execute("SELECT audio_blob FROM song_stems WHERE id = ?", [stem_id])
     if not rs.rows:
         return None
-    return await _serialize_song_stem(rs.rows[0])
+    raw = rs.rows[0][0]
+    if raw is None:
+        return None
+    return bytes(raw) if raw else b""
 
 
-async def _replace_song_stem(
+async def _insert_stem_blob(
     song_id: int,
     *,
     stem_key: str,
-    relative_path: str,
-    mime_type: str | None,
+    audio_data: bytes,
+    mime_type: str,
     duration: float | None,
     source_type: str,
     display_name: str,
+    description: str | None = None,
     version_label: str,
-    uploaded_by_name: str | None,
-) -> None:
-    await execute(
-        "DELETE FROM song_stems WHERE song_id = ? AND stem_key = ?",
-        [song_id, stem_key],
-    )
-    await execute(
+    generation_id: str,
+    created_by_user_id: int | None = None,
+    created_by_name: str | None = None,
+    uploaded_by_name: str | None = None,
+) -> int:
+    rs = await execute(
         """
         INSERT INTO song_stems (
-            song_id, stem_key, relative_path, mime_type, duration, source_type, display_name, version_label, uploaded_by_name
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            song_id, stem_key, audio_blob, mime_type, duration, source_type,
+            display_name, description, version_label, generation_id,
+            created_by_user_id, created_by_name, uploaded_by_name
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        RETURNING id
         """,
         [
-            song_id,
-            stem_key,
-            relative_path,
-            mime_type,
-            duration,
-            source_type,
-            display_name,
-            version_label,
-            uploaded_by_name,
+            song_id, stem_key, audio_data, mime_type, duration, source_type,
+            display_name, description, version_label, generation_id,
+            created_by_user_id, created_by_name, uploaded_by_name,
         ],
     )
+    return int(rs.rows[0][0])
 
 
-async def _persist_generated_stems(song_id: int, stems: list[StemResult]) -> None:
-    regen_version = _build_version_label("regen")
+async def _persist_generated_stems_blobs(
+    song_id: int,
+    stems,  # list[StemResult]
+    *,
+    actor_user: dict,
+    version_label: str | None = None,
+) -> str:
+    """INSERT all stems as new rows (additive). Skips stems where a user upload already exists. Prunes obsolete system-only stems. Returns the generation_id."""
+    gen_id = str(uuid.uuid4())
+    label = version_label or _build_version_label("regen")
+    # Check for existing stems to preserve user uploads and prune obsolete system rows
+    existing = await _load_song_stems(song_id)
+    user_keys = {s["stem_key"] for s in existing if s["source_type"] == "user"}
     generated_keys = {stem.stem_key for stem in stems}
-    existing_stems = await _load_song_stems(song_id)
-    for stem in existing_stems:
-        if stem["source_type"] != "system":
+    # Prune system stems that are not in the new generation
+    for s in existing:
+        if s["source_type"] != "system":
             continue
-        if stem["stem_key"] in generated_keys:
-            continue
-        await execute(
-            "DELETE FROM song_stems WHERE song_id = ? AND stem_key = ?",
-            [song_id, stem["stem_key"]],
-        )
+        if s["stem_key"] not in generated_keys:
+            await execute(
+                "DELETE FROM song_stems WHERE id = ?",
+                [int(s["id"])],
+            )
     for stem in stems:
-        current = await _load_active_song_stem(song_id, stem.stem_key)
-        if current is not None and current["source_type"] == "user":
+        if stem.stem_key in user_keys:
             continue
-        await _replace_song_stem(
+        # Replace old system rows for this key before inserting the new one
+        await execute(
+            "DELETE FROM song_stems WHERE song_id = ? AND stem_key = ? AND source_type = 'system'",
+            [song_id, stem.stem_key],
+        )
+        display_name = _build_stem_display_name(stem.stem_key, "system")
+        await _insert_stem_blob(
             song_id,
             stem_key=stem.stem_key,
-            relative_path=stem.relative_path,
-            mime_type=stem.mime_type,
+            audio_data=stem.audio_data,
+            mime_type=stem.mime_type or "audio/wav",
             duration=stem.duration,
             source_type="system",
-            display_name=_build_stem_display_name(
-                stem.stem_key, stem.relative_path, "system"
-            ),
-            version_label=regen_version,
-            uploaded_by_name=None,
+            display_name=display_name,
+            version_label=label,
+            generation_id=gen_id,
+            created_by_user_id=int(actor_user["id"]),
+            created_by_name=str(actor_user["display_name"]),
         )
+    return gen_id
+
+
+async def _persist_stems(song_id: int, stems: list[StemResult]) -> None:
+    """Compatibility shim: persist generated stems as blobs (additive). Task 5 will remove this."""
+    await _persist_generated_stems_blobs(song_id, stems, actor_user=_SYSTEM_ACTOR)
 
 
 async def _persist_midi(
@@ -603,7 +612,7 @@ async def _persist_midi(
     stem = (
         provenance
         if provenance is not None
-        else await _load_active_song_stem(song_id, source_stem_key)
+        else await _load_latest_stem_for_key(song_id, source_stem_key)
     )
     await execute(
         "DELETE FROM song_midis WHERE song_id = ? AND source_stem_key = ?",
@@ -635,7 +644,7 @@ async def _persist_midi(
             stem["source_type"] if stem is not None else "system",
             stem["display_name"]
             if stem is not None
-            else _build_stem_display_name(source_stem_key, source_stem_key, "system"),
+            else _build_stem_display_name(source_stem_key, "system"),
             stem["version_label"] if stem is not None else "transient",
             stem["uploaded_by_name"] if stem is not None else None,
             midi_blob,
@@ -752,16 +761,32 @@ async def _load_song_row(song_id: int) -> dict | None:
 
 
 async def _load_song_stems(song_id: int) -> list[dict]:
-    stems_rs = await execute(
-        """
-        SELECT id, stem_key, relative_path, mime_type, duration, source_type, display_name, version_label, uploaded_by_name, created_at
-        FROM song_stems
-        WHERE song_id = ?
-        ORDER BY stem_key ASC
-        """,
+    rs = await execute(
+        _STEM_SELECT + " WHERE song_id = ? ORDER BY created_at ASC, id ASC",
         [song_id],
     )
-    return [await _serialize_song_stem(row) for row in stems_rs.rows]
+    return [_serialize_song_stem(row) for row in rs.rows]
+
+
+async def _load_stem_by_id(stem_id: int) -> dict | None:
+    rs = await execute(
+        _STEM_SELECT + " WHERE id = ? LIMIT 1",
+        [stem_id],
+    )
+    if not rs.rows:
+        return None
+    return _serialize_song_stem(rs.rows[0])
+
+
+async def _load_latest_stem_for_key(song_id: int, stem_key: str) -> dict | None:
+    """Returns the most recently created stem for a given key."""
+    rs = await execute(
+        _STEM_SELECT + " WHERE song_id = ? AND stem_key = ? ORDER BY created_at DESC, id DESC LIMIT 1",
+        [song_id, stem_key],
+    )
+    if not rs.rows:
+        return None
+    return _serialize_song_stem(rs.rows[0])
 
 
 async def _load_song_tab_meta(song_id: int) -> dict | None:
@@ -801,7 +826,7 @@ async def _load_song_tab_meta(song_id: int) -> dict | None:
         "source_stem_id": row[3],
         "source_type": row[4],
         "source_display_name": row[5]
-        or _build_stem_display_name(str(row[1]), str(row[1]), str(row[4] or "system")),
+        or _build_stem_display_name(str(row[1]), str(row[4] or "system")),
         "source_version_label": row[6],
         "tab_format": row[7],
         "tuning": row[8],
@@ -826,36 +851,61 @@ def _write_song_audio_tempfile(
 
 async def _regenerate_song_tabs(song_id: int, source_stem_key: str) -> dict:
     stems = await _load_song_stems(song_id)
-    stems_by_key = {
-        str(stem["stem_key"]): Path(str(stem["relative_path"])) for stem in stems
-    }
-    if source_stem_key not in stems_by_key:
+    stem_map = {str(s["stem_key"]): s for s in stems}
+    if source_stem_key not in stem_map:
         raise HTTPException(404, "Requested source stem not found.")
-    drums_path = stems_by_key.get("drums")
-    if drums_path is None:
+    drums_stem = stem_map.get("drums")
+    if drums_stem is None:
         raise HTTPException(422, "Drums stem missing; cannot build rhythm grid.")
-    analysis_stems = dict(stems_by_key)
-    analysis_stems["bass"] = stems_by_key[source_stem_key]
 
-    analysis_output_dir = STEMS_DIR / str(song_id) / "analysis"
-    analysis_output_dir.mkdir(parents=True, exist_ok=True)
-    analysis_stem_result = build_bass_analysis_stem(
-        stems=analysis_stems,
-        output_dir=analysis_output_dir,
-        analysis_config=_get_uploaded_stems_analysis_config("standard"),
-        source_audio_path=None,
-    )
-    tab_result = tab_pipeline.run(
-        analysis_stem_result.path,
-        drums_path,
-        bpm_hint=None,
-        time_signature=(4, 4),
-        subdivision=16,
-        max_fret=24,
-        sync_every_bars=8,
-        tab_generation_quality_mode="standard",
-        onset_recovery=None,
-    )
+    # Load blobs and write to temp files for the analysis pipeline
+    regen_tmp_dir = Path(tempfile.mkdtemp(prefix=f"dechord-regen-{song_id}-"))
+    try:
+        stem_paths: dict[str, Path] = {}
+        for key, stem in stem_map.items():
+            blob = await _load_stem_audio_blob(int(stem["id"]))
+            if blob:
+                p = regen_tmp_dir / f"{key}.wav"
+                p.write_bytes(blob)
+                stem_paths[key] = p
+
+        if source_stem_key not in stem_paths:
+            raise HTTPException(422, "Stem audio not available.")
+        if "drums" not in stem_paths:
+            raise HTTPException(422, "Drums stem missing; cannot build rhythm grid.")
+
+        analysis_stems = dict(stem_paths)
+        analysis_stems["bass"] = stem_paths[source_stem_key]
+
+        analysis_output_dir = regen_tmp_dir / "analysis"
+        analysis_output_dir.mkdir(parents=True, exist_ok=True)
+        analysis_stem_result = build_bass_analysis_stem(
+            stems=analysis_stems,
+            output_dir=analysis_output_dir,
+            analysis_config=_get_uploaded_stems_analysis_config("standard"),
+            source_audio_path=None,
+        )
+        analysis_wav_path = analysis_output_dir / "bass_analysis.wav"
+        analysis_wav_path.write_bytes(analysis_stem_result.audio_data)
+        drums_path = stem_paths["drums"]
+    except HTTPException:
+        shutil.rmtree(regen_tmp_dir, ignore_errors=True)
+        raise
+
+    try:
+        tab_result = tab_pipeline.run(
+            analysis_wav_path,
+            drums_path,
+            bpm_hint=None,
+            time_signature=(4, 4),
+            subdivision=16,
+            max_fret=24,
+            sync_every_bars=8,
+            tab_generation_quality_mode="standard",
+            onset_recovery=None,
+        )
+    finally:
+        shutil.rmtree(regen_tmp_dir, ignore_errors=True)
     midi_id = await _persist_midi(
         song_id,
         source_stem_key=source_stem_key,
@@ -951,9 +1001,14 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                         tab_generation_quality = jobs[job_id].get(
                             "tab_generation_quality", "standard"
                         )
-                        stem_paths = {
-                            stem.stem_key: Path(stem.relative_path) for stem in stems
-                        }
+                        # Write stem audio_data bytes to temp files for analysis pipeline
+                        stems_tmp_dir = STEMS_DIR / str(song_id) / "analysis_input"
+                        stems_tmp_dir.mkdir(parents=True, exist_ok=True)
+                        stem_paths = {}
+                        for _s in stems:
+                            _p = stems_tmp_dir / f"{_s.stem_key}.wav"
+                            _p.write_bytes(_s.audio_data)
+                            stem_paths[_s.stem_key] = _p
                         analysis_output_dir = STEMS_DIR / str(song_id) / "analysis"
                         analysis_output_dir.mkdir(parents=True, exist_ok=True)
                         analysis_stem_result = build_bass_analysis_stem(
@@ -964,12 +1019,14 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                             ),
                             source_audio_path=Path(audio_path),
                         )
-                        jobs[job_id]["analysis_stem_path"] = str(
-                            analysis_stem_result.path
-                        )
+                        jobs[job_id]["analysis_stem_model"] = analysis_stem_result.source_model
                         jobs[job_id]["analysis_stem_diagnostics"] = (
                             analysis_stem_result.diagnostics
                         )
+                        # Write analysis audio_data to temp file for tab_pipeline
+                        analysis_wav_path = analysis_output_dir / "bass_analysis.wav"
+                        analysis_wav_path.write_bytes(analysis_stem_result.audio_data)
+                        drums_wav_path = stem_paths["drums"]
                         set_stage(
                             "transcribing_bass_midi",
                             message="Transcribing bass stem to MIDI...",
@@ -977,8 +1034,8 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                             stage_progress_pct=0,
                         )
                         tab_result = tab_pipeline.run(
-                            analysis_stem_result.path,
-                            Path(drums_stem.relative_path),
+                            analysis_wav_path,
+                            drums_wav_path,
                             bpm_hint=float(result.tempo) if result.tempo else None,
                             time_signature=(4, 4),
                             subdivision=16,
@@ -1017,7 +1074,7 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                         jobs[job_id]["tab_error"] = None
                         jobs[job_id]["tab_debug_info"] = {
                             **tab_result.debug_info,
-                            "analysis_stem_path": str(analysis_stem_result.path),
+                            "analysis_stem_model": analysis_stem_result.source_model,
                             "analysis_stem_diagnostics": analysis_stem_result.diagnostics,
                         }
                     except FingeringCollapseError as exc:
@@ -1285,15 +1342,18 @@ async def tab_from_demucs_stems(
                 exc,
             )
             analysis_stem_result = BassAnalysisStemResult(
-                path=bass_path,
+                audio_data=bass_bytes,
                 source_model="uploaded_bass_fallback",
                 diagnostics={
                     "selected_model": "uploaded_bass_fallback",
                     "analysis_build_error": str(exc),
                 },
             )
+        # Write analysis audio to a temp file for tab_pipeline (which expects a Path)
+        analysis_wav_path = stem_tmp_dir / "bass_analysis.wav"
+        analysis_wav_path.write_bytes(analysis_stem_result.audio_data)
         result = tab_pipeline.run(
-            analysis_stem_result.path,
+            analysis_wav_path,
             drums_path,
             bpm_hint=bpm,
             time_signature=signature,
@@ -1360,7 +1420,7 @@ async def tab_from_demucs_stems(
         ],
         "debug_info": {
             **result.debug_info,
-            "analysis_stem_path": str(analysis_stem_result.path),
+            "analysis_stem_model": analysis_stem_result.source_model,
             "analysis_stem_diagnostics": analysis_stem_result.diagnostics,
         },
     }
@@ -1753,20 +1813,19 @@ async def upload_song_stem(
     user = await _get_request_user(request)
     await _require_song_project_membership(song_id, int(user["id"]))
     safe_name = Path(file.filename or f"{stem_key}.wav").name or f"{stem_key}.wav"
-    upload_dir = STEMS_DIR / str(song_id) / "uploads"
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    stored_path = upload_dir / f"{uuid.uuid4().hex[:8]}-{safe_name}"
-    stored_path.write_bytes(content)
 
-    await _replace_song_stem(
+    await _insert_stem_blob(
         song_id,
         stem_key=stem_key,
-        relative_path=str(stored_path),
-        mime_type=file.content_type,
+        audio_data=content,
+        mime_type=file.content_type or "audio/wav",
         duration=None,
         source_type="user",
         display_name=safe_name,
         version_label=_build_version_label("upload"),
+        generation_id=str(uuid.uuid4()),
+        created_by_user_id=int(user["id"]),
+        created_by_name=str(user["display_name"]),
         uploaded_by_name=str(user["display_name"]),
     )
     await _record_song_project_activity(
@@ -1811,70 +1870,52 @@ async def regenerate_song_stems(song_id: int, request: Request):
 
 @app.get("/api/songs/{song_id}/stems/{stem_key}/download")
 async def download_song_stem(song_id: int, stem_key: str):
-    rs = await execute(
-        """
-        SELECT s.title, ss.relative_path, ss.mime_type
-        FROM song_stems ss
-        JOIN songs s ON s.id = ss.song_id
-        WHERE ss.song_id = ? AND ss.stem_key = ?
-        LIMIT 1
-        """,
-        [song_id, stem_key],
-    )
-    if not rs.rows:
+    song_row = await _load_song_row(song_id)
+    if song_row is None:
+        raise HTTPException(404, "Song not found")
+    stem = await _load_latest_stem_for_key(song_id, stem_key)
+    if stem is None:
         raise HTTPException(404, "Stem not found")
+    audio_blob = await _load_stem_audio_blob(int(stem["id"]))
+    if not audio_blob:
+        raise HTTPException(404, "Stem audio not available — legacy row.")
 
-    song_title, relative_path, mime_type = rs.rows[0][0], rs.rows[0][1], rs.rows[0][2]
-    path = Path(relative_path)
-    if not path.exists():
-        raise HTTPException(404, "Stem file missing")
-
+    song_title = song_row["title"]
+    mime_type = stem["mime_type"] or "audio/wav"
     safe_title = (
         re.sub(r"[^a-zA-Z0-9._-]+", "_", song_title or f"song-{song_id}").strip("._-")
         or f"song-{song_id}"
     )
-    extension = path.suffix or ".wav"
-    filename = f"{safe_title}-{stem_key}{extension}"
-    stem_bytes = path.read_bytes()
+    ext = mimetypes.guess_extension(mime_type) or ".wav"
+    filename = f"{safe_title}-{stem_key}{ext}"
     return Response(
-        content=stem_bytes,
-        media_type=mime_type or "audio/mpeg",
+        content=audio_blob,
+        media_type=mime_type,
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
-            "Content-Length": str(len(stem_bytes)),
+            "Content-Length": str(len(audio_blob)),
         },
     )
 
 
 @app.get("/api/songs/{song_id}/stems/download")
 async def download_song_stems_zip(song_id: int):
-    song_rs = await execute("SELECT title FROM songs WHERE id = ?", [song_id])
-    if not song_rs.rows:
+    song_row = await _load_song_row(song_id)
+    if song_row is None:
         raise HTTPException(404, "Song not found")
-    song_title = song_rs.rows[0][0]
+    song_title = song_row["title"]
 
-    stems_rs = await execute(
-        """
-        SELECT stem_key, relative_path, mime_type, duration
-        FROM song_stems
-        WHERE song_id = ?
-        ORDER BY stem_key ASC
-        """,
-        [song_id],
-    )
-    stems = [
-        StemResult(
-            stem_key=row[0],
-            relative_path=row[1],
-            mime_type=row[2] or "audio/mpeg",
-            duration=row[3],
-        )
-        for row in stems_rs.rows
-    ]
-    if not stems:
-        raise HTTPException(404, "No stems found")
+    stems = await _load_song_stems(song_id)
+    zip_stems = []
+    for stem in stems:
+        blob = await _load_stem_audio_blob(int(stem["id"]))
+        if blob:
+            zip_stems.append((str(stem["stem_key"]), blob, str(stem["mime_type"] or "audio/wav")))
 
-    archive_bytes, archive_name = build_stems_zip(song_title=song_title, stems=stems)
+    if not zip_stems:
+        raise HTTPException(404, "No audio data available for these stems.")
+
+    archive_bytes, archive_name = build_stems_zip(song_title, zip_stems)
     return Response(
         content=archive_bytes,
         media_type="application/zip",
@@ -2006,22 +2047,13 @@ async def audio(audio_id: str):
 
 @app.get("/api/audio/{song_id}/stems/{stem_key}")
 async def stem_audio(song_id: int, stem_key: str):
-    rs = await execute(
-        """
-        SELECT relative_path, mime_type
-        FROM song_stems
-        WHERE song_id = ? AND stem_key = ?
-        LIMIT 1
-        """,
-        [song_id, stem_key],
-    )
-    if not rs.rows:
+    stem = await _load_latest_stem_for_key(song_id, stem_key)
+    if stem is None:
         raise HTTPException(404, "Stem not found")
-
-    path = Path(rs.rows[0][0])
-    if not path.exists():
-        raise HTTPException(404, "Stem file missing")
-    return FileResponse(path, media_type=rs.rows[0][1] or "audio/mpeg")
+    audio_blob = await _load_stem_audio_blob(int(stem["id"]))
+    if not audio_blob:
+        raise HTTPException(404, "Stem audio not available — legacy row.")
+    return Response(content=audio_blob, media_type=stem["mime_type"] or "audio/wav")
 
 
 @app.post("/api/songs/{song_id}/notes")
