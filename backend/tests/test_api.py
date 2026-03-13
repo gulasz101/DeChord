@@ -2588,7 +2588,7 @@ def test_regenerate_song_stems_reuses_original_mix_and_persists_refreshed_stems(
     assert {stem["stem_key"] for stem in payload["stems"]} >= {"bass", "drums"}
     assert str(captured["audio_path"]).endswith(".mp3")
     assert captured["audio_bytes"] == b"song-audio"
-    assert str(captured["output_dir"]).endswith(f"stems/{song_id}")
+    assert f"dechord-sep-{song_id}-" in str(captured["output_dir"])
 
     refreshed = asyncio.run(
         main.execute(

@@ -69,7 +69,6 @@ app.add_middleware(
 )
 
 UPLOAD_DIR = runtime_paths.uploads_dir
-STEMS_DIR = runtime_paths.stems_dir
 
 # In-memory job store (single-user local)
 jobs: dict[str, dict] = {}
@@ -942,16 +941,20 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                     progress_pct=45,
                     stage_progress_pct=0,
                 )
-                stems = split_to_stems(
-                    audio_path=audio_path,
-                    output_dir=STEMS_DIR / str(song_id),
-                    on_progress=lambda stage_pct, msg: set_stage(
-                        "splitting_stems",
-                        message=msg,
-                        progress_pct=min(45 + stage_pct * 0.5, 95),
-                        stage_progress_pct=stage_pct,
-                    ),
-                )
+                sep_tmp_dir = Path(tempfile.mkdtemp(prefix=f"dechord-sep-{song_id}-"))
+                try:
+                    stems = split_to_stems(
+                        audio_path=audio_path,
+                        output_dir=sep_tmp_dir,
+                        on_progress=lambda stage_pct, msg: set_stage(
+                            "splitting_stems",
+                            message=msg,
+                            progress_pct=min(45 + stage_pct * 0.5, 95),
+                            stage_progress_pct=stage_pct,
+                        ),
+                    )
+                finally:
+                    shutil.rmtree(sep_tmp_dir, ignore_errors=True)
                 asyncio.run(_persist_stems(song_id, stems))
                 jobs[job_id]["stems_status"] = "complete"
                 jobs[job_id]["stems_error"] = None
@@ -982,14 +985,13 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                             "tab_generation_quality", "standard"
                         )
                         # Write stem audio_data bytes to temp files for analysis pipeline
-                        stems_tmp_dir = STEMS_DIR / str(song_id) / "analysis_input"
-                        stems_tmp_dir.mkdir(parents=True, exist_ok=True)
+                        stems_tmp_dir = Path(tempfile.mkdtemp(prefix=f"dechord-analysis-{song_id}-"))
                         stem_paths = {}
                         for _s in stems:
                             _p = stems_tmp_dir / f"{_s.stem_key}.wav"
                             _p.write_bytes(_s.audio_data)
                             stem_paths[_s.stem_key] = _p
-                        analysis_output_dir = STEMS_DIR / str(song_id) / "analysis"
+                        analysis_output_dir = stems_tmp_dir / "analysis"
                         analysis_output_dir.mkdir(parents=True, exist_ok=True)
                         analysis_stem_result = build_bass_analysis_stem(
                             stems=stem_paths,
@@ -1080,6 +1082,8 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                         jobs[job_id]["midi_error"] = str(exc)
                         jobs[job_id]["tab_status"] = "not_requested"
                         jobs[job_id]["tab_error"] = None
+                    finally:
+                        shutil.rmtree(stems_tmp_dir, ignore_errors=True)
                 logger.info("Job %s: stem splitting complete", job_id)
             except Exception as exc:
                 logger.error(
@@ -1287,8 +1291,7 @@ async def tab_from_demucs_stems(
             message="uploaded a song",
         )
 
-    stem_tmp_dir = STEMS_DIR / "_tmp" / uuid.uuid4().hex[:12]
-    stem_tmp_dir.mkdir(parents=True, exist_ok=True)
+    stem_tmp_dir = Path(tempfile.mkdtemp(prefix="dechord-upload-stems-"))
     bass_path = stem_tmp_dir / "bass.wav"
     drums_path = stem_tmp_dir / "drums.wav"
     bass_path.write_bytes(bass_bytes)
@@ -1830,19 +1833,22 @@ async def regenerate_song_stems(song_id: int, request: Request):
         song["original_filename"],
         song["audio_blob"],
     )
+    sep_tmp_dir = Path(tempfile.mkdtemp(prefix=f"dechord-sep-{song_id}-"))
     try:
         stems = split_to_stems(
             audio_path=str(audio_path),
-            output_dir=STEMS_DIR / str(song_id),
+            output_dir=sep_tmp_dir,
         )
         await _persist_stems(song_id, stems)
+        stem_keys = ", ".join(sorted({s.stem_key for s in stems}))
         await _record_song_project_activity(
             song_id,
             actor_user=user,
-            event_type="stems_regenerated",
-            message="regenerated stems",
+            event_type="stem_generated",
+            message=f"{user['display_name']} generated stems ({stem_keys})",
         )
     finally:
+        shutil.rmtree(sep_tmp_dir, ignore_errors=True)
         shutil.rmtree(audio_path.parent, ignore_errors=True)
 
     return {"stems": await _load_song_stems(song_id)}
