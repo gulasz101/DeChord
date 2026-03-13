@@ -23,7 +23,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from app.analysis import AnalysisResult, analyze_audio
+from app.analysis import AnalysisResult, detect_chords, detect_key, detect_tempo, get_audio_duration
 from app.db import (
     claim_identity_user,
     close_db,
@@ -934,11 +934,27 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
         jobs[job_id]["status"] = "processing"
         set_stage(
             "analyzing_chords",
-            message="Analyzing audio...",
-            progress_pct=40,
-            stage_progress_pct=50,
+            message="Detecting chords...",
+            progress_pct=10,
+            stage_progress_pct=0,
         )
-        result = analyze_audio(audio_path)
+        chords = detect_chords(audio_path)
+        set_stage(
+            "analyzing_chords",
+            message="Detecting key...",
+            progress_pct=25,
+            stage_progress_pct=33,
+        )
+        key = detect_key(audio_path)
+        set_stage(
+            "analyzing_chords",
+            message="Detecting tempo...",
+            progress_pct=35,
+            stage_progress_pct=66,
+        )
+        tempo = detect_tempo(audio_path)
+        duration = chords[-1].end if chords else get_audio_duration(audio_path)
+        result = AnalysisResult(key=key, tempo=tempo, chords=chords, duration=duration)
 
         if jobs[job_id].get("process_mode") == "analysis_and_stems":
             logger.info("Job %s: starting stem splitting for song %s", job_id, song_id)
@@ -950,16 +966,27 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                     stage_progress_pct=0,
                 )
                 sep_tmp_dir = Path(tempfile.mkdtemp(prefix=f"dechord-sep-{song_id}-"))
+                _stem_max_pct = [45.0]
+
+                def _on_stem_progress(stage_pct: float, msg: str) -> None:
+                    overall = min(45 + stage_pct * 0.5, 95)
+                    # Clamp to be monotonically non-decreasing so Demucs shift
+                    # pass resets and the post-separation "Saving" callback
+                    # (0.9 = overall 90%) never regress visible progress.
+                    if overall > _stem_max_pct[0]:
+                        _stem_max_pct[0] = overall
+                    set_stage(
+                        "splitting_stems",
+                        message=msg,
+                        progress_pct=_stem_max_pct[0],
+                        stage_progress_pct=stage_pct,
+                    )
+
                 try:
                     stems = split_to_stems(
                         audio_path=audio_path,
                         output_dir=sep_tmp_dir,
-                        on_progress=lambda stage_pct, msg: set_stage(
-                            "splitting_stems",
-                            message=msg,
-                            progress_pct=min(45 + stage_pct * 0.5, 95),
-                            stage_progress_pct=stage_pct,
-                        ),
+                        on_progress=_on_stem_progress,
                     )
                 finally:
                     shutil.rmtree(sep_tmp_dir, ignore_errors=True)

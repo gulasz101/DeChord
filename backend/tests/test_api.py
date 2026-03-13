@@ -33,6 +33,7 @@ def _build_client(tmp_path: Path, monkeypatch):
     main = importlib.reload(main_mod)
 
     import app.db as _db_mod
+
     asyncio.run(_db_mod.reset_db_client_for_tests())
 
     def immediate_submit(fn, *args, **kwargs):
@@ -42,18 +43,25 @@ def _build_client(tmp_path: Path, monkeypatch):
 
     from app.analysis import AnalysisResult, Chord
 
-    def fake_analyze_audio(_audio_path: str):
-        return AnalysisResult(
-            key="C major",
-            tempo=120,
-            duration=4.0,
-            chords=[
-                Chord(start=0.0, end=2.0, label="C"),
-                Chord(start=2.0, end=4.0, label="G"),
-            ],
-        )
+    def fake_detect_chords(_audio_path: str):
+        return [
+            Chord(start=0.0, end=2.0, label="C"),
+            Chord(start=2.0, end=4.0, label="G"),
+        ]
 
-    monkeypatch.setattr(main, "analyze_audio", fake_analyze_audio)
+    def fake_detect_key(_audio_path: str):
+        return "C major"
+
+    def fake_detect_tempo(_audio_path: str):
+        return 120
+
+    def fake_get_audio_duration(_audio_path: str):
+        return 4.0
+
+    monkeypatch.setattr(main, "detect_chords", fake_detect_chords)
+    monkeypatch.setattr(main, "detect_key", fake_detect_key)
+    monkeypatch.setattr(main, "detect_tempo", fake_detect_tempo)
+    monkeypatch.setattr(main, "get_audio_duration", fake_get_audio_duration)
     monkeypatch.setattr(main.executor, "submit", immediate_submit)
     asyncio.run(main.init_db())
 
@@ -813,8 +821,12 @@ def test_stem_download_endpoints_support_single_and_zip(tmp_path, monkeypatch):
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
         return [
-            StemResult(stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"),
-            StemResult(stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"),
+            StemResult(
+                stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"
+            ),
+            StemResult(
+                stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"
+            ),
         ]
 
     def fake_run(*_args, **_kwargs):
@@ -1177,8 +1189,12 @@ def test_analyze_with_stems_reports_split_stage(tmp_path, monkeypatch):
             on_progress(10, "warmup")
             on_progress(100, "done")
         return [
-            StemResult(stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"),
-            StemResult(stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"),
+            StemResult(
+                stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"
+            ),
+            StemResult(
+                stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"
+            ),
         ]
 
     def fake_run(*_args, **_kwargs):
@@ -1283,9 +1299,15 @@ def test_analyze_with_stems_routes_bass_analysis_wav_into_tab_pipeline(
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
         return [
-            StemResult(stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"),
-            StemResult(stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"),
-            StemResult(stem_key="other", audio_data=b"other-bytes", mime_type="audio/wav"),
+            StemResult(
+                stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"
+            ),
+            StemResult(
+                stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"
+            ),
+            StemResult(
+                stem_key="other", audio_data=b"other-bytes", mime_type="audio/wav"
+            ),
         ]
 
     def fake_build_bass_analysis_stem(
@@ -1348,8 +1370,12 @@ def test_analyze_high_accuracy_enables_ensemble_analysis_config(tmp_path, monkey
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
         return [
-            StemResult(stem_key="bass", audio_data=b"RIFFfakebass", mime_type="audio/wav"),
-            StemResult(stem_key="drums", audio_data=b"RIFFfakedrum", mime_type="audio/wav"),
+            StemResult(
+                stem_key="bass", audio_data=b"RIFFfakebass", mime_type="audio/wav"
+            ),
+            StemResult(
+                stem_key="drums", audio_data=b"RIFFfakedrum", mime_type="audio/wav"
+            ),
         ]
 
     def fake_build_bass_analysis_stem(
@@ -1414,8 +1440,12 @@ def test_analyze_standard_keeps_single_model_analysis_config(tmp_path, monkeypat
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
         return [
-            StemResult(stem_key="bass", audio_data=b"RIFFfakebass", mime_type="audio/wav"),
-            StemResult(stem_key="drums", audio_data=b"RIFFfakedrum", mime_type="audio/wav"),
+            StemResult(
+                stem_key="bass", audio_data=b"RIFFfakebass", mime_type="audio/wav"
+            ),
+            StemResult(
+                stem_key="drums", audio_data=b"RIFFfakedrum", mime_type="audio/wav"
+            ),
         ]
 
     def fake_build_bass_analysis_stem(
@@ -1470,8 +1500,12 @@ def test_stems_are_persisted_and_streamed(tmp_path, monkeypatch):
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
         return [
-            StemResult(stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"),
-            StemResult(stem_key="vocals", audio_data=b"vocals-bytes", mime_type="audio/wav"),
+            StemResult(
+                stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"
+            ),
+            StemResult(
+                stem_key="vocals", audio_data=b"vocals-bytes", mime_type="audio/wav"
+            ),
         ]
 
     monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
@@ -1598,12 +1632,16 @@ def test_upload_song_stem_same_filename_creates_distinct_storage_and_versions(
     assert second_stem["display_name"] == "bass.wav"
     assert first_stem["id"] != second_stem["id"]
     assert first_stem["version_label"] != second_stem["version_label"]
-    assert client.get(f"/api/audio/{song_id}/stems/bass").content in (b"first-bass", b"second-bass")
+    assert client.get(f"/api/audio/{song_id}/stems/bass").content in (
+        b"first-bass",
+        b"second-bass",
+    )
 
 
 def test_stem_generation_is_additive_for_system_stems(tmp_path, monkeypatch):
     """Two stem generation runs produce 2 system rows per stem_key — additive, never replace."""
     from app.stems import StemResult
+
     client = _build_client(tmp_path, monkeypatch)
 
     import app.main as main
@@ -1621,9 +1659,13 @@ def test_stem_generation_is_additive_for_system_stems(tmp_path, monkeypatch):
     song_id = int(inserted.rows[0][0])
 
     fake_audio = b"fake-wav-data"
-    monkeypatch.setattr(main, "split_to_stems", lambda *a, **k: [
-        StemResult(stem_key="bass", audio_data=fake_audio, mime_type="audio/wav")
-    ])
+    monkeypatch.setattr(
+        main,
+        "split_to_stems",
+        lambda *a, **k: [
+            StemResult(stem_key="bass", audio_data=fake_audio, mime_type="audio/wav")
+        ],
+    )
 
     client.post(f"/api/songs/{song_id}/stems/regenerate")
     client.post(f"/api/songs/{song_id}/stems/regenerate")
@@ -1632,9 +1674,15 @@ def test_stem_generation_is_additive_for_system_stems(tmp_path, monkeypatch):
     assert resp.status_code == 200
     stems_data = resp.json()
     # Handle both {"stems": [...]} and [...] response shapes
-    stems = stems_data["stems"] if isinstance(stems_data, dict) and "stems" in stems_data else stems_data
+    stems = (
+        stems_data["stems"]
+        if isinstance(stems_data, dict) and "stems" in stems_data
+        else stems_data
+    )
     bass_stems = [s for s in stems if s["stem_key"] == "bass"]
-    assert len(bass_stems) == 2, f"Expected 2 bass stems (additive), got {len(bass_stems)}"
+    assert len(bass_stems) == 2, (
+        f"Expected 2 bass stems (additive), got {len(bass_stems)}"
+    )
     assert all(s["source_type"] == "system" for s in bass_stems)
 
 
@@ -1854,9 +1902,7 @@ def test_song_tabs_provenance_stays_tied_to_generated_source_after_later_replace
     assert payload["source_version_label"] == first_bass["version_label"]
 
 
-def test_regenerate_song_stems_additive_alongside_user_upload(
-    tmp_path, monkeypatch
-):
+def test_regenerate_song_stems_additive_alongside_user_upload(tmp_path, monkeypatch):
     """Generation is additive: user upload and system stems coexist for same key."""
     client = _build_client(tmp_path, monkeypatch)
     import app.main as main
@@ -1885,8 +1931,18 @@ def test_regenerate_song_stems_additive_alongside_user_upload(
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
         return [
-            StemResult(stem_key="bass", audio_data=b"generated-bass", mime_type="audio/wav", duration=2.5),
-            StemResult(stem_key="drums", audio_data=b"generated-drums", mime_type="audio/wav", duration=2.5),
+            StemResult(
+                stem_key="bass",
+                audio_data=b"generated-bass",
+                mime_type="audio/wav",
+                duration=2.5,
+            ),
+            StemResult(
+                stem_key="drums",
+                audio_data=b"generated-drums",
+                mime_type="audio/wav",
+                duration=2.5,
+            ),
         ]
 
     monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
@@ -1896,7 +1952,11 @@ def test_regenerate_song_stems_additive_alongside_user_upload(
 
     # Both user bass and system bass now exist — additive
     all_stems = client.get(f"/api/songs/{song_id}/stems").json()
-    all_stems_list = all_stems["stems"] if isinstance(all_stems, dict) and "stems" in all_stems else all_stems
+    all_stems_list = (
+        all_stems["stems"]
+        if isinstance(all_stems, dict) and "stems" in all_stems
+        else all_stems
+    )
     bass_stems = [s for s in all_stems_list if s["stem_key"] == "bass"]
     assert len(bass_stems) == 2, f"Expected user + system bass, got {len(bass_stems)}"
     bass_source_types = {s["source_type"] for s in bass_stems}
@@ -1959,8 +2019,18 @@ def test_regenerate_song_stems_additive_keeps_all_old_rows_and_user_rows(
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
         return [
-            StemResult(stem_key="bass", audio_data=b"new-bass", mime_type="audio/wav", duration=2.5),
-            StemResult(stem_key="drums", audio_data=b"new-drums", mime_type="audio/wav", duration=2.5),
+            StemResult(
+                stem_key="bass",
+                audio_data=b"new-bass",
+                mime_type="audio/wav",
+                duration=2.5,
+            ),
+            StemResult(
+                stem_key="drums",
+                audio_data=b"new-drums",
+                mime_type="audio/wav",
+                duration=2.5,
+            ),
         ]
 
     monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
@@ -2363,8 +2433,12 @@ def test_analyze_defaults_tab_generation_quality_to_standard(tmp_path, monkeypat
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
         return [
-            StemResult(stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"),
-            StemResult(stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"),
+            StemResult(
+                stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"
+            ),
+            StemResult(
+                stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"
+            ),
         ]
 
     def fake_run(*_args, **kwargs):
@@ -2406,8 +2480,12 @@ def test_analyze_accepts_high_accuracy_tab_generation_quality(tmp_path, monkeypa
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
         return [
-            StemResult(stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"),
-            StemResult(stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"),
+            StemResult(
+                stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"
+            ),
+            StemResult(
+                stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"
+            ),
         ]
 
     def fake_run(*_args, **kwargs):
@@ -2456,8 +2534,12 @@ def test_analyze_accepts_high_accuracy_aggressive_tab_generation_quality(
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
         return [
-            StemResult(stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"),
-            StemResult(stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"),
+            StemResult(
+                stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"
+            ),
+            StemResult(
+                stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"
+            ),
         ]
 
     def fake_run(*_args, **kwargs):
@@ -2504,8 +2586,12 @@ def test_analyze_forwards_optional_onset_recovery_flag(tmp_path, monkeypatch):
     def fake_split_to_stems(audio_path, output_dir, on_progress=None, separate_fn=None):
         output_dir.mkdir(parents=True, exist_ok=True)
         return [
-            StemResult(stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"),
-            StemResult(stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"),
+            StemResult(
+                stem_key="bass", audio_data=b"bass-bytes", mime_type="audio/wav"
+            ),
+            StemResult(
+                stem_key="drums", audio_data=b"drums-bytes", mime_type="audio/wav"
+            ),
         ]
 
     def fake_run(*_args, **kwargs):
@@ -2575,8 +2661,18 @@ def test_regenerate_song_stems_reuses_original_mix_and_persists_refreshed_stems(
         captured["audio_bytes"] = Path(audio_path).read_bytes()
         output_dir.mkdir(parents=True, exist_ok=True)
         return [
-            StemResult(stem_key="bass", audio_data=b"new-bass", mime_type="audio/wav", duration=2.5),
-            StemResult(stem_key="drums", audio_data=b"new-drums", mime_type="audio/wav", duration=2.5),
+            StemResult(
+                stem_key="bass",
+                audio_data=b"new-bass",
+                mime_type="audio/wav",
+                duration=2.5,
+            ),
+            StemResult(
+                stem_key="drums",
+                audio_data=b"new-drums",
+                mime_type="audio/wav",
+                duration=2.5,
+            ),
         ]
 
     monkeypatch.setattr(main, "split_to_stems", fake_split_to_stems)
@@ -2771,7 +2867,10 @@ def test_regenerate_song_tabs_uses_selected_non_bass_stem_as_analysis_source(
     )
     song_id = int(inserted.rows[0][0])
 
-    for stem_key, audio_data in (("guitar", b"guitar-audio"), ("drums", b"drums-audio")):
+    for stem_key, audio_data in (
+        ("guitar", b"guitar-audio"),
+        ("drums", b"drums-audio"),
+    ):
         asyncio.run(
             main.execute(
                 """
@@ -2832,9 +2931,19 @@ def test_regenerate_song_tabs_uses_selected_non_bass_stem_as_analysis_source(
 def _upload_song_with_stem(client, monkeypatch, main_mod, fake_audio=b"stem-bytes"):
     """Helper: upload a song, fake stem generation, return (song_id, stem_id)."""
     from app.stems import StemResult
-    monkeypatch.setattr(main_mod, "split_to_stems", lambda *a, **k: [
-        StemResult(stem_key="bass", audio_data=fake_audio, mime_type="audio/wav", duration=2.5)
-    ])
+
+    monkeypatch.setattr(
+        main_mod,
+        "split_to_stems",
+        lambda *a, **k: [
+            StemResult(
+                stem_key="bass",
+                audio_data=fake_audio,
+                mime_type="audio/wav",
+                duration=2.5,
+            )
+        ],
+    )
     resp = client.post(
         "/api/analyze",
         files={"file": ("s.mp3", b"\xff\xfb\x90\x00" * 50, "audio/mpeg")},
@@ -2852,7 +2961,10 @@ def _upload_song_with_stem(client, monkeypatch, main_mod, fake_audio=b"stem-byte
 def test_get_stem_audio_returns_blob(tmp_path, monkeypatch):
     client = _build_client(tmp_path, monkeypatch)
     import app.main as main
-    song_id, stem_id = _upload_song_with_stem(client, monkeypatch, main, b"real-wav-bytes")
+
+    song_id, stem_id = _upload_song_with_stem(
+        client, monkeypatch, main, b"real-wav-bytes"
+    )
 
     resp = client.get(f"/api/stems/{stem_id}/audio")
     assert resp.status_code == 200
@@ -2865,15 +2977,19 @@ def test_get_stem_audio_legacy_returns_404(tmp_path, monkeypatch):
     import app.main as main
 
     # Insert a legacy row with empty blob
-    inserted = asyncio.run(main.execute(
-        "INSERT INTO songs (user_id, title, audio_blob) VALUES (1, 'L', X'') RETURNING id"
-    ))
+    inserted = asyncio.run(
+        main.execute(
+            "INSERT INTO songs (user_id, title, audio_blob) VALUES (1, 'L', X'') RETURNING id"
+        )
+    )
     song_id = int(inserted.rows[0][0])
-    stem_inserted = asyncio.run(main.execute(
-        "INSERT INTO song_stems (song_id, stem_key, audio_blob, mime_type, source_type, display_name, version_label)"
-        " VALUES (?, 'bass', X'', 'audio/wav', 'system', 'Bass', 'legacy') RETURNING id",
-        [song_id],
-    ))
+    stem_inserted = asyncio.run(
+        main.execute(
+            "INSERT INTO song_stems (song_id, stem_key, audio_blob, mime_type, source_type, display_name, version_label)"
+            " VALUES (?, 'bass', X'', 'audio/wav', 'system', 'Bass', 'legacy') RETURNING id",
+            [song_id],
+        )
+    )
     stem_id = int(stem_inserted.rows[0][0])
 
     resp = client.get(f"/api/stems/{stem_id}/audio")
@@ -2884,6 +3000,7 @@ def test_get_stem_audio_legacy_returns_404(tmp_path, monkeypatch):
 def test_patch_stem_rename_updates_display_name(tmp_path, monkeypatch):
     client = _build_client(tmp_path, monkeypatch)
     import app.main as main
+
     song_id, stem_id = _upload_song_with_stem(client, monkeypatch, main)
 
     resp = client.patch(f"/api/stems/{stem_id}", json={"display_name": "Clean Bass"})
@@ -2894,6 +3011,7 @@ def test_patch_stem_rename_updates_display_name(tmp_path, monkeypatch):
 def test_patch_stem_rename_fires_activity(tmp_path, monkeypatch):
     client = _build_client(tmp_path, monkeypatch)
     import app.main as main
+
     song_id, stem_id = _upload_song_with_stem(client, monkeypatch, main)
 
     client.patch(f"/api/stems/{stem_id}", json={"display_name": "Slap Bass"})
@@ -2906,9 +3024,12 @@ def test_patch_stem_rename_fires_activity(tmp_path, monkeypatch):
 def test_patch_stem_description_updates(tmp_path, monkeypatch):
     client = _build_client(tmp_path, monkeypatch)
     import app.main as main
+
     song_id, stem_id = _upload_song_with_stem(client, monkeypatch, main)
 
-    resp = client.patch(f"/api/stems/{stem_id}", json={"description": "Recorded on Fender Jazz"})
+    resp = client.patch(
+        f"/api/stems/{stem_id}", json={"description": "Recorded on Fender Jazz"}
+    )
     assert resp.status_code == 200
     assert resp.json()["description"] == "Recorded on Fender Jazz"
 
@@ -2916,6 +3037,7 @@ def test_patch_stem_description_updates(tmp_path, monkeypatch):
 def test_delete_stem_removes_row(tmp_path, monkeypatch):
     client = _build_client(tmp_path, monkeypatch)
     import app.main as main
+
     song_id, stem_id = _upload_song_with_stem(client, monkeypatch, main)
 
     resp = client.delete(f"/api/stems/{stem_id}")
@@ -2928,6 +3050,7 @@ def test_delete_stem_removes_row(tmp_path, monkeypatch):
 def test_delete_stem_fires_activity(tmp_path, monkeypatch):
     client = _build_client(tmp_path, monkeypatch)
     import app.main as main
+
     song_id, stem_id = _upload_song_with_stem(client, monkeypatch, main)
 
     # Get display name before deletion
@@ -2939,33 +3062,46 @@ def test_delete_stem_fires_activity(tmp_path, monkeypatch):
 
     activity = client.get("/api/projects/1/activity").json()
     messages = [e["message"] for e in activity.get("activity", [])]
-    assert any("deleted" in m.lower() for m in messages), f"No delete event in: {messages}"
+    assert any("deleted" in m.lower() for m in messages), (
+        f"No delete event in: {messages}"
+    )
 
 
 def test_delete_stem_does_not_cascade_to_other_stems(tmp_path, monkeypatch):
     from app.stems import StemResult
+
     client = _build_client(tmp_path, monkeypatch)
     import app.main as main
 
-    monkeypatch.setattr(main, "split_to_stems", lambda *a, **k: [
-        StemResult(stem_key="bass", audio_data=b"v1", mime_type="audio/wav")
-    ])
+    monkeypatch.setattr(
+        main,
+        "split_to_stems",
+        lambda *a, **k: [
+            StemResult(stem_key="bass", audio_data=b"v1", mime_type="audio/wav")
+        ],
+    )
     resp = client.post(
         "/api/analyze",
-        files={"file": ("s.mp3", b"\xff\xfb\x90\x00"*50, "audio/mpeg")},
+        files={"file": ("s.mp3", b"\xff\xfb\x90\x00" * 50, "audio/mpeg")},
         data={"process_mode": "analysis_and_stems"},
     )
     song_id = resp.json()["song_id"]
     client.post(f"/api/songs/{song_id}/stems/regenerate")
 
     stems_resp = client.get(f"/api/songs/{song_id}/stems").json()
-    stems_list = stems_resp if isinstance(stems_resp, list) else stems_resp.get("stems", stems_resp)
+    stems_list = (
+        stems_resp
+        if isinstance(stems_resp, list)
+        else stems_resp.get("stems", stems_resp)
+    )
     assert len(stems_list) == 2
 
     stem_id_to_delete = stems_list[0]["id"]
     client.delete(f"/api/stems/{stem_id_to_delete}")
 
     remaining = client.get(f"/api/songs/{song_id}/stems").json()
-    remaining_list = remaining if isinstance(remaining, list) else remaining.get("stems", remaining)
+    remaining_list = (
+        remaining if isinstance(remaining, list) else remaining.get("stems", remaining)
+    )
     assert len(remaining_list) == 1
     assert remaining_list[0]["id"] != stem_id_to_delete
