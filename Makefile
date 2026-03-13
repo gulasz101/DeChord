@@ -42,10 +42,10 @@ reset:
 	@echo "Local backend state reset."
 
 portless-proxy-up:
-	@portless proxy start
+	@sudo PORTLESS_STATE_DIR=$(HOME)/.portless portless proxy start -p 80
 
 portless-proxy-down:
-	@portless proxy stop
+	@sudo PORTLESS_STATE_DIR=$(HOME)/.portless portless proxy stop
 
 portless-routes:
 	@portless list
@@ -119,6 +119,7 @@ frontend-logs:
 	fi
 
 up:
+	@$(MAKE) portless-proxy-up
 	@$(MAKE) backend-up
 	@$(MAKE) frontend-up
 

@@ -29,6 +29,7 @@
     <rule>Backend: FastAPI on Python 3.13+ with uv, LibSQL, and a Demucs-based stem/analysis pipeline.</rule>
     <rule>Flow: upload -> optional stems -> bass_analysis.wav -> TabPipeline -> outputs (MIDI, AlphaTex, tabs).</rule>
     <rule>Key directories: frontend/, backend/, docs/plans/, and designs.* as reference snapshots only.</rule>
+    <rule>Never persist binary assets (audio, stems, MIDI, tabs) to the local filesystem. All blobs must be stored in LibSQL. Temporary files during processing are allowed only in OS temp dirs and must be deleted immediately after reading into memory.</rule>
   </section>
   <section id="portless">
     <rule>Use portless as the standard local routing layer; prefer make up, make backend, make frontend, make portless-proxy-up, make portless-proxy-down, and make portless-routes.</rule>
