@@ -168,6 +168,60 @@ def test_runtime_paths_create_missing_dirs(tmp_path: Path):
     assert paths.cache_dir.is_dir()
 
 
+def _make_db(tmp_path, monkeypatch):
+    import importlib, asyncio
+    db_path = tmp_path / "test-migration.db"
+    monkeypatch.setenv("DECHORD_DB_URL", f"file:{db_path}")
+    import app.db as db_mod
+    asyncio.run(db_mod.reset_db_client_for_tests())
+    return importlib.reload(db_mod)
+
+
+def test_song_stems_migration_adds_audio_blob_and_drops_unique(tmp_path, monkeypatch):
+    import asyncio
+    db_mod = _make_db(tmp_path, monkeypatch)
+
+    async def setup_and_check():
+        await db_mod.init_db()
+        # Insert a song to satisfy FK
+        await db_mod.execute(
+            "INSERT INTO songs (user_id, title, audio_blob) SELECT id, 'Test', X'' FROM users LIMIT 1"
+        )
+        # Verify new columns exist
+        rs = await db_mod.execute("PRAGMA table_info(song_stems)")
+        cols = {str(row[1]) for row in rs.rows}
+        assert "audio_blob" in cols, f"audio_blob missing from {cols}"
+        assert "description" in cols, f"description missing"
+        assert "generation_id" in cols, f"generation_id missing"
+        assert "created_by_user_id" in cols, f"created_by_user_id missing"
+        assert "created_by_name" in cols, f"created_by_name missing"
+        assert "relative_path" in cols, "relative_path must stay (nullable)"
+        # Verify UNIQUE constraint is gone — insert two bass stems for same song
+        rs_song = await db_mod.execute("SELECT id FROM songs LIMIT 1")
+        song_id = int(rs_song.rows[0][0])
+        await db_mod.execute(
+            "INSERT INTO song_stems (song_id, stem_key, audio_blob, mime_type, source_type, display_name, version_label) VALUES (?, 'bass', X'', 'audio/wav', 'system', 'Bass', 'v1')",
+            [song_id],
+        )
+        await db_mod.execute(
+            "INSERT INTO song_stems (song_id, stem_key, audio_blob, mime_type, source_type, display_name, version_label) VALUES (?, 'bass', X'', 'audio/wav', 'system', 'Bass v2', 'v2')",
+            [song_id],
+        )
+        count_rs = await db_mod.execute("SELECT COUNT(*) FROM song_stems WHERE stem_key = 'bass'")
+        assert int(count_rs.rows[0][0]) == 2, "Expected 2 bass stems (additive — UNIQUE must be gone)"
+
+    asyncio.run(setup_and_check())
+
+
+def test_song_stems_migration_is_idempotent(tmp_path, monkeypatch):
+    import asyncio
+    db_mod = _make_db(tmp_path, monkeypatch)
+    async def run():
+        await db_mod.init_db()
+        await db_mod.init_db()  # must not error on second call
+    asyncio.run(run())
+
+
 def test_app_uses_lifespan_instead_of_event_hooks(tmp_path: Path, monkeypatch):
     import app.main as main
     from app.runtime import RuntimePaths

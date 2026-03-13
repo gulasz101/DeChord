@@ -145,17 +145,22 @@ CREATE TABLE IF NOT EXISTS song_stems (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     song_id INTEGER NOT NULL,
     stem_key TEXT NOT NULL,
-    relative_path TEXT NOT NULL,
+    relative_path TEXT,
+    audio_blob BLOB NOT NULL DEFAULT X'',
     mime_type TEXT,
     duration REAL,
     source_type TEXT NOT NULL DEFAULT 'system' CHECK(source_type IN ('system', 'user')),
     display_name TEXT,
+    description TEXT,
     version_label TEXT NOT NULL DEFAULT 'legacy',
+    generation_id TEXT,
+    created_by_user_id INTEGER,
+    created_by_name TEXT,
     uploaded_by_name TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(song_id, stem_key),
-    FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
+    FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS song_midis (
@@ -208,5 +213,6 @@ CREATE INDEX IF NOT EXISTS idx_notes_song_id ON notes(song_id);
 CREATE INDEX IF NOT EXISTS idx_project_activity_events_project_id ON project_activity_events(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_activity_events_actor_user_id ON project_activity_events(actor_user_id);
 CREATE INDEX IF NOT EXISTS idx_song_stems_song_id ON song_stems(song_id);
+CREATE INDEX IF NOT EXISTS idx_song_stems_generation_id ON song_stems(generation_id);
 CREATE INDEX IF NOT EXISTS idx_song_midis_song_id ON song_midis(song_id);
 CREATE INDEX IF NOT EXISTS idx_song_tabs_song_id ON song_tabs(song_id);

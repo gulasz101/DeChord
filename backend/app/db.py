@@ -71,7 +71,56 @@ async def _ensure_column(table_name: str, column_name: str, ddl: str) -> None:
     await execute(f"ALTER TABLE {table_name} ADD COLUMN {ddl}")
 
 
+async def _migrate_song_stems_to_blob() -> None:
+    """Rebuild song_stems to add audio_blob and drop UNIQUE(song_id, stem_key)."""
+    if await _table_has_column("song_stems", "audio_blob"):
+        return  # already migrated (fresh DB from new schema or already run)
+
+    await execute("""
+        CREATE TABLE IF NOT EXISTS song_stems_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            song_id INTEGER NOT NULL,
+            stem_key TEXT NOT NULL,
+            relative_path TEXT,
+            audio_blob BLOB NOT NULL DEFAULT X'',
+            mime_type TEXT,
+            duration REAL,
+            source_type TEXT NOT NULL DEFAULT 'system' CHECK(source_type IN ('system', 'user')),
+            display_name TEXT,
+            description TEXT,
+            version_label TEXT NOT NULL DEFAULT 'legacy',
+            generation_id TEXT,
+            created_by_user_id INTEGER,
+            created_by_name TEXT,
+            uploaded_by_name TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE,
+            FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+        )
+    """)
+    await execute("""
+        INSERT INTO song_stems_new (
+            id, song_id, stem_key, relative_path, audio_blob,
+            mime_type, duration, source_type, display_name, description,
+            version_label, generation_id, created_by_user_id, created_by_name,
+            uploaded_by_name, created_at, updated_at
+        )
+        SELECT
+            id, song_id, stem_key, relative_path, X'',
+            mime_type, duration, source_type, display_name, NULL,
+            version_label, NULL, NULL, uploaded_by_name,
+            uploaded_by_name, created_at, updated_at
+        FROM song_stems
+    """)
+    await execute("DROP TABLE song_stems")
+    await execute("ALTER TABLE song_stems_new RENAME TO song_stems")
+    await execute("CREATE INDEX IF NOT EXISTS idx_song_stems_song_id ON song_stems(song_id)")
+    await execute("CREATE INDEX IF NOT EXISTS idx_song_stems_generation_id ON song_stems(generation_id)")
+
+
 async def _run_schema_migrations() -> None:
+    await _migrate_song_stems_to_blob()   # <-- first line
     await _ensure_column("notes", "author_user_id", "author_user_id INTEGER")
     await _ensure_column("notes", "author_name", "author_name TEXT")
     await _ensure_column("notes", "author_avatar", "author_avatar TEXT")
