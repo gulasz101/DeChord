@@ -63,7 +63,7 @@ DEFAULT_ANALYSIS_SCORING_WEIGHTS: dict[str, float] = {
 @dataclass
 class StemResult:
     stem_key: str
-    relative_path: str
+    audio_data: bytes
     mime_type: str
     duration: float | None = None
 
@@ -105,7 +105,7 @@ class StemAnalysisConfig:
 
 @dataclass(frozen=True)
 class BassAnalysisStemResult:
-    path: Path
+    audio_data: bytes       # replaces path: Path
     source_model: str
     diagnostics: dict[str, object]
 
@@ -595,6 +595,12 @@ def _select_best_candidate_model(
     return best_model
 
 
+def _read_wav_to_bytes(path: Path) -> bytes:
+    data = path.read_bytes()
+    path.unlink(missing_ok=True)
+    return data
+
+
 def _write_wav_mono(path: Path, *, sample_rate: int, audio: "np.ndarray") -> None:
     import numpy as np
     from scipy.io import wavfile as scipy_wav
@@ -826,8 +832,10 @@ def build_bass_analysis_stem(
                 "error": candidate_diagnostics.get(config.demucs_model, {}).get("error"),
                 "analysis_path": str(output_path),
             }
+            _audio_data = output_path.read_bytes()
+            output_path.unlink(missing_ok=True)
             return BassAnalysisStemResult(
-                path=output_path,
+                audio_data=_audio_data,
                 source_model=config.demucs_model,
                 diagnostics={
                     "selected_model": config.demucs_model,
@@ -881,8 +889,10 @@ def build_bass_analysis_stem(
             bool(candidate_diagnostics[selected_model].get("has_guitar"))
         ),
     }
+    _audio_data = output_path.read_bytes()
+    output_path.unlink(missing_ok=True)
     return BassAnalysisStemResult(
-        path=output_path,
+        audio_data=_audio_data,
         source_model=selected_model,
         diagnostics=diagnostics,
     )
@@ -1086,11 +1096,12 @@ def split_to_stems(
     for stem_key in sorted(separated.keys()):
         stem_path = separated[stem_key]
         mime_type, _ = mimetypes.guess_type(stem_path.name)
+        audio_data = _read_wav_to_bytes(stem_path)  # reads bytes and deletes the file
         stems.append(
             StemResult(
                 stem_key=stem_key,
-                relative_path=str(stem_path),
-                mime_type=mime_type or "audio/mpeg",
+                audio_data=audio_data,
+                mime_type=mime_type or "audio/wav",
             )
         )
 
@@ -1100,15 +1111,19 @@ def split_to_stems(
     return stems
 
 
-def build_stems_zip(song_title: str, stems: list[StemResult]) -> tuple[bytes, str]:
+def build_stems_zip(
+    song_title: str,
+    stems: list[tuple[str, bytes, str]],  # (stem_key, audio_data, mime_type)
+) -> tuple[bytes, str]:
     safe_title = re.sub(r"[^a-zA-Z0-9._-]+", "_", song_title or "song").strip("._-") or "song"
     archive_name = f"{safe_title}-stems.zip"
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for stem in stems:
-            stem_path = Path(stem.relative_path)
-            if not stem_path.exists():
-                continue
-            extension = stem_path.suffix or ".wav"
-            archive.write(stem_path, arcname=f"{stem.stem_key}{extension}")
+        for stem_key, audio_data, mime_type in stems:
+            if not audio_data:
+                continue  # skip legacy empty-blob stems
+            ext = mimetypes.guess_extension(mime_type or "audio/wav") or ".wav"
+            if ext in (".ksh", ".ka", ""):
+                ext = ".wav"
+            archive.writestr(f"{stem_key}{ext}", audio_data)
     return zip_buffer.getvalue(), archive_name

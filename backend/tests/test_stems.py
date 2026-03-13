@@ -41,7 +41,7 @@ def test_split_to_stems_uses_adapter_and_reports_progress(tmp_path: Path):
     )
 
     assert [stem.stem_key for stem in stems] == ["drums", "vocals"]
-    assert all(stem.relative_path.endswith(".wav") for stem in stems)
+    assert all(isinstance(stem.audio_data, bytes) for stem in stems)
     assert all(stem.mime_type == "audio/x-wav" for stem in stems)
 
     assert progress_events[0] == (0.0, "Preparing stem separation...")
@@ -323,8 +323,8 @@ def test_build_bass_analysis_stem_creates_analysis_wav_and_reports_diagnostics(t
         analysis_config=config,
     )
 
-    assert result.path.exists()
-    assert result.path.name == "bass_analysis.wav"
+    assert isinstance(result.audio_data, bytes)
+    assert len(result.audio_data) > 0
     assert result.source_model == "htdemucs_ft"
     assert result.diagnostics["selected_model"] == "htdemucs_ft"
     assert result.diagnostics["analysis_highpass_hz"] == pytest.approx(35.0)
@@ -377,18 +377,14 @@ def test_score_bass_analysis_candidate_is_deterministic() -> None:
 
 
 def test_build_stems_zip_packages_existing_files(tmp_path: Path):
+    import io, zipfile
     from app.stems import build_stems_zip
-
-    bass_path = tmp_path / "bass.wav"
-    drums_path = tmp_path / "drums.wav"
-    bass_path.write_bytes(b"bass")
-    drums_path.write_bytes(b"drums")
 
     archive_bytes, archive_name = build_stems_zip(
         "The Trooper",
         stems=[
-            StemResult(stem_key="bass", relative_path=str(bass_path), mime_type="audio/x-wav"),
-            StemResult(stem_key="drums", relative_path=str(drums_path), mime_type="audio/x-wav"),
+            ("bass", b"bass", "audio/wav"),
+            ("drums", b"drums", "audio/wav"),
         ],
     )
 
@@ -473,7 +469,8 @@ def test_build_bass_analysis_stem_runs_all_candidate_models_in_ensemble_mode(tmp
     )
 
     assert calls == ["htdemucs_ft", "htdemucs_6s"]
-    assert result.path.name == "bass_analysis.wav"
+    assert isinstance(result.audio_data, bytes)
+    assert len(result.audio_data) > 0
     assert result.diagnostics["selected_model"] in {"htdemucs_ft", "htdemucs_6s"}
     assert len(result.diagnostics["candidate_diagnostics"]) == 2
 
@@ -913,6 +910,109 @@ def test_build_bass_analysis_stem_raises_explicitly_when_all_candidates_fail(tmp
             source_audio_path=audio_path,
             separate_fn=fake_separate,
         )
+
+
+def test_split_to_stems_returns_audio_bytes_not_paths(tmp_path):
+    """split_to_stems must return audio_data bytes, not relative_path strings."""
+    from app.stems import split_to_stems, StemResult
+    audio_path = tmp_path / "track.wav"
+    audio_path.write_bytes(b"fake-audio")
+    out_dir = tmp_path / "stems"
+
+    def fake_separate(input_audio, output_dir, progress_callback):
+        output_dir.mkdir(parents=True, exist_ok=True)
+        bass = output_dir / "bass.wav"
+        bass.write_bytes(b"bass-data")
+        return {"bass": bass}
+
+    results = split_to_stems(
+        audio_path=str(audio_path),
+        output_dir=out_dir,
+        separate_fn=fake_separate,
+    )
+
+    assert len(results) == 1
+    assert results[0].stem_key == "bass"
+    assert results[0].audio_data == b"bass-data"
+
+
+def test_split_to_stems_deletes_temp_files_after_reading(tmp_path):
+    """Temp output files must be deleted after bytes are read."""
+    from app.stems import split_to_stems
+    audio_path = tmp_path / "track.wav"
+    audio_path.write_bytes(b"fake-audio")
+    out_dir = tmp_path / "stems"
+    written_paths = []
+
+    def fake_separate(input_audio, output_dir, progress_callback):
+        output_dir.mkdir(parents=True, exist_ok=True)
+        p = output_dir / "vocals.wav"
+        p.write_bytes(b"vocals")
+        written_paths.append(p)
+        return {"vocals": p}
+
+    split_to_stems(audio_path=str(audio_path), output_dir=out_dir, separate_fn=fake_separate)
+
+    for p in written_paths:
+        assert not p.exists(), f"Temp file {p} was not deleted"
+
+
+def test_build_stems_zip_from_bytes(tmp_path):
+    """build_stems_zip accepts (stem_key, audio_data, mime_type) tuples."""
+    import io, zipfile
+    from app.stems import build_stems_zip
+    archive_bytes, archive_name = build_stems_zip(
+        "My Song",
+        stems=[
+            ("bass", b"bass-audio", "audio/wav"),
+            ("drums", b"drums-audio", "audio/wav"),
+        ],
+    )
+    assert archive_name == "My_Song-stems.zip"
+    with zipfile.ZipFile(io.BytesIO(archive_bytes), "r") as z:
+        assert sorted(z.namelist()) == ["bass.wav", "drums.wav"]
+        assert z.read("bass.wav") == b"bass-audio"
+
+
+def test_build_bass_analysis_stem_returns_bytes(tmp_path):
+    """build_bass_analysis_stem must return audio_data bytes, not a path."""
+    import numpy as np
+    from scipy.io import wavfile as scipy_wav
+    import app.stems as stems_mod
+    from app.stems import build_bass_analysis_stem, BassAnalysisStemResult
+
+    sample_rate = 22050
+    audio = (np.sin(2 * np.pi * 55 * np.linspace(0, 1, sample_rate)) * 32767).astype(np.int16)
+
+    def write_wav(p):
+        p.parent.mkdir(parents=True, exist_ok=True)
+        scipy_wav.write(str(p), sample_rate, audio)
+        return p
+
+    bass_path = write_wav(tmp_path / "bass.wav")
+    other_path = write_wav(tmp_path / "other.wav")
+    drums_path = write_wav(tmp_path / "drums.wav")
+
+    config = stems_mod.StemAnalysisConfig(
+        demucs_model="htdemucs_ft",
+        demucs_fallback_model="htdemucs",
+        enable_bass_refinement=True,
+        analysis_highpass_hz=35.0,
+        analysis_lowpass_hz=300.0,
+        analysis_sample_rate=22050,
+        enable_model_ensemble=False,
+        candidate_models=["htdemucs_ft"],
+    )
+
+    result = build_bass_analysis_stem(
+        stems={"bass": bass_path, "other": other_path, "drums": drums_path},
+        output_dir=tmp_path / "analysis",
+        analysis_config=config,
+    )
+
+    assert isinstance(result, BassAnalysisStemResult)
+    assert isinstance(result.audio_data, bytes)
+    assert len(result.audio_data) > 0
 
 
 def test_build_bass_analysis_stem_breaks_score_ties_by_candidate_order(tmp_path: Path):
