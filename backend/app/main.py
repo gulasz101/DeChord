@@ -23,7 +23,13 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from app.analysis import AnalysisResult, detect_chords, detect_key, detect_tempo, get_audio_duration
+from app.analysis import (
+    AnalysisResult,
+    detect_chords,
+    detect_key,
+    detect_tempo,
+    get_audio_duration,
+)
 from app.db import (
     claim_identity_user,
     close_db,
@@ -74,7 +80,9 @@ app.add_middleware(
 async def unhandled_exception_handler(request: Request, exc: Exception):
     logger.exception("Unhandled exception on %s %s", request.method, request.url)
     from fastapi.responses import JSONResponse
+
     return JSONResponse(status_code=500, content={"detail": str(exc)})
+
 
 UPLOAD_DIR = runtime_paths.uploads_dir
 
@@ -490,7 +498,9 @@ _STEM_SELECT = """
 
 def _serialize_song_stem(row) -> dict:
     source_type = str(row[4] or "system")
-    display_name = str(row[5]) if row[5] else _build_stem_display_name(str(row[1]), source_type)
+    display_name = (
+        str(row[5]) if row[5] else _build_stem_display_name(str(row[1]), source_type)
+    )
     return {
         "id": int(row[0]),
         "stem_key": str(row[1]),
@@ -545,9 +555,19 @@ async def _insert_stem_blob(
         RETURNING id
         """,
         [
-            song_id, stem_key, audio_data, mime_type, duration, source_type,
-            display_name, description, version_label, generation_id,
-            created_by_user_id, created_by_name, uploaded_by_name,
+            song_id,
+            stem_key,
+            audio_data,
+            mime_type,
+            duration,
+            source_type,
+            display_name,
+            description,
+            version_label,
+            generation_id,
+            created_by_user_id,
+            created_by_name,
+            uploaded_by_name,
         ],
     )
     return int(rs.rows[0][0])
@@ -768,7 +788,8 @@ async def _load_stem_by_id(stem_id: int) -> dict | None:
 async def _load_latest_stem_for_key(song_id: int, stem_key: str) -> dict | None:
     """Returns the most recently created stem for a given key."""
     rs = await execute(
-        _STEM_SELECT + " WHERE song_id = ? AND stem_key = ? ORDER BY created_at DESC, id DESC LIMIT 1",
+        _STEM_SELECT
+        + " WHERE song_id = ? AND stem_key = ? ORDER BY created_at DESC, id DESC LIMIT 1",
         [song_id, stem_key],
     )
     if not rs.rows:
@@ -966,19 +987,29 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                     stage_progress_pct=0,
                 )
                 sep_tmp_dir = Path(tempfile.mkdtemp(prefix=f"dechord-sep-{song_id}-"))
-                _stem_max_pct = [45.0]
+                _progress_max = [0.0]
+
+                def _progress(
+                    stage: str,
+                    message: str,
+                    progress_pct: float,
+                    stage_progress_pct: float,
+                ) -> None:
+                    if progress_pct > _progress_max[0]:
+                        _progress_max[0] = progress_pct
+                    set_stage(
+                        stage,
+                        message=message,
+                        progress_pct=_progress_max[0],
+                        stage_progress_pct=stage_progress_pct,
+                    )
 
                 def _on_stem_progress(stage_pct: float, msg: str) -> None:
                     overall = min(45 + stage_pct * 0.5, 95)
-                    # Clamp to be monotonically non-decreasing so Demucs shift
-                    # pass resets and the post-separation "Saving" callback
-                    # (0.9 = overall 90%) never regress visible progress.
-                    if overall > _stem_max_pct[0]:
-                        _stem_max_pct[0] = overall
-                    set_stage(
+                    _progress(
                         "splitting_stems",
                         message=msg,
-                        progress_pct=_stem_max_pct[0],
+                        progress_pct=overall,
                         stage_progress_pct=stage_pct,
                     )
 
@@ -1020,7 +1051,9 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                             "tab_generation_quality", "standard"
                         )
                         # Write stem audio_data bytes to temp files for analysis pipeline
-                        stems_tmp_dir = Path(tempfile.mkdtemp(prefix=f"dechord-analysis-{song_id}-"))
+                        stems_tmp_dir = Path(
+                            tempfile.mkdtemp(prefix=f"dechord-analysis-{song_id}-")
+                        )
                         stem_paths = {}
                         for _s in stems:
                             _p = stems_tmp_dir / f"{_s.stem_key}.wav"
@@ -1036,7 +1069,9 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                             ),
                             source_audio_path=Path(audio_path),
                         )
-                        jobs[job_id]["analysis_stem_model"] = analysis_stem_result.source_model
+                        jobs[job_id]["analysis_stem_model"] = (
+                            analysis_stem_result.source_model
+                        )
                         jobs[job_id]["analysis_stem_diagnostics"] = (
                             analysis_stem_result.diagnostics
                         )
@@ -1044,7 +1079,7 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                         analysis_wav_path = analysis_output_dir / "bass_analysis.wav"
                         analysis_wav_path.write_bytes(analysis_stem_result.audio_data)
                         drums_wav_path = stem_paths["drums"]
-                        set_stage(
+                        _progress(
                             "transcribing_bass_midi",
                             message="Transcribing bass stem to MIDI...",
                             progress_pct=90,
@@ -1072,7 +1107,7 @@ def _run_analysis(job_id: str, audio_path: str, song_id: int):
                         jobs[job_id]["midi_status"] = "complete"
                         jobs[job_id]["midi_error"] = None
 
-                        set_stage(
+                        _progress(
                             "generating_tabs",
                             message="Generating bass tabs...",
                             progress_pct=93,
@@ -1931,7 +1966,9 @@ async def download_song_stems_zip(song_id: int):
     for stem in stems:
         blob = await _load_stem_audio_blob(int(stem["id"]))
         if blob:
-            zip_stems.append((str(stem["stem_key"]), blob, str(stem["mime_type"] or "audio/wav")))
+            zip_stems.append(
+                (str(stem["stem_key"]), blob, str(stem["mime_type"] or "audio/wav"))
+            )
 
     if not zip_stems:
         raise HTTPException(404, "No audio data available for these stems.")
