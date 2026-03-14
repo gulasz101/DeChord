@@ -94,8 +94,18 @@ export function PlayerPage({
     return set;
   }, [song.notes]);
 
-  const timeNoteMarkers = useMemo(
-    () => song.notes.filter((n) => n.type === "time" && n.timestampSec !== null).map((n) => ({ id: n.id, timestampSec: n.timestampSec! })),
+  const allNoteMarkers = useMemo(
+    () =>
+      song.notes
+        .filter((n) => n.timestampSec !== null && !n.resolved)
+        .map((n) => ({
+          id: n.id,
+          timestampSec: n.timestampSec!,
+          userId: n.userId ?? null,
+          authorName: n.authorName,
+          text: n.text,
+          toastDurationSec: n.toastDurationSec,
+        })),
     [song.notes],
   );
 
@@ -335,7 +345,7 @@ export function PlayerPage({
                         void runAction(async () => {
                           if (!onCreateNote) throw new Error("Note action unavailable");
                           if (!trimmedText) throw new Error("Enter note text");
-                          await onCreateNote({ type: "chord", text: trimmedText, chordIndex: currentIndex });
+                          await onCreateNote({ type: "chord", text: trimmedText, chordIndex: currentIndex, timestampSec: currentChord?.start ?? null });
                         }, "Chord note added.");
                       }}
                       disabled={isSubmitting || currentChord === null || !canCreateNotes}
@@ -515,7 +525,7 @@ export function PlayerPage({
       {/* Transport Bar */}
       <div className="relative z-10 shrink-0 border-t px-4 py-2" style={{ borderColor: "rgba(192, 192, 192, 0.06)" }}>
         <TransportBar currentTime={player.currentTime} duration={player.duration || song.duration} playing={player.playing} volume={player.volume} speedPercent={Math.round(player.playbackRate * 100)}
-          loopActive={loopStart !== null && loopEnd !== null} loopLabel={loopLabel} noteMarkers={timeNoteMarkers}
+          loopActive={loopStart !== null && loopEnd !== null} loopLabel={loopLabel} noteMarkers={allNoteMarkers}
           onTogglePlay={player.togglePlay} onSeek={player.seek} onSeekRelative={player.seekRelative}
           onVolumeChange={player.setVolume} onSpeedChange={(speed) => player.setPlaybackRate(speed / 100)} onClearLoop={() => {
             setLoopStart(null);

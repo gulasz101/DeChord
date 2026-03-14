@@ -302,6 +302,7 @@ describe("PlayerPage", () => {
         type: "chord",
         text: "Bass pickup drifts",
         chordIndex: 2,
+        timestampSec: 16,
       });
     });
   });
@@ -430,5 +431,49 @@ describe("PlayerPage", () => {
     expect(screen.queryByRole("button", { name: /edit note 11/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /resolve note 11/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /delete note 11/i })).toBeNull();
+  });
+
+  it("chord-type note creation passes timestampSec = chord start time", async () => {
+    const onCreateNote = vi.fn();
+    const playerSong: Song = {
+      ...song,
+      chords: [
+        { start: 0, end: 5, label: "Am" },
+        { start: 5, end: 10, label: "G" },
+      ],
+      notes: [],
+    };
+
+    render(
+      <PlayerPage
+        user={user}
+        band={band}
+        project={project}
+        song={playerSong}
+        onBack={() => {}}
+        onCreateNote={onCreateNote}
+      />,
+    );
+
+    act(() => {
+      transportStore.update({ currentTime: 6 });
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /comments/i }));
+    fireEvent.change(screen.getByLabelText(/note text/i), { target: { value: "G chord note" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /note on current chord/i }));
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(onCreateNote).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "chord",
+          chordIndex: 1,
+          timestampSec: 5,
+        }),
+      );
+    });
   });
 });
