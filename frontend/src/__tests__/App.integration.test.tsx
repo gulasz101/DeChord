@@ -125,7 +125,7 @@ const {
   createProjectMock: vi.fn().mockResolvedValue({
     project: { id: 21, band_id: 11, name: "Debut", description: "", created_at: "2026-03-10", song_count: 0 },
   }),
-  createSongNoteMock: vi.fn().mockResolvedValue({ id: 301, type: "time", text: "Created", timestamp_sec: 78, chord_index: null, toast_duration_sec: null, resolved: false, author_name: "Wojtek", author_avatar: "WG", created_at: "2026-03-10T10:00:00Z", updated_at: "2026-03-10T10:00:00Z" }),
+  createSongNoteMock: vi.fn().mockResolvedValue({ id: 301, type: "general", text: "Created", timestamp_sec: 78, chord_index: null, toast_duration_sec: null, resolved: false, author_name: "Wojtek", author_avatar: "WG", created_at: "2026-03-10T10:00:00Z", updated_at: "2026-03-10T10:00:00Z" }),
   updateSongNoteMock: vi.fn().mockResolvedValue({ id: 301, text: "Edited", toast_duration_sec: null }),
   resolveSongNoteMock: vi.fn().mockResolvedValue({ id: 301, resolved: true }),
   deleteSongNoteMock: vi.fn().mockResolvedValue(undefined),
@@ -176,13 +176,13 @@ vi.mock("../redesign/pages/PlayerPage", () => ({
         <span>Player open notes: {openNotes.length}</span>
         <span>Player resolved notes: {resolvedNotes.length}</span>
         {song.notes?.map((note) => <span key={note.id}>{note.text}</span>)}
-        <button type="button" onClick={() => void onCreateNote?.({ type: "time", text: "Player time note", timestampSec: 18.5 })}>
+        <button type="button" onClick={() => void onCreateNote?.({ type: "general", text: "Player time note", timestampSec: 18.5 })}>
           Mock player create note
         </button>
         <button type="button" onClick={() => void onEditNote?.(11, { text: "Player note edited" })}>
           Mock player edit note
         </button>
-        <button type="button" onClick={() => void onCreateNote?.({ type: "time", text: "Player timed toast note", timestampSec: 21, toastDurationSec: 5 })}>
+        <button type="button" onClick={() => void onCreateNote?.({ type: "general", text: "Player timed toast note", timestampSec: 21, toastDurationSec: 5 })}>
           Mock player create toast note
         </button>
         <button type="button" onClick={() => void onEditNote?.(11, { text: "Player note with toast", toastDurationSec: 7 })}>
@@ -361,7 +361,7 @@ describe("App integration", () => {
     createProjectMock.mockResolvedValue({
       project: { id: 21, band_id: 11, name: "Debut", description: "", created_at: "2026-03-10", song_count: 0 },
     });
-    createSongNoteMock.mockResolvedValue({ id: 301, type: "time", text: "Created", timestamp_sec: 78, chord_index: null, toast_duration_sec: null, resolved: false, author_name: "Wojtek", author_avatar: "WG", created_at: "2026-03-10T10:00:00Z", updated_at: "2026-03-10T10:00:00Z" });
+    createSongNoteMock.mockResolvedValue({ id: 301, type: "general", text: "Created", timestamp_sec: 78, chord_index: null, toast_duration_sec: null, resolved: false, author_name: "Wojtek", author_avatar: "WG", created_at: "2026-03-10T10:00:00Z", updated_at: "2026-03-10T10:00:00Z" });
     updateSongNoteMock.mockResolvedValue({ id: 301, text: "Edited", toast_duration_sec: null });
     resolveSongNoteMock.mockResolvedValue({ id: 301, resolved: true });
     deleteSongNoteMock.mockResolvedValue(undefined);
@@ -523,14 +523,15 @@ describe("App integration", () => {
         analysis: { key: "Em", tempo: 120, duration: 20, chords: [{ start: 0, end: 2, label: "Em" }] },
         notes: [{
           id: 11,
-          type: "chord",
+          type: "general",
           timestamp_sec: null,
-          chord_index: 0,
+          chord_index: null,
           text: "Lock verse entry",
           toast_duration_sec: null,
           resolved: false,
           author_name: "Wojtek",
           author_avatar: "WG",
+          parent_id: null,
           created_at: "2026-03-10T10:00:00Z",
           updated_at: "2026-03-10T10:00:00Z",
         }],
@@ -541,14 +542,15 @@ describe("App integration", () => {
         analysis: { key: "Em", tempo: 120, duration: 20, chords: [{ start: 0, end: 2, label: "Em" }] },
         notes: [{
           id: 11,
-          type: "chord",
+          type: "general",
           timestamp_sec: null,
-          chord_index: 0,
+          chord_index: null,
           text: "Lock verse entry",
           toast_duration_sec: null,
           resolved: true,
           author_name: "Wojtek",
           author_avatar: "WG",
+          parent_id: null,
           created_at: "2026-03-10T10:00:00Z",
           updated_at: "2026-03-10T10:10:00Z",
         }],
@@ -559,14 +561,15 @@ describe("App integration", () => {
         analysis: { key: "Em", tempo: 120, duration: 20, chords: [{ start: 0, end: 2, label: "Em" }] },
         notes: [{
           id: 11,
-          type: "chord",
+          type: "general",
           timestamp_sec: null,
-          chord_index: 0,
+          chord_index: null,
           text: "Lock verse entry",
           toast_duration_sec: null,
           resolved: true,
           author_name: "Wojtek",
           author_avatar: "WG",
+          parent_id: null,
           created_at: "2026-03-10T10:00:00Z",
           updated_at: "2026-03-10T10:10:00Z",
         }],
@@ -578,27 +581,29 @@ describe("App integration", () => {
         notes: [
           {
             id: 11,
-            type: "chord",
+            type: "general",
             timestamp_sec: null,
-            chord_index: 0,
+            chord_index: null,
             text: "Lock verse entry",
             toast_duration_sec: null,
             resolved: true,
             author_name: "Wojtek",
             author_avatar: "WG",
+            parent_id: null,
             created_at: "2026-03-10T10:00:00Z",
             updated_at: "2026-03-10T10:10:00Z",
           },
           {
             id: 12,
-            type: "time",
-            timestamp_sec: 18.5,
+            type: "general",
+            timestamp_sec: null,
             chord_index: null,
             text: "Player time note",
             toast_duration_sec: null,
             resolved: false,
             author_name: "Wojtek",
             author_avatar: "WG",
+            parent_id: null,
             created_at: "2026-03-10T12:00:00Z",
             updated_at: "2026-03-10T12:00:00Z",
           },
@@ -689,7 +694,7 @@ describe("App integration", () => {
 
     await waitFor(() => {
       expect(createSongNoteMock).toHaveBeenCalledWith(30, {
-        type: "time",
+        type: "general",
         text: "Player time note",
         timestamp_sec: 18.5,
       });
@@ -822,7 +827,7 @@ describe("App integration", () => {
     getSongMock.mockResolvedValueOnce({
       song: { id: 77, title: "New Song", original_filename: "new-song.mp3", mime_type: "audio/mpeg", created_at: "2026-03-10" },
       analysis: { key: "Em", tempo: 120, duration: 42, chords: [] },
-      notes: [{ id: 91, type: "time", timestamp_sec: 12.5, chord_index: null, text: "Bring the bass forward" }],
+      notes: [{ id: 91, type: "general", timestamp_sec: null, chord_index: null, text: "Bring the bass forward", parent_id: null }],
       playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
     });
     getSongTabsMock.mockResolvedValueOnce({
@@ -1348,7 +1353,7 @@ describe("App integration", () => {
       analysis: { key: "C", tempo: 120, duration: 10, chords: [{ start: 0, end: 2, label: "C" }] },
       notes: [{
         id: 91,
-        type: "time",
+        type: "general",
         timestamp_sec: 4.2,
         chord_index: null,
         text: "Drop the fill",
@@ -1599,14 +1604,15 @@ describe("App integration", () => {
         notes: [
           {
             id: 11,
-            type: "chord",
+            type: "general",
             timestamp_sec: null,
-            chord_index: 0,
+            chord_index: null,
             text: "Lock verse entry",
             toast_duration_sec: null,
             resolved: false,
             author_name: "Wojtek",
             author_avatar: "WG",
+            parent_id: null,
             created_at: "2026-03-10T10:00:00Z",
             updated_at: "2026-03-10T10:00:00Z",
           },
@@ -1619,20 +1625,21 @@ describe("App integration", () => {
         notes: [
           {
             id: 11,
-            type: "chord",
+            type: "general",
             timestamp_sec: null,
-            chord_index: 0,
+            chord_index: null,
             text: "Lock verse entry",
             toast_duration_sec: null,
             resolved: false,
             author_name: "Wojtek",
             author_avatar: "WG",
+            parent_id: null,
             created_at: "2026-03-10T10:00:00Z",
             updated_at: "2026-03-10T10:00:00Z",
           },
           {
             id: 301,
-            type: "time",
+            type: "general",
             timestamp_sec: 78,
             chord_index: null,
             text: "Bass pickup is late",
@@ -1640,6 +1647,7 @@ describe("App integration", () => {
             resolved: false,
             author_name: "Wojtek",
             author_avatar: "WG",
+            parent_id: null,
             created_at: "2026-03-10T10:10:00Z",
             updated_at: "2026-03-10T10:10:00Z",
           },
@@ -1652,9 +1660,9 @@ describe("App integration", () => {
         notes: [
           {
             id: 11,
-            type: "chord",
+            type: "general",
             timestamp_sec: null,
-            chord_index: 0,
+            chord_index: null,
             text: "Verse entry is rushing",
             toast_duration_sec: null,
             resolved: false,
@@ -1665,7 +1673,7 @@ describe("App integration", () => {
           },
           {
             id: 301,
-            type: "time",
+            type: "general",
             timestamp_sec: 78,
             chord_index: null,
             text: "Bass pickup is late",
@@ -1685,9 +1693,9 @@ describe("App integration", () => {
         notes: [
           {
             id: 11,
-            type: "chord",
+            type: "general",
             timestamp_sec: null,
-            chord_index: 0,
+            chord_index: null,
             text: "Verse entry is rushing",
             toast_duration_sec: null,
             resolved: true,
@@ -1698,7 +1706,7 @@ describe("App integration", () => {
           },
           {
             id: 301,
-            type: "time",
+            type: "general",
             timestamp_sec: 78,
             chord_index: null,
             text: "Bass pickup is late",
@@ -1718,7 +1726,7 @@ describe("App integration", () => {
         notes: [
           {
             id: 301,
-            type: "time",
+            type: "general",
             timestamp_sec: 78,
             chord_index: null,
             text: "Bass pickup is late",
@@ -1756,15 +1764,12 @@ describe("App integration", () => {
     });
 
     fireEvent.change(screen.getByLabelText(/note text/i), { target: { value: "Bass pickup is late" } });
-    fireEvent.click(screen.getByLabelText(/time note/i));
-    fireEvent.change(screen.getByLabelText(/timestamp/i), { target: { value: "01:18" } });
-    fireEvent.click(screen.getByRole("button", { name: /add time note/i }));
+    fireEvent.click(screen.getByRole("button", { name: /add comment/i }));
 
     await waitFor(() => {
       expect(createSongNoteMock).toHaveBeenCalledWith(30, {
-        type: "time",
+        type: "general",
         text: "Bass pickup is late",
-        timestamp_sec: 78,
       });
     });
     await waitFor(() => {
@@ -1817,9 +1822,9 @@ describe("App integration", () => {
         notes: [
           {
             id: 11,
-            type: "chord",
+            type: "general",
             timestamp_sec: null,
-            chord_index: 0,
+            chord_index: null,
             text: "Lock verse entry",
             toast_duration_sec: null,
             resolved: false,
@@ -1837,9 +1842,9 @@ describe("App integration", () => {
         notes: [
           {
             id: 11,
-            type: "chord",
+            type: "general",
             timestamp_sec: null,
-            chord_index: 0,
+            chord_index: null,
             text: "Player note with toast",
             toast_duration_sec: 7,
             resolved: false,
@@ -1850,7 +1855,7 @@ describe("App integration", () => {
           },
           {
             id: 301,
-            type: "time",
+            type: "general",
             timestamp_sec: 21,
             chord_index: null,
             text: "Player timed toast note",
@@ -1870,9 +1875,9 @@ describe("App integration", () => {
         notes: [
           {
             id: 11,
-            type: "chord",
+            type: "general",
             timestamp_sec: null,
-            chord_index: 0,
+            chord_index: null,
             text: "Player note with toast",
             toast_duration_sec: 7,
             resolved: false,
@@ -1883,7 +1888,7 @@ describe("App integration", () => {
           },
           {
             id: 301,
-            type: "time",
+            type: "general",
             timestamp_sec: 21,
             chord_index: null,
             text: "Player timed toast note",
@@ -1931,7 +1936,7 @@ describe("App integration", () => {
 
     await waitFor(() => {
       expect(createSongNoteMock).toHaveBeenCalledWith(30, {
-        type: "time",
+        type: "general",
         text: "Player timed toast note",
         timestamp_sec: 21,
         toast_duration_sec: 5,
@@ -1953,9 +1958,9 @@ describe("App integration", () => {
         notes: [
           {
             id: 11,
-            type: "chord",
+            type: "general",
             timestamp_sec: null,
-            chord_index: 0,
+            chord_index: null,
             text: "Lock verse entry",
             toast_duration_sec: null,
             resolved: false,
@@ -1973,9 +1978,9 @@ describe("App integration", () => {
         notes: [
           {
             id: 11,
-            type: "chord",
+            type: "general",
             timestamp_sec: null,
-            chord_index: 0,
+            chord_index: null,
             text: "Lock verse entry",
             toast_duration_sec: null,
             resolved: false,
@@ -1993,9 +1998,9 @@ describe("App integration", () => {
         notes: [
           {
             id: 11,
-            type: "chord",
+            type: "general",
             timestamp_sec: null,
-            chord_index: 0,
+            chord_index: null,
             text: "Lock verse entry",
             toast_duration_sec: null,
             resolved: false,
@@ -2006,8 +2011,8 @@ describe("App integration", () => {
           },
           {
             id: 301,
-            type: "time",
-            timestamp_sec: 18.5,
+            type: "general",
+            timestamp_sec: null,
             chord_index: null,
             text: "Player time note",
             toast_duration_sec: null,
@@ -2026,9 +2031,9 @@ describe("App integration", () => {
         notes: [
           {
             id: 11,
-            type: "chord",
+            type: "general",
             timestamp_sec: null,
-            chord_index: 0,
+            chord_index: null,
             text: "Player note edited",
             toast_duration_sec: null,
             resolved: false,
@@ -2039,8 +2044,8 @@ describe("App integration", () => {
           },
           {
             id: 301,
-            type: "time",
-            timestamp_sec: 18.5,
+            type: "general",
+            timestamp_sec: null,
             chord_index: null,
             text: "Player time note",
             toast_duration_sec: null,
@@ -2059,9 +2064,9 @@ describe("App integration", () => {
         notes: [
           {
             id: 11,
-            type: "chord",
+            type: "general",
             timestamp_sec: null,
-            chord_index: 0,
+            chord_index: null,
             text: "Player note edited",
             toast_duration_sec: null,
             resolved: true,
@@ -2072,8 +2077,8 @@ describe("App integration", () => {
           },
           {
             id: 301,
-            type: "time",
-            timestamp_sec: 18.5,
+            type: "general",
+            timestamp_sec: null,
             chord_index: null,
             text: "Player time note",
             toast_duration_sec: null,
@@ -2092,8 +2097,8 @@ describe("App integration", () => {
         notes: [
           {
             id: 301,
-            type: "time",
-            timestamp_sec: 18.5,
+            type: "general",
+            timestamp_sec: null,
             chord_index: null,
             text: "Player time note",
             toast_duration_sec: null,
@@ -2141,7 +2146,7 @@ describe("App integration", () => {
 
     await waitFor(() => {
       expect(createSongNoteMock).toHaveBeenCalledWith(30, {
-        type: "time",
+        type: "general",
         text: "Player time note",
         timestamp_sec: 18.5,
         chord_index: undefined,

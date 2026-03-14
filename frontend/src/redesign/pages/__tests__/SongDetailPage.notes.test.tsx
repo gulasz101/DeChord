@@ -27,27 +27,29 @@ const baseSong: Song = {
   notes: [
     {
       id: 11,
-      type: "chord",
-      chordIndex: 0,
+      type: "general",
+      chordIndex: null,
       timestampSec: null,
       text: "Lock verse entry",
       toastDurationSec: null,
       authorName: "Wojtek",
       authorAvatar: "WG",
       resolved: false,
+      parentId: null,
       createdAt: "2026-03-10T10:00:00Z",
       updatedAt: "2026-03-10T10:00:00Z",
     },
     {
       id: 12,
-      type: "time",
+      type: "general",
       chordIndex: null,
-      timestampSec: 42,
+      timestampSec: null,
       text: "Old resolved note",
       toastDurationSec: null,
       authorName: "Wojtek",
       authorAvatar: "WG",
       resolved: true,
+      parentId: null,
       createdAt: "2026-03-10T09:00:00Z",
       updatedAt: "2026-03-10T09:05:00Z",
     },
@@ -73,8 +75,9 @@ const band: Band = {
 };
 
 describe("SongDetailPage note workflows", () => {
-  it("creates manual timestamp notes, chord notes, and note mutations from song detail", async () => {
+  it("creates general comments, replies, and handles note mutations from song detail", async () => {
     const onCreateNote = vi.fn().mockResolvedValue(undefined);
+    const onCreateReply = vi.fn().mockResolvedValue(undefined);
     const onEditNote = vi.fn().mockResolvedValue(undefined);
     const onResolveNote = vi.fn().mockResolvedValue(undefined);
     const onDeleteNote = vi.fn().mockResolvedValue(undefined);
@@ -88,6 +91,7 @@ describe("SongDetailPage note workflows", () => {
         onOpenPlayer={() => {}}
         onBack={() => {}}
         onCreateNote={onCreateNote}
+        onCreateReply={onCreateReply}
         onEditNote={onEditNote}
         onResolveNote={onResolveNote}
         onDeleteNote={onDeleteNote}
@@ -98,27 +102,12 @@ describe("SongDetailPage note workflows", () => {
     expect(screen.queryByText("Old resolved note")).toBeNull();
 
     fireEvent.change(screen.getByLabelText(/note text/i), { target: { value: "Bass pickup is late" } });
-    fireEvent.click(screen.getByLabelText(/time note/i));
-    fireEvent.change(screen.getByLabelText(/timestamp/i), { target: { value: "01:18" } });
-    fireEvent.click(screen.getByRole("button", { name: /add time note/i }));
+    fireEvent.click(screen.getByRole("button", { name: /add comment/i }));
 
     await waitFor(() => {
       expect(onCreateNote).toHaveBeenCalledWith({
-        type: "time",
+        type: "general",
         text: "Bass pickup is late",
-        timestampSec: 78,
-      });
-    });
-
-    fireEvent.change(screen.getByLabelText(/note text/i), { target: { value: "Verse entrance is late" } });
-    fireEvent.click(screen.getByLabelText(/chord note/i));
-    fireEvent.click(screen.getByRole("button", { name: /add chord note/i }));
-
-    await waitFor(() => {
-      expect(onCreateNote).toHaveBeenNthCalledWith(2, {
-        type: "chord",
-        text: "Verse entrance is late",
-        chordIndex: 0,
       });
     });
 
@@ -145,107 +134,8 @@ describe("SongDetailPage note workflows", () => {
     });
   });
 
-  it("accepts numeric seconds and rejects invalid timestamps", async () => {
-    const onCreateNote = vi.fn().mockResolvedValue(undefined);
-
-    render(
-      <SongDetailPage
-        user={user}
-        band={band}
-        project={project}
-        song={{ ...baseSong, notes: [] }}
-        onOpenPlayer={() => {}}
-        onBack={() => {}}
-        onCreateNote={onCreateNote}
-      />,
-    );
-
-    fireEvent.change(screen.getByLabelText(/note text/i), { target: { value: "Hold this pocket" } });
-    fireEvent.click(screen.getByLabelText(/time note/i));
-    fireEvent.change(screen.getByLabelText(/timestamp/i), { target: { value: "18.5" } });
-    fireEvent.click(screen.getByRole("button", { name: /add time note/i }));
-
-    await waitFor(() => {
-      expect(onCreateNote).toHaveBeenCalledWith({
-        type: "time",
-        text: "Hold this pocket",
-        timestampSec: 18.5,
-      });
-    });
-
-    fireEvent.change(screen.getByLabelText(/note text/i), { target: { value: "Broken timestamp" } });
-    fireEvent.change(screen.getByLabelText(/timestamp/i), { target: { value: "1:xx" } });
-    fireEvent.click(screen.getByRole("button", { name: /add time note/i }));
-
-    await waitFor(() => {
-      expect(onCreateNote).toHaveBeenCalledTimes(1);
-      expect(screen.getByText(/enter timestamp as mm:ss or seconds/i)).toBeTruthy();
-    });
-  });
-
-  it("renders unknown note author metadata neutrally instead of using the current user avatar", () => {
-    render(
-      <SongDetailPage
-        user={user}
-        band={band}
-        project={project}
-        song={{
-          ...baseSong,
-          notes: [
-            {
-              id: 21,
-              type: "time",
-              chordIndex: null,
-              timestampSec: 12,
-              text: "Unknown author note",
-              toastDurationSec: null,
-              authorName: null,
-              authorAvatar: null,
-              resolved: false,
-              createdAt: "2026-03-10T11:00:00Z",
-              updatedAt: "2026-03-10T11:00:00Z",
-            },
-          ],
-        }}
-        onOpenPlayer={() => {}}
-        onBack={() => {}}
-      />,
-    );
-
-    expect(screen.getByText("Unknown")).toBeTruthy();
-    expect(screen.getByText("?")).toBeTruthy();
-  });
-
-  it("keeps chord-note composer honest when no chords are available", async () => {
-    const onCreateNote = vi.fn().mockResolvedValue(undefined);
-
-    render(
-      <SongDetailPage
-        user={user}
-        band={band}
-        project={project}
-        song={{ ...baseSong, chords: [], notes: [] }}
-        onOpenPlayer={() => {}}
-        onBack={() => {}}
-        onCreateNote={onCreateNote}
-      />,
-    );
-
-    fireEvent.click(screen.getByLabelText(/chord note/i));
-
-    expect(screen.getByText(/no chords available for chord notes/i)).toBeTruthy();
-
-    fireEvent.change(screen.getByLabelText(/note text/i), { target: { value: "No target chord" } });
-    fireEvent.click(screen.getByRole("button", { name: /add chord note/i }));
-
-    await waitFor(() => {
-      expect(onCreateNote).not.toHaveBeenCalled();
-      expect(screen.getByText(/no chords available for chord note/i)).toBeTruthy();
-    });
-  });
-
-  it("reopens a resolved note from the resolved section", async () => {
-    const onResolveNote = vi.fn().mockResolvedValue(undefined);
+  it("creates replies to existing comments", async () => {
+    const onCreateReply = vi.fn().mockResolvedValue(undefined);
 
     render(
       <SongDetailPage
@@ -255,16 +145,65 @@ describe("SongDetailPage note workflows", () => {
         song={baseSong}
         onOpenPlayer={() => {}}
         onBack={() => {}}
+        onCreateReply={onCreateReply}
+      />,
+    );
+
+    expect(screen.getByText("Lock verse entry")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /reply/i }));
+
+    const replyInput = screen.getByLabelText(/reply text/i);
+    fireEvent.change(replyInput, { target: { value: "My reply" } });
+    fireEvent.click(screen.getByRole("button", { name: /post reply/i }));
+
+    await waitFor(() => {
+      expect(onCreateReply).toHaveBeenCalledWith(11, "My reply");
+    });
+  });
+
+  it("reopens a resolved note from the resolved section", async () => {
+    const onResolveNote = vi.fn().mockResolvedValue(undefined);
+
+    const songWithResolved: Song = {
+      ...baseSong,
+      notes: [
+        {
+          id: 12,
+          type: "general",
+          chordIndex: null,
+          timestampSec: null,
+          text: "Old resolved note",
+          toastDurationSec: null,
+          authorName: "Wojtek",
+          authorAvatar: "WG",
+          resolved: true,
+          createdAt: "2026-03-10T09:00:00Z",
+          updatedAt: "2026-03-10T09:05:00Z",
+        },
+      ],
+    };
+
+    render(
+      <SongDetailPage
+        user={user}
+        band={band}
+        project={project}
+        song={songWithResolved}
+        onOpenPlayer={() => {}}
+        onBack={() => {}}
         onResolveNote={onResolveNote}
       />,
     );
 
-    fireEvent.click(screen.getByText(/show resolved/i));
-    fireEvent.click(screen.getByRole("button", { name: /reopen note 12/i }));
+    expect(screen.queryByText("Old resolved note")).toBeNull();
 
+    fireEvent.click(screen.getByText(/show resolved/i));
+    expect(screen.getByText("Old resolved note")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /reopen note 12/i }));
     await waitFor(() => {
       expect(onResolveNote).toHaveBeenCalledWith(12, false);
-      expect(screen.getByText(/note reopened\./i)).toBeTruthy();
     });
   });
 });

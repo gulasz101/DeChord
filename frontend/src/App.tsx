@@ -160,7 +160,7 @@ function mapSongTab(tab: Awaited<ReturnType<typeof getSongTabs>>["tab"]): Song["
 
 function mapNote(note: {
   id: number;
-  type: "time" | "chord";
+  type: "time" | "chord" | "general";
   timestamp_sec: number | null;
   chord_index: number | null;
   text: string;
@@ -168,6 +168,7 @@ function mapNote(note: {
   resolved: boolean;
   author_name: string | null;
   author_avatar: string | null;
+  parent_id: number | null;
   created_at: string;
   updated_at: string;
 }): SongNote {
@@ -181,6 +182,7 @@ function mapNote(note: {
     authorName: note.author_name,
     authorAvatar: note.author_avatar,
     resolved: note.resolved,
+    parentId: note.parent_id,
     createdAt: note.created_at,
     updatedAt: note.updated_at,
   };
@@ -984,24 +986,17 @@ export default function App() {
             await regenerateSongTabs(songId, { source_stem_key: sourceStemKey });
             await refreshSongDetailRoute();
           }}
-          onCreateNote={async ({ type, text, timestampSec, chordIndex, toastDurationSec }: {
-            type: "time" | "chord";
-            text: string;
-            timestampSec?: number;
-            chordIndex?: number;
-            toastDurationSec?: number;
-          }) => {
+          onCreateNote={async ({ text }: { type: "general"; text: string }) => {
             const songId = Number(route.song.id);
             if (Number.isNaN(songId)) return;
-            await createSongNote(songId, {
-              type,
-              text,
-              timestamp_sec: timestampSec,
-              chord_index: chordIndex,
-              toast_duration_sec: toastDurationSec,
-            });
+            await createSongNote(songId, { type: "general", text });
             await refreshSongDetailRoute();
-            await refreshProjectCollaboration(route.band.id, route.project.id);
+          }}
+          onCreateReply={async (parentId: number, text: string) => {
+            const songId = Number(route.song.id);
+            if (Number.isNaN(songId)) return;
+            await createSongNote(songId, { type: "general", text, parent_id: parentId });
+            await refreshSongDetailRoute();
           }}
           onEditNote={async (noteId, payload: { text: string; toastDurationSec?: number }) => {
             await updateSongNote(noteId, { text: payload.text, toast_duration_sec: payload.toastDurationSec });
