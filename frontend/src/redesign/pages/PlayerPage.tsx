@@ -127,9 +127,18 @@ export function PlayerPage({
 
   const computeDefaultDuration = useCallback(
     (timestampSec: number): number => {
-      const chord = song.chords.find((c) => timestampSec >= c.start && timestampSec < c.end);
-      if (chord) return Math.max(1, chord.end - timestampSec);
-      return 4.0;
+      const sortedChords = [...song.chords].sort((a, b) => a.start - b.start);
+      const currentChordIndex = sortedChords.findIndex(
+        (c) => timestampSec >= c.start && timestampSec < c.end,
+      );
+      if (currentChordIndex === -1) {
+        return 4.0;
+      }
+      const nextChord = sortedChords[currentChordIndex + 1];
+      if (nextChord) {
+        return Math.max(1, nextChord.end - timestampSec);
+      }
+      return Math.max(1, sortedChords[currentChordIndex].end - timestampSec);
     },
     [song.chords],
   );
