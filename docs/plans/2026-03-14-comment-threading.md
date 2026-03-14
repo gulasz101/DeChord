@@ -737,7 +737,7 @@ Before changing any UI code, write the tests that describe the new behavior. The
 **Files:**
 - Modify: `frontend/src/redesign/pages/SongDetailPage.tsx`
 
-- [ ] **Step 1: Update `SongDetailPageProps` interface**
+- [x] **Step 1: Update `SongDetailPageProps` interface**
 
   At the top of the file, find `interface SongDetailPageProps`. Change the `onCreateNote` payload type and add `onCreateReply`:
 
@@ -748,7 +748,7 @@ Before changing any UI code, write the tests that describe the new behavior. The
 
   Keep all other props (`onEditNote`, `onResolveNote`, `onDeleteNote`, etc.) unchanged.
 
-- [ ] **Step 2: Remove timestamp-related state**
+- [x] **Step 2: Remove timestamp-related state**
 
   In the component body, remove these lines:
 
@@ -761,7 +761,7 @@ Before changing any UI code, write the tests that describe the new behavior. The
 
   Also remove the `hasChordTarget` constant (only used by the old form).
 
-- [ ] **Step 3: Add reply state**
+- [x] **Step 3: Add reply state**
 
   After the existing state declarations, add:
 
@@ -770,7 +770,7 @@ Before changing any UI code, write the tests that describe the new behavior. The
   const [replyText, setReplyText] = useState("");
   ```
 
-- [ ] **Step 4: Simplify the comment creation form**
+- [x] **Step 4: Simplify the comment creation form**
 
   Find the "Add note" form inside the Comments column (around line 418). Replace the entire form contents with the simplified version:
 
@@ -812,168 +812,31 @@ Before changing any UI code, write the tests that describe the new behavior. The
   </div>
   ```
 
-- [ ] **Step 5: Restructure the comment list with threading**
+- [x] **Step 5: Restructure the comment list with threading**
 
   Replace the current open-comments rendering block (starting at `{openComments.length === 0 && ...}`, around line 501) with the threaded version:
 
-  ```tsx
-  {/* Compute top-level notes and reply lookup */}
-  {(() => {
-    const topLevel = openComments.filter((n) => n.parentId === null);
-    const repliesFor = (id: number) => song.notes.filter((n) => n.parentId === id && !n.resolved);
+- [x] **Step 6: Run the frontend tests**
 
-    return (
-      <>
-        {topLevel.length === 0 && (
-          <p className="text-sm" style={{ color: "#7a7a90" }}>No open comments.</p>
-        )}
-        <div className="space-y-3">
-          {topLevel.map((note) => (
-            <div key={note.id}>
-              {/* Top-level comment card */}
-              <div className="border-l-2 border p-4" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.05)", borderLeftColor: "rgba(124, 58, 237, 0.5)", background: "rgba(255, 255, 255, 0.02)" }}>
-                <div className="mb-2 flex items-center gap-2">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ background: note.authorAvatar ? "#1e1e3a" : "#3b3b52" }}>{note.authorAvatar ?? "?"}</div>
-                  <span className="text-xs font-semibold" style={{ color: "#e2e2f0" }}>{note.authorName ?? "Unknown"}</span>
-                </div>
-                {editingNoteId === note.id ? (
-                  <div className="space-y-3">
-                    <label className="grid gap-1 text-sm" style={{ color: "#e2e2f0" }}>
-                      <span>Edit Note Text</span>
-                      <textarea
-                        aria-label="Edit Note Text"
-                        value={editingText}
-                        onChange={(event) => setEditingText(event.target.value)}
-                        rows={3}
-                        className="border px-3 py-2"
-                        style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.12)", background: "rgba(10, 14, 39, 0.7)", color: "#e2e2f0" }}
-                      />
-                    </label>
-                    <div className="flex gap-2">
-                      <button
-                        aria-label={`Save note ${note.id}`}
-                        onClick={() => {
-                          const trimmedText = editingText.trim();
-                          void runAction(async () => {
-                            if (!trimmedText) throw new Error("Enter note text");
-                            await onEditNote?.(note.id, { text: trimmedText });
-                            setEditingNoteId(null);
-                            setEditingText("");
-                          }, "Note updated.");
-                        }}
-                        disabled={isSubmitting}
-                        className="border px-3 py-1.5 text-xs transition-all disabled:opacity-60"
-                        style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.35)", color: "#14b8a6" }}
-                      >Save</button>
-                      <button
-                        onClick={() => { setEditingNoteId(null); setEditingText(""); setActionError(null); setActionSuccess(null); }}
-                        disabled={isSubmitting}
-                        className="border px-3 py-1.5 text-xs transition-all disabled:opacity-60"
-                        style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}
-                      >Cancel</button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm leading-relaxed" style={{ color: "#c0c0c0" }}>{note.text}</p>
-                )}
-                <div className="mt-3 flex gap-2 text-xs">
-                  <button
-                    aria-label={`Edit note ${note.id}`}
-                    onClick={() => { setEditingNoteId(note.id); setEditingText(note.text); setActionError(null); setActionSuccess(null); }}
-                    className="border px-3 py-1.5 transition-all"
-                    style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}
-                  >Edit</button>
-                  <button
-                    aria-label={`Resolve note ${note.id}`}
-                    onClick={() => void runAction(async () => { await onResolveNote?.(note.id, true); }, "Note resolved.")}
-                    disabled={isSubmitting}
-                    className="border px-3 py-1.5 transition-all disabled:opacity-60"
-                    style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.35)", color: "#14b8a6" }}
-                  >Resolve</button>
-                  <button
-                    aria-label={`Delete note ${note.id}`}
-                    onClick={() => void runAction(async () => { await onDeleteNote?.(note.id); }, "Note deleted.")}
-                    disabled={isSubmitting}
-                    className="border px-3 py-1.5 transition-all disabled:opacity-60"
-                    style={{ borderRadius: "3px", borderColor: "rgba(239, 68, 68, 0.3)", color: "#ef4444" }}
-                  >Delete</button>
-                  <button
-                    onClick={() => { setReplyingToId(replyingToId === note.id ? null : note.id); setReplyText(""); }}
-                    className="border px-3 py-1.5 transition-all"
-                    style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}
-                  >Reply</button>
-                </div>
-              </div>
-
-              {/* Replies */}
-              {repliesFor(note.id).length > 0 && (
-                <div className="ml-4 mt-1 space-y-1">
-                  {repliesFor(note.id).map((reply) => (
-                    <div key={reply.id} className="border-l border p-3" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.04)", borderLeftColor: "rgba(124, 58, 237, 0.25)", background: "rgba(255, 255, 255, 0.01)" }}>
-                      <div className="mb-1 flex items-center gap-2">
-                        <div className="flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-bold text-white" style={{ background: "#1e1e3a" }}>{reply.authorAvatar ?? "?"}</div>
-                        <span className="text-xs font-semibold" style={{ color: "#e2e2f0" }}>{reply.authorName ?? "Unknown"}</span>
-                      </div>
-                      <p className="text-sm leading-relaxed" style={{ color: "#c0c0c0" }}>{reply.text}</p>
-                      <div className="mt-2 flex gap-2 text-xs">
-                        <button
-                          aria-label={`Delete note ${reply.id}`}
-                          onClick={() => void runAction(async () => { await onDeleteNote?.(reply.id); }, "Reply deleted.")}
-                          disabled={isSubmitting}
-                          className="border px-3 py-1.5 transition-all disabled:opacity-60"
-                          style={{ borderRadius: "3px", borderColor: "rgba(239, 68, 68, 0.3)", color: "#ef4444" }}
-                        >Delete</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Inline reply form */}
-              {replyingToId === note.id && (
-                <div className="ml-4 mt-2 border p-3" style={{ borderRadius: "3px", borderColor: "rgba(124, 58, 237, 0.2)", background: "rgba(124, 58, 237, 0.04)" }}>
-                  <label className="grid gap-1 text-sm" style={{ color: "#e2e2f0" }}>
-                    <span className="sr-only">Reply Text</span>
-                    <textarea
-                      aria-label="Reply Text"
-                      value={replyText}
-                      onChange={(event) => setReplyText(event.target.value)}
-                      rows={2}
-                      placeholder="Write a reply…"
-                      className="border px-3 py-2"
-                      style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.12)", background: "rgba(10, 14, 39, 0.7)", color: "#e2e2f0" }}
-                    />
-                  </label>
-                  <div className="mt-2 flex gap-2 text-xs">
-                    <button
-                      onClick={() => {
-                        const trimmed = replyText.trim();
-                        void runAction(async () => {
-                          if (!trimmed) throw new Error("Enter reply text");
-                          await onCreateReply?.(note.id, trimmed);
-                          setReplyingToId(null);
-                          setReplyText("");
-                        }, "Reply added.");
-                      }}
-                      disabled={isSubmitting}
-                      className="border px-3 py-1.5 transition-all disabled:opacity-60"
-                      style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.35)", color: "#14b8a6" }}
-                    >Post Reply</button>
-                    <button
-                      onClick={() => { setReplyingToId(null); setReplyText(""); }}
-                      className="border px-3 py-1.5 transition-all"
-                      style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}
-                    >Cancel</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </>
-    );
-  })()}
+  ```bash
+  cd /Users/wojciechgula/Projects/DeChord/frontend
+  bun run vitest run src/redesign/pages/__tests__/SongDetailPage.test.tsx
   ```
+
+  Expected: all tests PASS (including the new ones from Task 6).
+
+- [x] **Step 7: Run TypeScript check**
+
+  ```bash
+  cd /Users/wojciechgula/Projects/DeChord/frontend
+  bun run tsc --noEmit
+  ```
+
+  Expected: no errors.
+
+- [x] **Step 8: Commit**
+
+  Commit: https://github.com/anomalyco/DeChord/commit/1591b5d492851c37841240111c87335aaccd5378
 
   > **Note on `openComments`:** This is already computed at line ~59 as `song.notes.filter((n) => !n.resolved)`. The threading code filters that further for `parentId === null` (top-level). Replies are fetched directly from `song.notes` because resolved replies should stay hidden with their parent — this is intentional.
 
