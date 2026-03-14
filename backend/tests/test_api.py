@@ -1084,13 +1084,14 @@ def test_notes_backfill_uses_actual_default_user_and_derived_avatar(
         CREATE TABLE notes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             song_id INTEGER NOT NULL,
-            type TEXT NOT NULL CHECK(type IN ('time', 'chord')),
+            type TEXT NOT NULL CHECK(type IN ('time', 'chord', 'general')),
             timestamp_sec REAL,
             chord_index INTEGER,
             text TEXT NOT NULL,
             toast_duration_sec REAL,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            parent_id INTEGER
         );
         """
     )
@@ -1160,6 +1161,199 @@ def test_create_chord_note_requires_chord_index(tmp_path, monkeypatch):
     )
 
     assert response.status_code == 400
+
+
+def test_general_note_no_timestamp_required(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    band = client.post("/api/bands", json={"name": f"Band {tmp_path.name}"}).json()[
+        "band"
+    ]
+    project = client.post(
+        f"/api/bands/{band['id']}/projects", json={"name": "P", "description": ""}
+    ).json()["project"]
+    song = client.post(
+        "/api/analyze",
+        files={"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")},
+        data={"process_mode": "analysis_only", "project_id": str(project["id"])},
+        headers={"X-DeChord-User-Id": "1"},
+    )
+    song_id = song.json()["song_id"]
+
+    response = client.post(
+        f"/api/songs/{song_id}/notes",
+        json={"type": "general", "text": "A general comment"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["text"] == "A general comment"
+
+
+def test_general_note_parent_id_returned_in_song_load(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    band = client.post("/api/bands", json={"name": f"Band {tmp_path.name}"}).json()[
+        "band"
+    ]
+    project = client.post(
+        f"/api/bands/{band['id']}/projects", json={"name": "P", "description": ""}
+    ).json()["project"]
+    song = client.post(
+        "/api/analyze",
+        files={"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")},
+        data={"process_mode": "analysis_only", "project_id": str(project["id"])},
+        headers={"X-DeChord-User-Id": "1"},
+    )
+    song_id = song.json()["song_id"]
+
+    parent = client.post(
+        f"/api/songs/{song_id}/notes",
+        json={"type": "general", "text": "Parent note"},
+    )
+    parent_id = parent.json()["id"]
+
+    song_resp = client.get(f"/api/songs/{song_id}")
+    notes = song_resp.json()["notes"]
+    assert len(notes) == 1
+    assert notes[0]["parent_id"] is None
+
+
+def test_general_note_with_parent_id(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    band = client.post("/api/bands", json={"name": f"Band {tmp_path.name}"}).json()[
+        "band"
+    ]
+    project = client.post(
+        f"/api/bands/{band['id']}/projects", json={"name": "P", "description": ""}
+    ).json()["project"]
+    song = client.post(
+        "/api/analyze",
+        files={"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")},
+        data={"process_mode": "analysis_only", "project_id": str(project["id"])},
+        headers={"X-DeChord-User-Id": "1"},
+    )
+    song_id = song.json()["song_id"]
+
+    parent = client.post(
+        f"/api/songs/{song_id}/notes",
+        json={"type": "general", "text": "Parent note"},
+    )
+    parent_id = parent.json()["id"]
+
+    reply = client.post(
+        f"/api/songs/{song_id}/notes",
+        json={"type": "general", "text": "Reply note", "parent_id": parent_id},
+    )
+
+    assert reply.status_code == 200
+    assert reply.json()["parent_id"] == parent_id
+
+
+def test_reply_to_reply_rejected(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    band = client.post("/api/bands", json={"name": f"Band {tmp_path.name}"}).json()[
+        "band"
+    ]
+    project = client.post(
+        f"/api/bands/{band['id']}/projects", json={"name": "P", "description": ""}
+    ).json()["project"]
+    song = client.post(
+        "/api/analyze",
+        files={"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")},
+        data={"process_mode": "analysis_only", "project_id": str(project["id"])},
+        headers={"X-DeChord-User-Id": "1"},
+    )
+    song_id = song.json()["song_id"]
+
+    parent = client.post(
+        f"/api/songs/{song_id}/notes",
+        json={"type": "general", "text": "Parent note"},
+    )
+    parent_id = parent.json()["id"]
+
+    reply = client.post(
+        f"/api/songs/{song_id}/notes",
+        json={"type": "general", "text": "Reply note", "parent_id": parent_id},
+    )
+    reply_id = reply.json()["id"]
+
+    reply_to_reply = client.post(
+        f"/api/songs/{song_id}/notes",
+        json={"type": "general", "text": "Reply to reply", "parent_id": reply_id},
+    )
+
+    assert reply_to_reply.status_code == 400
+
+
+def test_time_note_still_requires_timestamp(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    band = client.post("/api/bands", json={"name": f"Band {tmp_path.name}"}).json()[
+        "band"
+    ]
+    project = client.post(
+        f"/api/bands/{band['id']}/projects", json={"name": "P", "description": ""}
+    ).json()["project"]
+    song = client.post(
+        "/api/analyze",
+        files={"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")},
+        data={"process_mode": "analysis_only", "project_id": str(project["id"])},
+        headers={"X-DeChord-User-Id": "1"},
+    )
+    song_id = song.json()["song_id"]
+
+    response = client.post(
+        f"/api/songs/{song_id}/notes",
+        json={"type": "time", "text": "Missing timestamp"},
+    )
+
+    assert response.status_code == 400
+
+
+def test_delete_note_cascades_replies(tmp_path, monkeypatch):
+    client = _build_client(tmp_path, monkeypatch)
+    import app.main as main
+
+    band = client.post("/api/bands", json={"name": f"Band {tmp_path.name}"}).json()[
+        "band"
+    ]
+    project = client.post(
+        f"/api/bands/{band['id']}/projects", json={"name": "P", "description": ""}
+    ).json()["project"]
+    song = client.post(
+        "/api/analyze",
+        files={"file": ("demo.mp3", b"audio-bytes", "audio/mpeg")},
+        data={"process_mode": "analysis_only", "project_id": str(project["id"])},
+        headers={"X-DeChord-User-Id": "1"},
+    )
+    song_id = song.json()["song_id"]
+
+    parent = client.post(
+        f"/api/songs/{song_id}/notes",
+        json={"type": "general", "text": "Parent note"},
+    )
+    parent_id = parent.json()["id"]
+
+    reply = client.post(
+        f"/api/songs/{song_id}/notes",
+        json={"type": "general", "text": "Reply note", "parent_id": parent_id},
+    )
+    reply_id = reply.json()["id"]
+
+    delete_resp = client.delete(f"/api/notes/{parent_id}")
+    assert delete_resp.status_code == 200
+
+    notes_rs = asyncio.run(
+        main.execute("SELECT id FROM notes WHERE id IN (?, ?)", [parent_id, reply_id])
+    )
+    assert len(notes_rs.rows) == 0
 
 
 def test_status_not_found(tmp_path, monkeypatch):

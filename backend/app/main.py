@@ -129,11 +129,12 @@ def _get_uploaded_stems_analysis_config(
 
 
 class NoteCreate(BaseModel):
-    type: Literal["time", "chord"]
-    text: str = Field(min_length=1)
+    type: Literal["time", "chord", "general"]
     timestamp_sec: float | None = None
     chord_index: int | None = None
+    text: str = Field(min_length=1)
     toast_duration_sec: float | None = None
+    parent_id: int | None = None
 
 
 class NoteUpdate(BaseModel):
@@ -205,7 +206,8 @@ async def _load_song_notes(song_id: int) -> list[dict]:
             toast_duration_sec,
             resolved,
             created_at,
-            updated_at
+            updated_at,
+            parent_id
         FROM notes
         WHERE song_id = ?
         ORDER BY created_at ASC, id ASC
@@ -226,6 +228,7 @@ async def _load_song_notes(song_id: int) -> list[dict]:
             "resolved": bool(row[9]),
             "created_at": row[10],
             "updated_at": row[11],
+            "parent_id": row[12],
         }
         for row in notes_rs.rows
     ]
@@ -2207,6 +2210,14 @@ async def create_note(song_id: int, payload: NoteCreate, request: Request):
         raise HTTPException(400, "timestamp_sec is required for time notes")
     if payload.type == "chord" and payload.chord_index is None:
         raise HTTPException(400, "chord_index is required for chord notes")
+    if payload.parent_id is not None:
+        parent_rs = await execute(
+            "SELECT parent_id FROM notes WHERE id = ?", [payload.parent_id]
+        )
+        if not parent_rs.rows:
+            raise HTTPException(400, "parent note not found")
+        if parent_rs.rows[0][0] is not None:
+            raise HTTPException(400, "Cannot reply to a reply")
     author = await _get_request_user(request)
     await _require_song_project_membership(song_id, int(author["id"]))
     author_name = str(author["display_name"])
@@ -2224,9 +2235,10 @@ async def create_note(song_id: int, payload: NoteCreate, request: Request):
             chord_index,
             text,
             toast_duration_sec,
-            resolved
+            resolved,
+            parent_id
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
         RETURNING id
         """,
         [
@@ -2239,6 +2251,7 @@ async def create_note(song_id: int, payload: NoteCreate, request: Request):
             payload.chord_index,
             payload.text,
             payload.toast_duration_sec,
+            payload.parent_id,
         ],
     )
     note_id = int(inserted.rows[0][0])
@@ -2323,6 +2336,7 @@ async def delete_note(note_id: int, request: Request):
     if note_rs.rows:
         user = await _get_request_user(request)
         await _require_song_project_membership(int(note_rs.rows[0][0]), int(user["id"]))
+    await execute("DELETE FROM notes WHERE parent_id = ?", [note_id])
     await execute("DELETE FROM notes WHERE id = ?", [note_id])
     return {"status": "ok"}
 

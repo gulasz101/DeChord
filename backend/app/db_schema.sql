@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS notes (
     author_user_id INTEGER NOT NULL,
     author_name TEXT NOT NULL,
     author_avatar TEXT,
-    type TEXT NOT NULL CHECK(type IN ('time', 'chord')),
+    type TEXT NOT NULL CHECK(type IN ('time', 'chord', 'general')),
     timestamp_sec REAL,
     chord_index INTEGER,
     text TEXT NOT NULL,
@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS notes (
     resolved INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    parent_id INTEGER,
     FOREIGN KEY (author_user_id) REFERENCES users(id) ON DELETE RESTRICT,
     FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
 );
