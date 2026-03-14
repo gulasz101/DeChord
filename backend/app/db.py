@@ -115,15 +115,20 @@ async def _migrate_song_stems_to_blob() -> None:
     """)
     await execute("DROP TABLE song_stems")
     await execute("ALTER TABLE song_stems_new RENAME TO song_stems")
-    await execute("CREATE INDEX IF NOT EXISTS idx_song_stems_song_id ON song_stems(song_id)")
-    await execute("CREATE INDEX IF NOT EXISTS idx_song_stems_generation_id ON song_stems(generation_id)")
+    await execute(
+        "CREATE INDEX IF NOT EXISTS idx_song_stems_song_id ON song_stems(song_id)"
+    )
+    await execute(
+        "CREATE INDEX IF NOT EXISTS idx_song_stems_generation_id ON song_stems(generation_id)"
+    )
 
 
 async def _run_schema_migrations() -> None:
-    await _migrate_song_stems_to_blob()   # <-- first line
+    await _migrate_song_stems_to_blob()  # <-- first line
     await _ensure_column("notes", "author_user_id", "author_user_id INTEGER")
     await _ensure_column("notes", "author_name", "author_name TEXT")
     await _ensure_column("notes", "author_avatar", "author_avatar TEXT")
+    await _ensure_column("notes", "parent_id", "parent_id INTEGER")
     await _ensure_column(
         "notes",
         "resolved",
