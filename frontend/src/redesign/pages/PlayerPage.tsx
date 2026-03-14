@@ -65,7 +65,8 @@ export function PlayerPage({
   const [noteText, setNoteText] = useState("");
   const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
   const [editingText, setEditingText] = useState("");
-  const [activeToasts, setActiveToasts] = useState<Array<{ id: number; text: string }>>([]);
+  const [activeToasts, setActiveToasts] = useState<Array<{ id: number; text: string; authorName: string }>>([]);
+  const [exitingToastIds, setExitingToastIds] = useState<Set<number>>(new Set());
   const firedNoteIds = useRef<Set<number>>(new Set());
   const prevTimestamp = useRef<number>(0);
 
@@ -258,11 +259,21 @@ export function PlayerPage({
       if (currentTime >= note.timestampSec) {
         firedNoteIds.current.add(note.id);
         const toastId = note.id;
-        // Clear existing toast with same ID if any (e.g., from seek backward)
-        setActiveToasts((prev) => prev.filter((t) => t.id !== toastId));
-        setActiveToasts((prev) => [...prev, { id: toastId, text: note.text }]);
+        setActiveToasts((prev) => {
+          const deduped = prev.filter((t) => t.id !== toastId);
+          const capped = deduped.length >= 5 ? deduped.slice(1) : deduped;
+          return [...capped, { id: toastId, text: note.text, authorName: note.authorName ?? "Unknown" }];
+        });
         setTimeout(() => {
-          setActiveToasts((prev) => prev.filter((t) => t.id !== toastId));
+          setExitingToastIds((prev) => new Set([...prev, toastId]));
+          setTimeout(() => {
+            setActiveToasts((prev) => prev.filter((t) => t.id !== toastId));
+            setExitingToastIds((prev) => {
+              const next = new Set(prev);
+              next.delete(toastId);
+              return next;
+            });
+          }, 350);
         }, note.toastDurationSec * 1000);
       }
     }
@@ -666,7 +677,7 @@ export function PlayerPage({
         />
       </div>
 
-      <ToastCueLayer toasts={activeToasts} />
+      <ToastCueLayer toasts={activeToasts} exitingIds={exitingToastIds} />
 
       {modal.open && (
         <TimelineCommentModal

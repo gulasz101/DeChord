@@ -701,4 +701,73 @@ it("resets fired toasts on seek backward", async () => {
   act(() => { transportStore.update({ currentTime: 5.2 }); });
   expect(await screen.findByText("Replay")).toBeInTheDocument();
 });
+
+describe("PlayerPage — toast authorName forwarding", () => {
+  it("includes authorName in active toast when note fires", async () => {
+    const song = makeSong({
+      notes: [
+        {
+          ...noteDefaults,
+          id: 42,
+          type: "time",
+          text: "bend up here",
+          authorName: "Wojciech",
+          timestampSec: 0,
+          toastDurationSec: 5,
+          resolved: false,
+          userId: 1,
+        },
+      ],
+    });
+
+    render(<PlayerPage {...baseProps} song={song} currentUserId={1} />);
+
+    act(() => {
+      transportStore.update({ currentTime: 0.1 });
+    });
+
+    expect(await screen.findByTestId("toast-42")).toBeInTheDocument();
+    expect(screen.getByText("Wojciech")).toBeInTheDocument();
+  });
+
+  it("removes toast from DOM after toastDurationSec + exit animation (350ms)", async () => {
+    try {
+      vi.useFakeTimers();
+      const song = makeSong({
+        notes: [
+          {
+            ...noteDefaults,
+            id: 99,
+            type: "time",
+            text: "fade me out",
+            authorName: "Anna",
+            timestampSec: 0,
+            toastDurationSec: 1,
+            resolved: false,
+            userId: 2,
+          },
+        ],
+      });
+
+      render(<PlayerPage {...baseProps} song={song} currentUserId={1} />);
+
+      act(() => {
+        transportStore.update({ currentTime: 0.1 });
+      });
+      expect(screen.getByTestId("toast-99")).toBeInTheDocument();
+
+      act(() => {
+        transportStore.update({ currentTime: 1.5 });
+      });
+
+      act(() => {
+        vi.advanceTimersByTime(1000 + 350 + 50);
+      });
+
+      expect(screen.queryByTestId("toast-99")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
 });
