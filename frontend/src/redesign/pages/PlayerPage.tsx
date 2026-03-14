@@ -1,10 +1,11 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
-import type { Band, Project, Song, User } from "../lib/types";
+import type { Band, Project, Song, SongNote, User } from "../lib/types";
 import { Fretboard } from "../components/Fretboard";
 import { ChordTimeline } from "../components/ChordTimeline";
 import { TransportBar } from "../components/TransportBar";
 import { TabViewerPanel } from "../components/TabViewerPanel";
 import { StemMixer } from "../components/StemMixer";
+import { TimelineCommentModal } from "../components/TimelineCommentModal";
 import { useAudioPlayer } from "../../hooks/useAudioPlayer";
 import { getTabFileUrl } from "../../lib/api";
 import { resolvePlaybackSources } from "../../lib/playbackSources";
@@ -15,10 +16,12 @@ interface PlayerPageProps {
   project: Project;
   song: Song;
   onBack: () => void;
-  onCreateNote?: (payload: { type: "time" | "chord"; text: string; timestampSec?: number; chordIndex?: number }) => Promise<void> | void;
-  onEditNote?: (noteId: number, payload: { text: string }) => Promise<void> | void;
+  currentUserId?: number | null;
+  onCreateNote?: (payload: { type: "time" | "chord"; text: string; timestampSec?: number; chordIndex?: number; toastDurationSec?: number }) => Promise<void> | void;
+  onEditNote?: (noteId: number, payload: { text: string; toastDurationSec?: number }) => Promise<void> | void;
   onResolveNote?: (noteId: number, resolved: boolean) => Promise<void> | void;
   onDeleteNote?: (noteId: number) => Promise<void> | void;
+  onCreateReply?: (parentId: number, text: string) => Promise<void> | void;
 }
 
 type SidePanel = "none" | "stems" | "comments";
@@ -36,11 +39,20 @@ export function PlayerPage({
   project,
   song,
   onBack,
+  currentUserId,
   onCreateNote,
   onEditNote,
   onResolveNote,
   onDeleteNote,
+  onCreateReply,
 }: PlayerPageProps) {
+  type ModalState =
+    | { open: false }
+    | { open: true; mode: "create"; timestampSec: number; defaultDurationSec: number }
+    | { open: true; mode: "edit"; note: SongNote; timestampSec: number; defaultDurationSec: number }
+    | { open: true; mode: "reply"; note: SongNote; timestampSec: number; defaultDurationSec: number };
+
+  const [modal, setModal] = useState<ModalState>({ open: false });
   const [sidePanel, setSidePanel] = useState<SidePanel>("none");
   const [showTabs, setShowTabs] = useState(false);
   const [loopStart, setLoopStart] = useState<number | null>(song.playbackPrefs?.loopStartIndex ?? null);
@@ -107,6 +119,73 @@ export function PlayerPage({
           toastDurationSec: n.toastDurationSec,
         })),
     [song.notes],
+  );
+
+  const computeDefaultDuration = useCallback(
+    (timestampSec: number): number => {
+      const chord = song.chords.find((c) => timestampSec >= c.start && timestampSec < c.end);
+      if (chord) return Math.max(1, chord.end - timestampSec);
+      return 4.0;
+    },
+    [song.chords],
+  );
+
+  const handleCommentLaneClick = useCallback(
+    (timestampSec: number) => {
+      setModal({
+        open: true,
+        mode: "create",
+        timestampSec,
+        defaultDurationSec: computeDefaultDuration(timestampSec),
+      });
+    },
+    [computeDefaultDuration],
+  );
+
+  const handleMarkerClick = useCallback(
+    (noteId: number, timestampSec: number) => {
+      const note = song.notes.find((n) => n.id === noteId);
+      if (!note) return;
+      const isOwn = note.userId !== null && note.userId === (currentUserId ?? null);
+      setModal({
+        open: true,
+        mode: isOwn ? "edit" : "reply",
+        note,
+        timestampSec,
+        defaultDurationSec: note.toastDurationSec ?? computeDefaultDuration(timestampSec),
+      });
+    },
+    [song.notes, currentUserId, computeDefaultDuration],
+  );
+
+  const handleModalSave = useCallback(
+    async (payload: { text: string; toastDurationSec: number }) => {
+      if (!modal.open || modal.mode === "reply") return;
+      if (modal.mode === "create" && onCreateNote) {
+        await onCreateNote({ type: "time", text: payload.text, timestampSec: modal.timestampSec, toastDurationSec: payload.toastDurationSec });
+      } else if (modal.mode === "edit" && onEditNote) {
+        await onEditNote(modal.note.id, { text: payload.text, toastDurationSec: payload.toastDurationSec });
+      }
+      setModal({ open: false });
+    },
+    [modal, onCreateNote, onEditNote],
+  );
+
+  const handleModalReply = useCallback(
+    async (text: string) => {
+      if (!modal.open || modal.mode !== "reply") return;
+      if (onCreateReply) await onCreateReply(modal.note.id, text);
+      setModal({ open: false });
+    },
+    [modal, onCreateReply],
+  );
+
+  const handleModalDelete = useCallback(
+    async (noteId: number) => {
+      if (onDeleteNote) await onDeleteNote(noteId);
+      setModal({ open: false });
+    },
+    [onDeleteNote],
   );
 
     const activeStemCount = song.stems.filter((s) => !s.isArchived).length;
@@ -526,13 +605,30 @@ export function PlayerPage({
       <div className="relative z-10 shrink-0 border-t px-4 py-2" style={{ borderColor: "rgba(192, 192, 192, 0.06)" }}>
         <TransportBar currentTime={player.currentTime} duration={player.duration || song.duration} playing={player.playing} volume={player.volume} speedPercent={Math.round(player.playbackRate * 100)}
           loopActive={loopStart !== null && loopEnd !== null} loopLabel={loopLabel} noteMarkers={allNoteMarkers}
+          currentUserId={currentUserId ?? null}
           onTogglePlay={player.togglePlay} onSeek={player.seek} onSeekRelative={player.seekRelative}
           onVolumeChange={player.setVolume} onSpeedChange={(speed) => player.setPlaybackRate(speed / 100)} onClearLoop={() => {
             setLoopStart(null);
             setLoopEnd(null);
             player.setLoop(null);
-          }} />
+          }}
+          onCommentLaneClick={handleCommentLaneClick}
+          onMarkerClick={handleMarkerClick}
+        />
       </div>
+
+      {modal.open && (
+        <TimelineCommentModal
+          mode={modal.mode}
+          timestampSec={modal.timestampSec}
+          defaultDurationSec={modal.defaultDurationSec}
+          note={modal.mode !== "create" ? modal.note : undefined}
+          onSave={handleModalSave}
+          onReply={handleModalReply}
+          onDelete={modal.mode === "edit" ? handleModalDelete : undefined}
+          onClose={() => setModal({ open: false })}
+        />
+      )}
     </div>
   );
 }

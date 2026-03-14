@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import "@testing-library/jest-dom";
 import type { Band, Project, Song, User } from "../../lib/types";
 
 const transportStore = vi.hoisted(() => {
@@ -100,13 +101,88 @@ vi.mock("../../../hooks/useAudioPlayer", async () => {
 vi.mock("../../components/TransportBar", () => ({
   TransportBar: (props: {
     currentTime: number;
+    duration: number;
     playing: boolean;
+    volume: number;
+    speedPercent: number;
+    loopActive: boolean;
+    loopLabel?: string;
+    noteMarkers: Array<{ id: number; timestampSec: number; userId: number | null; authorName?: string | null; text?: string; toastDurationSec?: number | null }>;
+    currentUserId: number | null;
     onTogglePlay: () => void;
+    onSeek: (time: number) => void;
+    onSeekRelative: (delta: number) => void;
+    onVolumeChange: (v: number) => void;
+    onSpeedChange: (s: number) => void;
+    onClearLoop: () => void;
+    onCommentLaneClick: (timestampSec: number) => void;
+    onMarkerClick: (noteId: number, timestampSec: number) => void;
+  }) => {
+    return (
+      <div data-testid="transport-bar">
+        <button type="button" onClick={props.onTogglePlay}>Play</button>
+        <span>{props.currentTime.toFixed(1)}s</span>
+        <span>{props.playing ? "playing" : "paused"}</span>
+        <div
+          data-testid="comment-lane"
+          onClick={(e) => {
+            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+            const timestampSec = ratio * props.duration;
+            props.onCommentLaneClick(timestampSec);
+          }}
+          style={{ position: "relative", height: 12, background: "#333" }}
+        />
+        {props.noteMarkers.map((marker) => (
+          <button
+            key={marker.id}
+            type="button"
+            data-testid={`comment-marker-${marker.id}`}
+            onClick={() => props.onMarkerClick(marker.id, marker.timestampSec)}
+          >
+            Marker {marker.id}
+          </button>
+        ))}
+      </div>
+    );
+  },
+}));
+
+vi.mock("../../components/TimelineCommentModal", () => ({
+  TimelineCommentModal: (props: {
+    mode: "create" | "edit" | "reply";
+    timestampSec: number;
+    defaultDurationSec: number;
+    note?: import("../../lib/types").SongNote;
+    onSave: (payload: { text: string; toastDurationSec: number }) => void;
+    onReply?: (text: string) => void;
+    onDelete?: (noteId: number) => void;
+    onClose: () => void;
   }) => (
-    <div>
-      <button type="button" onClick={props.onTogglePlay}>Play</button>
-      <span>{props.currentTime.toFixed(1)}s</span>
-      <span>{props.playing ? "playing" : "paused"}</span>
+    <div data-testid="timeline-comment-modal">
+      <span>{props.mode === "create" ? "Add Comment" : props.mode === "edit" ? "Edit Comment" : "Reply"}</span>
+      <span>@ {Math.floor(props.timestampSec / 60)}:{String(Math.floor(props.timestampSec % 60)).padStart(2, "0")}</span>
+      {props.note && <span data-testid="note-text">{props.note.text}</span>}
+      <textarea
+        aria-label="comment text"
+        value={props.mode === "edit" && props.note ? props.note.text : ""}
+        readOnly
+      />
+      <input
+        type="number"
+        aria-label="show for (seconds)"
+        value={props.defaultDurationSec}
+        readOnly
+      />
+      <button type="button" onClick={() => props.onSave({ text: props.note?.text ?? "test", toastDurationSec: props.defaultDurationSec })}>Save</button>
+      {props.mode === "reply" && props.onReply && (
+        <button type="button" onClick={() => props.onReply("reply text")}>Reply</button>
+      )}
+      {props.mode === "edit" && props.onDelete && props.note && (
+        <button type="button" onClick={() => props.onDelete(props.note!.id)}>Delete</button>
+      )}
+      <button type="button" onClick={props.onClose}>Close</button>
     </div>
   ),
 }));
@@ -203,6 +279,40 @@ const band: Band = {
   members: [],
   projects: [project],
   avatarColor: "#7c3aed",
+};
+
+function makeSong(overrides: Partial<Song> = {}): Song {
+  return {
+    id: "1",
+    title: "Test Song",
+    artist: "",
+    key: "Am",
+    tempo: 120,
+    duration: 120,
+    status: "ready",
+    chords: [{ start: 0, end: 120, label: "Am" }],
+    stems: [],
+    notes: [],
+    updatedAt: "",
+    ...overrides,
+  };
+}
+const noteDefaults = {
+  chordIndex: null,
+  authorName: "Alice",
+  authorAvatar: null,
+  userId: null,
+  resolved: false,
+  parentId: null,
+  createdAt: "",
+  updatedAt: "",
+};
+
+const baseProps = {
+  user,
+  band,
+  project,
+  onBack: () => {},
 };
 
 describe("PlayerPage", () => {
@@ -475,5 +585,73 @@ describe("PlayerPage", () => {
         }),
       );
     });
+  });
+
+  it("clicking empty comment lane opens create modal with correct timestamp", async () => {
+    render(<PlayerPage {...baseProps} song={makeSong()} />);
+    const lane = screen.getByTestId("comment-lane");
+    Object.defineProperty(lane, "getBoundingClientRect", {
+      value: () => ({ left: 0, width: 400, top: 0, right: 400, bottom: 12, height: 12 }),
+    });
+    fireEvent.click(lane, { clientX: 200 }); // 50% → 60s (duration=120)
+    expect(await screen.findByText(/add comment/i)).toBeInTheDocument();
+    expect(screen.getByText(/@ 1:00/)).toBeInTheDocument();
+  });
+
+  it("clicking own marker opens edit modal", async () => {
+    const song = makeSong({
+      notes: [
+        { ...noteDefaults, id: 5, type: "time", timestampSec: 30, text: "My note", userId: 1, toastDurationSec: 4 },
+      ],
+    });
+    render(<PlayerPage {...baseProps} song={song} currentUserId={1} />);
+    const markerButton = screen.getByTestId("comment-marker-5");
+    fireEvent.click(markerButton);
+    const modal = await screen.findByTestId("timeline-comment-modal");
+    expect(modal).toHaveTextContent(/edit comment/i);
+    expect(screen.getByDisplayValue("My note")).toBeInTheDocument();
+  });
+
+  it("clicking another user's marker opens reply modal", async () => {
+    const song = makeSong({
+      notes: [
+        { ...noteDefaults, id: 6, type: "time", timestampSec: 30, text: "Their note", userId: 99, toastDurationSec: 4 },
+      ],
+    });
+    render(<PlayerPage {...baseProps} song={song} currentUserId={1} />);
+    fireEvent.click(screen.getByTestId("comment-marker-6"));
+    const modal = await screen.findByTestId("timeline-comment-modal");
+    expect(modal.firstChild?.textContent).toMatch(/^Reply/);
+    expect(screen.getByText("Their note")).toBeInTheDocument(); // parent preview
+  });
+
+  it("default duration in create modal = time remaining in clicked chord", async () => {
+    const song = makeSong({
+      chords: [
+        { start: 0, end: 10, label: "Am" },
+        { start: 10, end: 18, label: "G" },
+      ],
+      duration: 18,
+      notes: [],
+    });
+    transportStore.update({ duration: 18 });
+    const { container } = render(<PlayerPage {...baseProps} song={song} />);
+    const lane = container.querySelector('[data-testid="comment-lane"]') as HTMLElement;
+    lane.getBoundingClientRect = () => ({ left: 0, width: 180, top: 0, right: 180, bottom: 12, height: 12, x: 0, y: 0, toJSON: () => "" });
+    // Click at pixel 120 → ts = (120/180)*18 = 12s — inside G chord (10–18), remaining = 6s
+    fireEvent.click(lane, { clientX: 120 });
+    await screen.findByText(/add comment/i);
+    expect(screen.getByLabelText(/show for/i)).toHaveValue(6);
+  });
+
+  it("default duration falls back to 4s when click is past all chords", async () => {
+    const song = makeSong({ chords: [{ start: 0, end: 5, label: "Am" }], duration: 120, notes: [] });
+    const { container } = render(<PlayerPage {...baseProps} song={song} />);
+    const lane = container.querySelector('[data-testid="comment-lane"]') as HTMLElement;
+    lane.getBoundingClientRect = () => ({ left: 0, width: 120, top: 0, right: 120, bottom: 12, height: 12, x: 0, y: 0, toJSON: () => "" });
+    // Click at pixel 60 → ts = 60s — past the only chord (ends at 5s)
+    fireEvent.click(lane, { clientX: 60 });
+    await screen.findByText(/add comment/i);
+    expect(screen.getByLabelText(/show for/i)).toHaveValue(4);
   });
 });
