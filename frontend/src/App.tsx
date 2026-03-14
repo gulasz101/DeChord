@@ -168,6 +168,7 @@ function mapNote(note: {
   resolved: boolean;
   author_name: string | null;
   author_avatar: string | null;
+  author_user_id: number | null;
   parent_id: number | null;
   created_at: string;
   updated_at: string;
@@ -181,6 +182,7 @@ function mapNote(note: {
     toastDurationSec: note.toast_duration_sec,
     authorName: note.author_name,
     authorAvatar: note.author_avatar,
+    userId: note.author_user_id,
     resolved: note.resolved,
     parentId: note.parent_id,
     createdAt: note.created_at,

@@ -78,6 +78,7 @@ export interface SongNote {
   resolved: boolean;
   author_name: string | null;
   author_avatar: string | null;
+  user_id: number | null;
   parent_id: number | null;
   created_at: string;
   updated_at: string;

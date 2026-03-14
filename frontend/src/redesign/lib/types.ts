@@ -51,10 +51,20 @@ export interface SongNote {
   toastDurationSec: number | null;
   authorName: string | null;
   authorAvatar: string | null;
+  userId: number | null;
   resolved: boolean;
   parentId: number | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface NoteMarker {
+  id: number;
+  timestampSec: number;
+  userId: number | null;
+  authorName?: string | null;
+  text?: string;
+  toastDurationSec?: number | null;
 }
 
 export interface Song {
