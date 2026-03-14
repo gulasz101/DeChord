@@ -42,7 +42,7 @@ export function PlayerPage({
   onDeleteNote,
 }: PlayerPageProps) {
   const [sidePanel, setSidePanel] = useState<SidePanel>("none");
-  const [showTabs, setShowTabs] = useState(true);
+  const [showTabs, setShowTabs] = useState(false);
   const [loopStart, setLoopStart] = useState<number | null>(song.playbackPrefs?.loopStartIndex ?? null);
   const [loopEnd, setLoopEnd] = useState<number | null>(song.playbackPrefs?.loopEndIndex ?? null);
   const [showResolved, setShowResolved] = useState(false);
