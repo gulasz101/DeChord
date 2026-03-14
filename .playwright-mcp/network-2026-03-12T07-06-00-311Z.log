@@ -1,0 +1,4 @@
+[POST] http://127.0.0.1:4692/api/identity/resolve => [200] OK
+[GET] http://127.0.0.1:4692/api/bands => [200] OK
+[GET] http://127.0.0.1:4692/api/bands/1/members => [403] Forbidden
+[GET] http://127.0.0.1:4692/api/bands/1/projects => [403] Forbidden

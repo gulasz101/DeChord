@@ -1,0 +1,42 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e7]: SIGNAL LOCKED
+    - generic [ref=e8]:
+      - generic [ref=e9]: RIFFRADAR v2.0
+      - generic [ref=e10]: 08:26:37
+  - generic [ref=e11]:
+    - link "HOME" [ref=e12]:
+      - /url: /
+    - link "DAILY" [ref=e13]:
+      - /url: /challenge
+    - link "RANKS" [ref=e14]:
+      - /url: /leaderboard
+    - link "STATS" [ref=e15]:
+      - /url: /stats
+    - link "PROFILE" [ref=e16]:
+      - /url: /profile
+  - main [ref=e17]:
+    - generic [ref=e18]:
+      - generic [ref=e20]:
+        - generic [ref=e21]: // SIGNAL ACQUISITION PROTOCOL v2.0
+        - heading "DECODE THE RIFF IDENTIFY" [level=1] [ref=e22]:
+          - generic [ref=e23]: DECODE
+          - generic [ref=e24]: THE RIFF
+          - generic [ref=e25]: IDENTIFY
+        - generic [ref=e26]:
+          - paragraph [ref=e27]: "WHAT IS RIFFRADAR? A daily heavy-riff guessing game: listen to a MIDI reconstruction and identify the song faster than everyone else."
+          - generic [ref=e28]:
+            - generic [ref=e29]:
+              - generic [ref=e30]: LISTEN
+              - paragraph [ref=e31]: Start with fewer instruments, then unlock more with each round.
+            - generic [ref=e32]:
+              - generic [ref=e33]: GUESS
+              - paragraph [ref=e34]: You get up to 6 attempts to identify the song correctly.
+            - generic [ref=e35]:
+              - generic [ref=e36]: SCORE
+              - paragraph [ref=e37]: The earlier you solve it, the higher your score and rank.
+        - button "START TODAY'S CHALLENGE" [ref=e38]
+      - generic [ref=e106]: DOOM METAL ● STONER ROCK ● SLUDGE ● POST-METAL ● BLACK METAL ● DEATH METAL ● THRASH ● GROOVE METAL ● PROGRESSIVE ● DJENT ● MATHCORE ● GRINDCORE ● DRONE ● PSYCHEDELIC ● HEAVY BLUES ● NWOBHM ● SPEED METAL ● POWER METAL ● FOLK METAL ● GOTHIC METAL ● DOOM METAL ● STONER ROCK ● SLUDGE ● POST-METAL ● BLACK METAL ● DEATH METAL ● THRASH ● GROOVE METAL ● PROGRESSIVE ● DJENT ● MATHCORE ● GRINDCORE ● DRONE ● PSYCHEDELIC ● HEAVY BLUES ● NWOBHM ● SPEED METAL ● POWER METAL ● FOLK METAL ● GOTHIC METAL ●
+      - generic [ref=e108]:
+        - generic [ref=e109]: RIFFRADAR v2.0 // BRUTALIST SIGNAL DECODER
+        - generic [ref=e110]: FREE FOREVER // NO ADS // NO TRACKING

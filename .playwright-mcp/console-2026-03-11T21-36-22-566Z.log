@@ -1,0 +1,6 @@
+Total messages: 4 (Errors: 1, Warnings: 0)
+Returning 1 messages for level "error"
+
+[ERROR] [AlphaTab][API] An unexpected error occurred UnsupportedFormatError: No compatible importer found for file
+    at ScoreLoader.loadScoreFromBytes (http://127.0.0.1:4086/node_modules/@coderline/alphatab/dist/alphaTab.core.mjs?v=ea7f15cc:54992:15)
+    at xhr.onreadystatechange (http://127.0.0.1:4086/node_modules/@coderline/alphatab/dist/alphaTab.core.mjs?v=ea7f15cc:54927:51) @ http://127.0.0.1:4086/node_modules/@coderline/alphatab/dist/alphaTab.core.mjs?v=ea7f15cc:1634

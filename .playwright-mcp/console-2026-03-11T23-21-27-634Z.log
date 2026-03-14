@@ -1,0 +1,86 @@
+[  146695ms] [ERROR] [AlphaTab][API] An unexpected error occurred UnsupportedFormatError: No compatible importer found for file
+    at ScoreLoader.loadScoreFromBytes (http://127.0.0.1:4963/node_modules/@coderline/alphatab/dist/alphaTab.core.mjs?v=ea7f15cc:54992:15)
+    at xhr.onreadystatechange (http://127.0.0.1:4963/node_modules/@coderline/alphatab/dist/alphaTab.core.mjs?v=ea7f15cc:54927:51) @ http://127.0.0.1:4963/node_modules/@coderline/alphatab/dist/alphaTab.core.mjs?v=ea7f15cc:1634
+[  396532ms] [ERROR] [AlphaTab][API] An unexpected error occurred UnsupportedFormatError: No compatible importer found for file
+    at ScoreLoader.loadScoreFromBytes (http://127.0.0.1:4963/node_modules/@coderline/alphatab/dist/alphaTab.core.mjs?v=ea7f15cc:54992:15)
+    at xhr.onreadystatechange (http://127.0.0.1:4963/node_modules/@coderline/alphatab/dist/alphaTab.core.mjs?v=ea7f15cc:54927:51) @ http://127.0.0.1:4963/node_modules/@coderline/alphatab/dist/alphaTab.core.mjs?v=ea7f15cc:1634
+[ 3014706ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[ 3014708ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[ 3035387ms] [ERROR] The final argument passed to %s changed size between renders. The order and size of this array must remain constant.
+
+Previous: %s
+Incoming: %s useEffect [[object Object]] [, , [object Object]] @ http://127.0.0.1:4963/node_modules/.vite/deps/react-dom_client.js?v=ea7f15cc:5625
+[ 3035404ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[ 3035406ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[ 3045962ms] [ERROR] The final argument passed to %s changed size between renders. The order and size of this array must remain constant.
+
+Previous: %s
+Incoming: %s useEffect [, , [object Object]] [, ] @ http://127.0.0.1:4963/node_modules/.vite/deps/react-dom_client.js?v=ea7f15cc:5625
+[ 3045980ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[ 3045982ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[ 3069715ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[ 3069717ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[ 3096233ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[ 3096235ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[25517226ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[25517228ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[25537015ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[25537017ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[25553160ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[25553162ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[25588214ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[25588216ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[25618974ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[25618976ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[25653548ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[25653550ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[25681743ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[25681744ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[25702559ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[25702560ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[25869594ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[25869596ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[26148166ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[26148168ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[26162285ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[26162287ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[26207115ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[26207116ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[26428803ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[26428805ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[26460478ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[26460480ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[26476669ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[26476669ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[26510936ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[26510938ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[26570372ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[26570373ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[26579825ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[26579826ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[26658083ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[26658085ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[26951437ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[26951439ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[27022888ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[27022890ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[27106175ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[27106176ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[27347659ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[27347660ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[27382446ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[27382447ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[27395908ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[27395910ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[27415710ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[27415713ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[27433615ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[27433616ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[27439207ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[27439208ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[27498826ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[27498828ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[27504865ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[27504867ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0
+[27523565ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/members:0
+[27523566ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4963/api/bands/1/projects:0

@@ -204,11 +204,12 @@ export async function regenerateSongTabs(
 export async function createSongNote(
   songId: number,
   payload: {
-    type: "time" | "chord";
+    type: "time" | "chord" | "general";
     text: string;
-    timestamp_sec?: number;
-    chord_index?: number;
-    toast_duration_sec?: number;
+    timestamp_sec?: number | null;
+    chord_index?: number | null;
+    toast_duration_sec?: number | null;
+    parent_id?: number | null;
   },
 ): Promise<SongNote> {
   const res = await fetchWithIdentity(`${BASE}/api/songs/${songId}/notes`, {

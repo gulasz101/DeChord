@@ -1,0 +1,4 @@
+[     695ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4692/api/bands/1/members:0
+[     698ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4692/api/bands/1/projects:0
+[  616785ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4692/api/bands/1/members:0
+[  616787ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://127.0.0.1:4692/api/bands/1/projects:0

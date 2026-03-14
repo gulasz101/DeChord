@@ -1,0 +1,5 @@
+[   35228ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://dechord.localhost/api/status/c09bee15196a:0
+[   36662ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://dechord.localhost/api/identity/resolve:0
+[  383415ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://dechord.localhost/api/identity/resolve:0
+[30097392ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://dechord.localhost/api/identity/resolve:0
+[30672259ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://dechord.localhost/api/identity/resolve:0

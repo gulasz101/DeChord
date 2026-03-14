@@ -1,0 +1,4 @@
+[     347ms] [WARNING] The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio @ http://web.riffradar.localhost/node_modules/.vite/deps/tone.js?v=78386f1b:7607
+[     348ms] [WARNING] The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio @ http://web.riffradar.localhost/node_modules/.vite/deps/tone.js?v=78386f1b:2864
+[     431ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://web.riffradar.localhost/favicon.ico:0
+[     433ms] [WARNING] Error while trying to use the following icon from the Manifest: http://web.riffradar.localhost/icon-192.png (Download error or resource isn't a valid image) @ http://web.riffradar.localhost/:0

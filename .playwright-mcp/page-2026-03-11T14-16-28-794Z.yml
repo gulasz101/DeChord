@@ -1,0 +1,40 @@
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e5]: DeChord
+    - button "Sign In" [ref=e6]
+  - main [ref=e7]:
+    - paragraph [ref=e8]: For musicians who jam together
+    - heading "Your band's rehearsal room, always open." [level=1] [ref=e9]:
+      - text: Your band's rehearsal room,
+      - emphasis [ref=e10]: always open.
+    - paragraph [ref=e11]: Upload songs. Split stems. Read generated tabs. Leave comments on specific chords. Practice together, even when you're apart.
+    - generic [ref=e12]:
+      - button "Get Started Free" [ref=e13]
+      - button "I have an invite →" [ref=e14]
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - text: "01"
+        - heading "Stem Splitting" [level=3] [ref=e18]
+        - paragraph [ref=e19]: AI-powered source separation. Isolate bass, drums, guitar, and vocals from any track.
+      - generic [ref=e20]:
+        - text: "02"
+        - heading "Tab Generation" [level=3] [ref=e21]
+        - paragraph [ref=e22]: Automatic bass tablature from your songs. Practice at your own speed with real notation.
+      - generic [ref=e23]:
+        - text: "03"
+        - heading "Chord Comments" [level=3] [ref=e24]
+        - paragraph [ref=e25]: Drop comments on specific chords or timestamps. Discuss transitions and ideas in context.
+    - generic [ref=e26]:
+      - generic [ref=e27]:
+        - heading "Band Projects" [level=4] [ref=e28]
+        - paragraph [ref=e29]: Organize songs by project. Each gig, each setlist gets its own space.
+      - generic [ref=e30]:
+        - heading "Version History" [level=4] [ref=e31]
+        - paragraph [ref=e32]: Multiple stem versions per instrument. Compare or archive old takes.
+      - generic [ref=e33]:
+        - heading "Activity Feed" [level=4] [ref=e34]
+        - paragraph [ref=e35]: See what changed since your last login. Never miss an update.
+      - generic [ref=e36]:
+        - heading "Speed Control" [level=4] [ref=e37]
+        - paragraph [ref=e38]: Slow down to 40% or push to 200%. Practice at your own pace.
+  - contentinfo [ref=e39]: DeChord — Built for musicians, by musicians.
