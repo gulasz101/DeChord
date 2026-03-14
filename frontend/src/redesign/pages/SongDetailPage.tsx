@@ -13,7 +13,8 @@ interface SongDetailPageProps {
   onUploadStem?: (payload: { stemKey: string; file: File }) => Promise<void> | void;
   onGenerateStems?: () => Promise<void> | void;
   onGenerateBassTab?: (sourceStemKey: string) => Promise<void> | void;
-  onCreateNote?: (payload: { type: "time" | "chord"; text: string; timestampSec?: number; chordIndex?: number }) => Promise<void> | void;
+  onCreateNote?: (payload: { type: "general"; text: string }) => Promise<void> | void;
+  onCreateReply?: (parentId: number, text: string) => Promise<void> | void;
   onEditNote?: (noteId: number, payload: { text: string }) => Promise<void> | void;
   onResolveNote?: (noteId: number, resolved: boolean) => Promise<void> | void;
   onDeleteNote?: (noteId: number) => Promise<void> | void;
@@ -40,6 +41,7 @@ export function SongDetailPage({
   onGenerateStems,
   onGenerateBassTab,
   onCreateNote,
+  onCreateReply,
   onEditNote,
   onResolveNote,
   onDeleteNote,
@@ -50,10 +52,10 @@ export function SongDetailPage({
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [noteText, setNoteText] = useState("");
-  const [noteType, setNoteType] = useState<"time" | "chord">("time");
-  const [timestampDraft, setTimestampDraft] = useState("0:00");
   const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
   const [editingText, setEditingText] = useState("");
+  const [replyingToId, setReplyingToId] = useState<number | null>(null);
+  const [replyText, setReplyText] = useState("");
   const activeStems = song.stems.filter((s) => !s.isArchived);
   const archivedStems = song.stems.filter((s) => s.isArchived);
   const openComments = song.notes.filter((n) => !n.resolved);
@@ -64,26 +66,6 @@ export function SongDetailPage({
   const [selectedTabStemKey, setSelectedTabStemKey] = useState(defaultTabStemKey);
   const [uploadStemKey, setUploadStemKey] = useState(defaultTabStemKey || "bass");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const hasChordTarget = song.chords.length > 0;
-
-  function formatTimestamp(seconds: number | null) {
-    if (seconds === null || Number.isNaN(seconds)) return null;
-    return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
-  }
-
-  function parseTimestampDraft(value: string): number | null {
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-    if (/^\d+(?:\.\d+)?$/.test(trimmed)) {
-      return Number(trimmed);
-    }
-    const match = trimmed.match(/^(\d+):(\d{2})$/);
-    if (!match) return null;
-    const minutes = Number(match[1]);
-    const seconds = Number(match[2]);
-    if (seconds >= 60) return null;
-    return minutes * 60 + seconds;
-  }
 
   useEffect(() => {
     setSelectedTabStemKey(defaultTabStemKey);
@@ -416,7 +398,7 @@ export function SongDetailPage({
           <div>
             <h2 className="mb-4 text-lg" style={{ fontFamily: "Playfair Display, serif", color: "#e2e2f0" }}>Comments</h2>
             <div className="mb-4 border p-4" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.05)", background: "rgba(255, 255, 255, 0.02)" }}>
-              <h3 className="text-sm font-semibold" style={{ color: "#e2e2f0" }}>Add note</h3>
+              <h3 className="text-sm font-semibold" style={{ color: "#e2e2f0" }}>Add comment</h3>
               <div className="mt-3 grid gap-3">
                 <label className="grid gap-1 text-sm" style={{ color: "#e2e2f0" }}>
                   <span>Note Text</span>
@@ -429,44 +411,6 @@ export function SongDetailPage({
                     style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.12)", background: "rgba(10, 14, 39, 0.7)", color: "#e2e2f0" }}
                   />
                 </label>
-                <div className="flex gap-4 text-sm" style={{ color: "#e2e2f0" }}>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="note-type"
-                      aria-label="Time Note"
-                      checked={noteType === "time"}
-                      onChange={() => setNoteType("time")}
-                    />
-                    <span>Time Note</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="note-type"
-                      aria-label="Chord Note"
-                      checked={noteType === "chord"}
-                      onChange={() => setNoteType("chord")}
-                    />
-                    <span>Chord Note</span>
-                  </label>
-                </div>
-                {noteType === "time" ? (
-                  <label className="grid gap-1 text-sm" style={{ color: "#e2e2f0" }}>
-                    <span>Timestamp</span>
-                    <input
-                      aria-label="Timestamp"
-                      value={timestampDraft}
-                      onChange={(event) => setTimestampDraft(event.target.value)}
-                      className="border px-3 py-2"
-                      style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.12)", background: "rgba(10, 14, 39, 0.7)", color: "#e2e2f0" }}
-                    />
-                  </label>
-                ) : (
-                  <p className="text-xs" style={{ color: "#7a7a90" }}>
-                    {hasChordTarget ? `Creates a note on chord #1.` : "No chords available for chord notes."}
-                  </p>
-                )}
               </div>
               {actionError && <p className="mt-3 text-sm" style={{ color: "#ef4444" }}>{actionError}</p>}
               {actionSuccess && <p className="mt-3 text-sm" style={{ color: "#14b8a6" }}>{actionSuccess}</p>}
@@ -475,123 +419,175 @@ export function SongDetailPage({
                   onClick={() => {
                     const trimmedText = noteText.trim();
                     void runAction(async () => {
-                      if (!trimmedText) throw new Error("Enter note text");
-                      if (noteType === "time") {
-                        const timestampSec = parseTimestampDraft(timestampDraft);
-                        if (timestampSec === null) throw new Error("Enter timestamp as mm:ss or seconds");
-                        await onCreateNote?.({ type: "time", text: trimmedText, timestampSec });
-                      } else {
-                        if (!hasChordTarget) throw new Error("No chords available for chord note");
-                        await onCreateNote?.({ type: "chord", text: trimmedText, chordIndex: 0 });
-                      }
+                      if (!trimmedText) throw new Error("Enter comment text");
+                      await onCreateNote?.({ type: "general", text: trimmedText });
                       setNoteText("");
-                      if (noteType === "time") {
-                        setTimestampDraft("0:00");
-                      }
-                    }, noteType === "time" ? "Time note added." : "Chord note added.");
+                    }, "Comment added.");
                   }}
                   disabled={isSubmitting}
                   className="border px-4 py-2 text-sm font-medium transition-all disabled:opacity-60"
                   style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.35)", color: "#14b8a6" }}
                 >
-                  {noteType === "time" ? "Add Time Note" : "Add Chord Note"}
+                  Add Comment
                 </button>
               </div>
             </div>
-            {openComments.length === 0 && <p className="text-sm" style={{ color: "#7a7a90" }}>No open comments.</p>}
-            <div className="space-y-3">
-              {openComments.map((note) => (
-                <div key={note.id} className="border-l-2 border p-4" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.05)", borderLeftColor: "rgba(124, 58, 237, 0.5)", background: "rgba(255, 255, 255, 0.02)" }}>
-                  <div className="mb-2 flex items-center gap-2">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ background: note.authorAvatar ? "#1e1e3a" : "#3b3b52" }}>{note.authorAvatar ?? "?"}</div>
-                    <span className="text-xs font-semibold" style={{ color: "#e2e2f0" }}>{note.authorName ?? "Unknown"}</span>
-                    <span className="text-[10px]" style={{ color: "#5a5a6e" }}>{note.type === "time" ? `at ${formatTimestamp(note.timestampSec) ?? "0:00"}` : `chord #${(note.chordIndex ?? 0) + 1}`}</span>
-                  </div>
-                  {editingNoteId === note.id ? (
-                    <div className="space-y-3">
-                      <label className="grid gap-1 text-sm" style={{ color: "#e2e2f0" }}>
-                        <span>Edit Note Text</span>
-                        <textarea
-                          aria-label="Edit Note Text"
-                          value={editingText}
-                          onChange={(event) => setEditingText(event.target.value)}
-                          rows={3}
-                          className="border px-3 py-2"
-                          style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.12)", background: "rgba(10, 14, 39, 0.7)", color: "#e2e2f0" }}
-                        />
-                      </label>
-                      <div className="flex gap-2">
-                        <button
-                          aria-label={`Save note ${note.id}`}
-                          onClick={() => {
-                            const trimmedText = editingText.trim();
-                            void runAction(async () => {
-                              if (!trimmedText) throw new Error("Enter note text");
-                              await onEditNote?.(note.id, { text: trimmedText });
-                              setEditingNoteId(null);
-                              setEditingText("");
-                            }, "Note updated.");
-                          }}
-                          disabled={isSubmitting}
-                          className="border px-3 py-1.5 text-xs transition-all disabled:opacity-60"
-                          style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.35)", color: "#14b8a6" }}
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingNoteId(null);
-                            setEditingText("");
-                            setActionError(null);
-                            setActionSuccess(null);
-                          }}
-                          disabled={isSubmitting}
-                          className="border px-3 py-1.5 text-xs transition-all disabled:opacity-60"
-                          style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-sm leading-relaxed" style={{ color: "#c0c0c0" }}>{note.text}</p>
+            {/* Compute top-level notes and reply lookup */}
+            {(() => {
+              const topLevel = openComments.filter((n) => n.parentId === null);
+              const repliesFor = (id: number) => song.notes.filter((n) => n.parentId === id && !n.resolved);
+
+              return (
+                <>
+                  {topLevel.length === 0 && (
+                    <p className="text-sm" style={{ color: "#7a7a90" }}>No open comments.</p>
                   )}
-                  <div className="mt-3 flex gap-2 text-xs">
-                    <button
-                      aria-label={`Edit note ${note.id}`}
-                      onClick={() => {
-                        setEditingNoteId(note.id);
-                        setEditingText(note.text);
-                        setActionError(null);
-                        setActionSuccess(null);
-                      }}
-                      className="border px-3 py-1.5 transition-all"
-                      style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      aria-label={`Resolve note ${note.id}`}
-                      onClick={() => void runAction(async () => { await onResolveNote?.(note.id, true); }, "Note resolved.")}
-                      disabled={isSubmitting}
-                      className="border px-3 py-1.5 transition-all disabled:opacity-60"
-                      style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.35)", color: "#14b8a6" }}
-                    >
-                      Resolve
-                    </button>
-                    <button
-                      aria-label={`Delete note ${note.id}`}
-                      onClick={() => void runAction(async () => { await onDeleteNote?.(note.id); }, "Note deleted.")}
-                      disabled={isSubmitting}
-                      className="border px-3 py-1.5 transition-all disabled:opacity-60"
-                      style={{ borderRadius: "3px", borderColor: "rgba(239, 68, 68, 0.3)", color: "#ef4444" }}
-                    >
-                      Delete
-                    </button>
+                  <div className="space-y-3">
+                    {topLevel.map((note) => (
+                      <div key={note.id}>
+                        {/* Top-level comment card */}
+                        <div className="border-l-2 border p-4" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.05)", borderLeftColor: "rgba(124, 58, 237, 0.5)", background: "rgba(255, 255, 255, 0.02)" }}>
+                          <div className="mb-2 flex items-center gap-2">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ background: note.authorAvatar ? "#1e1e3a" : "#3b3b52" }}>{note.authorAvatar ?? "?"}</div>
+                            <span className="text-xs font-semibold" style={{ color: "#e2e2f0" }}>{note.authorName ?? "Unknown"}</span>
+                          </div>
+                          {editingNoteId === note.id ? (
+                            <div className="space-y-3">
+                              <label className="grid gap-1 text-sm" style={{ color: "#e2e2f0" }}>
+                                <span>Edit Note Text</span>
+                                <textarea
+                                  aria-label="Edit Note Text"
+                                  value={editingText}
+                                  onChange={(event) => setEditingText(event.target.value)}
+                                  rows={3}
+                                  className="border px-3 py-2"
+                                  style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.12)", background: "rgba(10, 14, 39, 0.7)", color: "#e2e2f0" }}
+                                />
+                              </label>
+                              <div className="flex gap-2">
+                                <button
+                                  aria-label={`Save note ${note.id}`}
+                                  onClick={() => {
+                                    const trimmedText = editingText.trim();
+                                    void runAction(async () => {
+                                      if (!trimmedText) throw new Error("Enter note text");
+                                      await onEditNote?.(note.id, { text: trimmedText });
+                                      setEditingNoteId(null);
+                                      setEditingText("");
+                                    }, "Note updated.");
+                                  }}
+                                  disabled={isSubmitting}
+                                  className="border px-3 py-1.5 text-xs transition-all disabled:opacity-60"
+                                  style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.35)", color: "#14b8a6" }}
+                                >Save</button>
+                                <button
+                                  onClick={() => { setEditingNoteId(null); setEditingText(""); setActionError(null); setActionSuccess(null); }}
+                                  disabled={isSubmitting}
+                                  className="border px-3 py-1.5 text-xs transition-all disabled:opacity-60"
+                                  style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}
+                                >Cancel</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm leading-relaxed" style={{ color: "#c0c0c0" }}>{note.text}</p>
+                          )}
+                          <div className="mt-3 flex gap-2 text-xs">
+                            <button
+                              aria-label={`Edit note ${note.id}`}
+                              onClick={() => { setEditingNoteId(note.id); setEditingText(note.text); setActionError(null); setActionSuccess(null); }}
+                              className="border px-3 py-1.5 transition-all"
+                              style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}
+                            >Edit</button>
+                            <button
+                              aria-label={`Resolve note ${note.id}`}
+                              onClick={() => void runAction(async () => { await onResolveNote?.(note.id, true); }, "Note resolved.")}
+                              disabled={isSubmitting}
+                              className="border px-3 py-1.5 transition-all disabled:opacity-60"
+                              style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.35)", color: "#14b8a6" }}
+                            >Resolve</button>
+                            <button
+                              aria-label={`Delete note ${note.id}`}
+                              onClick={() => void runAction(async () => { await onDeleteNote?.(note.id); }, "Note deleted.")}
+                              disabled={isSubmitting}
+                              className="border px-3 py-1.5 transition-all disabled:opacity-60"
+                              style={{ borderRadius: "3px", borderColor: "rgba(239, 68, 68, 0.3)", color: "#ef4444" }}
+                            >Delete</button>
+                            <button
+                              onClick={() => { setReplyingToId(replyingToId === note.id ? null : note.id); setReplyText(""); }}
+                              className="border px-3 py-1.5 transition-all"
+                              style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}
+                            >Reply</button>
+                          </div>
+                        </div>
+
+                        {/* Replies */}
+                        {repliesFor(note.id).length > 0 && (
+                          <div className="ml-4 mt-1 space-y-1">
+                            {repliesFor(note.id).map((reply) => (
+                              <div key={reply.id} className="border-l border p-3" style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.04)", borderLeftColor: "rgba(124, 58, 237, 0.25)", background: "rgba(255, 255, 255, 0.01)" }}>
+                                <div className="mb-1 flex items-center gap-2">
+                                  <div className="flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-bold text-white" style={{ background: "#1e1e3a" }}>{reply.authorAvatar ?? "?"}</div>
+                                  <span className="text-xs font-semibold" style={{ color: "#e2e2f0" }}>{reply.authorName ?? "Unknown"}</span>
+                                </div>
+                                <p className="text-sm leading-relaxed" style={{ color: "#c0c0c0" }}>{reply.text}</p>
+                                <div className="mt-2 flex gap-2 text-xs">
+                                  <button
+                                    aria-label={`Delete note ${reply.id}`}
+                                    onClick={() => void runAction(async () => { await onDeleteNote?.(reply.id); }, "Reply deleted.")}
+                                    disabled={isSubmitting}
+                                    className="border px-3 py-1.5 transition-all disabled:opacity-60"
+                                    style={{ borderRadius: "3px", borderColor: "rgba(239, 68, 68, 0.3)", color: "#ef4444" }}
+                                  >Delete</button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Inline reply form */}
+                        {replyingToId === note.id && (
+                          <div className="ml-4 mt-2 border p-3" style={{ borderRadius: "3px", borderColor: "rgba(124, 58, 237, 0.2)", background: "rgba(124, 58, 237, 0.04)" }}>
+                            <label className="grid gap-1 text-sm" style={{ color: "#e2e2f0" }}>
+                              <span className="sr-only">Reply Text</span>
+                              <textarea
+                                aria-label="Reply Text"
+                                value={replyText}
+                                onChange={(event) => setReplyText(event.target.value)}
+                                rows={2}
+                                placeholder="Write a reply…"
+                                className="border px-3 py-2"
+                                style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.12)", background: "rgba(10, 14, 39, 0.7)", color: "#e2e2f0" }}
+                              />
+                            </label>
+                            <div className="mt-2 flex gap-2 text-xs">
+                              <button
+                                onClick={() => {
+                                  const trimmed = replyText.trim();
+                                  void runAction(async () => {
+                                    if (!trimmed) throw new Error("Enter reply text");
+                                    await onCreateReply?.(note.id, trimmed);
+                                    setReplyingToId(null);
+                                    setReplyText("");
+                                  }, "Reply added.");
+                                }}
+                                disabled={isSubmitting}
+                                className="border px-3 py-1.5 transition-all disabled:opacity-60"
+                                style={{ borderRadius: "3px", borderColor: "rgba(20, 184, 166, 0.35)", color: "#14b8a6" }}
+                              >Post Reply</button>
+                              <button
+                                onClick={() => { setReplyingToId(null); setReplyText(""); }}
+                                className="border px-3 py-1.5 transition-all"
+                                style={{ borderRadius: "3px", borderColor: "rgba(192, 192, 192, 0.1)", color: "#c0c0c0" }}
+                              >Cancel</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                </div>
-              ))}
-            </div>
+                </>
+              );
+            })()}
 
             {resolvedComments.length > 0 && (
               <div className="mt-4">

@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import "@testing-library/jest-dom";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { SongDetailPage } from "../SongDetailPage";
-import type { Band, Project, Song, User } from "../../lib/types";
+import type { Band, Project, Song, SongNote, User } from "../../lib/types";
 
 const user: User = {
   id: "u1",
@@ -78,6 +79,124 @@ describe("SongDetailPage", () => {
 
     fireEvent.click(screen.getByText("Download All Stems"));
     expect(onDownloadAllStems).toHaveBeenCalledTimes(1);
+  });
+
+  const noteParent: SongNote = {
+    id: 10, type: "general", timestampSec: null, chordIndex: null,
+    text: "Top-level comment", toastDurationSec: null,
+    authorName: "Mike R.", authorAvatar: "MR", resolved: false,
+    parentId: null, createdAt: "2026-03-01T10:00:00Z", updatedAt: "2026-03-01T10:00:00Z",
+  };
+  const noteReply: SongNote = {
+    id: 11, type: "general", timestampSec: null, chordIndex: null,
+    text: "Reply to Mike", toastDurationSec: null,
+    authorName: "Jake T.", authorAvatar: "JT", resolved: false,
+    parentId: 10, createdAt: "2026-03-01T11:00:00Z", updatedAt: "2026-03-01T11:00:00Z",
+  };
+  const songWithNotes: Song = { ...song, notes: [noteParent, noteReply] };
+
+  describe("comment form — simplified (no timestamp)", () => {
+    it("does not render timestamp input or note type radios", () => {
+      render(
+        <SongDetailPage
+          user={user} band={band} project={project} song={song}
+          onOpenPlayer={() => {}} onBack={() => {}}
+        />,
+      );
+      expect(screen.queryByLabelText("Timestamp")).toBeNull();
+      expect(screen.queryByLabelText("Time Note")).toBeNull();
+      expect(screen.queryByLabelText("Chord Note")).toBeNull();
+    });
+
+    it("submits a general note with just the text", async () => {
+      const onCreateNote = vi.fn().mockResolvedValue(undefined);
+      render(
+        <SongDetailPage
+          user={user} band={band} project={project} song={song}
+          onOpenPlayer={() => {}} onBack={() => {}}
+          onCreateNote={onCreateNote}
+        />,
+      );
+      fireEvent.change(screen.getByLabelText("Note Text"), {
+        target: { value: "Great groove" },
+      });
+      fireEvent.click(screen.getByText("Add Comment"));
+      await waitFor(() => {
+        expect(onCreateNote).toHaveBeenCalledWith({ type: "general", text: "Great groove" });
+      });
+    });
+  });
+
+  describe("comment threading", () => {
+    it("renders top-level comments", () => {
+      render(
+        <SongDetailPage
+          user={user} band={band} project={project} song={songWithNotes}
+          onOpenPlayer={() => {}} onBack={() => {}}
+        />,
+      );
+      expect(screen.getByText("Top-level comment")).toBeInTheDocument();
+    });
+
+    it("renders replies indented under their parent", () => {
+      render(
+        <SongDetailPage
+          user={user} band={band} project={project} song={songWithNotes}
+          onOpenPlayer={() => {}} onBack={() => {}}
+        />,
+      );
+      expect(screen.getByText("Reply to Mike")).toBeInTheDocument();
+    });
+
+    it("shows Reply button on top-level comments", () => {
+      render(
+        <SongDetailPage
+          user={user} band={band} project={project} song={songWithNotes}
+          onOpenPlayer={() => {}} onBack={() => {}}
+        />,
+      );
+      expect(screen.getAllByText("Reply").length).toBeGreaterThan(0);
+    });
+
+    it("opens inline reply form on Reply click", () => {
+      render(
+        <SongDetailPage
+          user={user} band={band} project={project} song={songWithNotes}
+          onOpenPlayer={() => {}} onBack={() => {}}
+        />,
+      );
+      fireEvent.click(screen.getAllByText("Reply")[0]);
+      expect(screen.getByLabelText("Reply Text")).toBeInTheDocument();
+    });
+
+    it("calls onCreateReply with parentId and text", async () => {
+      const onCreateReply = vi.fn().mockResolvedValue(undefined);
+      render(
+        <SongDetailPage
+          user={user} band={band} project={project} song={songWithNotes}
+          onOpenPlayer={() => {}} onBack={() => {}}
+          onCreateReply={onCreateReply}
+        />,
+      );
+      fireEvent.click(screen.getAllByText("Reply")[0]);
+      fireEvent.change(screen.getByLabelText("Reply Text"), {
+        target: { value: "My reply" },
+      });
+      fireEvent.click(screen.getByText("Post Reply"));
+      await waitFor(() => {
+        expect(onCreateReply).toHaveBeenCalledWith(10, "My reply");
+      });
+    });
+
+    it("replies do not show Resolve button", () => {
+      render(
+        <SongDetailPage
+          user={user} band={band} project={project} song={songWithNotes}
+          onOpenPlayer={() => {}} onBack={() => {}}
+        />,
+      );
+      expect(screen.getAllByText("Resolve").length).toBe(1);
+    });
   });
 
   it("opens stems generation panel and confirms through callback", async () => {
