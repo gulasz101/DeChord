@@ -1062,6 +1062,16 @@ export default function App() {
             await refreshPlayerRoute();
             await refreshProjectCollaboration(route.band.id, route.project.id);
           }}
+          currentUserId={identityUserId}
+          onCreateReply={async (parentId: number, text: string) => {
+            await createSongNote(parseInt(route.song.id), {
+              type: "general",
+              text,
+              parent_id: parentId,
+            });
+            await refreshPlayerRoute();
+            await refreshProjectCollaboration(route.band.id, route.project.id);
+          }}
           onBack={goBack}
         />
       );
