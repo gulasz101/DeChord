@@ -40,7 +40,7 @@ const MOCK_STEMS: StemInfo[] = [
   stem("s6", "bass", "Bass", "Jake T.", "User", "My cover attempt for practice", 3),
 ];
 
-function note(id: number, type: "time" | "chord", ts: number | null, ci: number | null, text: string, author: string, avatar: string, resolved = false): SongNote {
+function note(id: number, type: "time" | "chord", ts: number | null, ci: number | null, text: string, author: string, avatar: string, resolved = false, parentId: number | null = null): SongNote {
   return {
     id,
     type,
@@ -51,6 +51,7 @@ function note(id: number, type: "time" | "chord", ts: number | null, ci: number 
     authorName: author,
     authorAvatar: avatar,
     resolved,
+    parentId,
     createdAt: "2026-03-05T14:30:00Z",
     updatedAt: "2026-03-05T14:30:00Z",
   };
