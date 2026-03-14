@@ -44,7 +44,7 @@ export interface SongPlaybackPrefs {
 
 export interface SongNote {
   id: number;
-  type: "time" | "chord";
+  type: "time" | "chord" | "general";
   timestampSec: number | null;
   chordIndex: number | null;
   text: string;
@@ -52,6 +52,7 @@ export interface SongNote {
   authorName: string | null;
   authorAvatar: string | null;
   resolved: boolean;
+  parentId: number | null;
   createdAt: string;
   updatedAt: string;
 }

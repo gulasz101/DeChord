@@ -70,7 +70,7 @@ export interface SongMeta {
 
 export interface SongNote {
   id: number;
-  type: "time" | "chord";
+  type: "time" | "chord" | "general";
   timestamp_sec: number | null;
   chord_index: number | null;
   text: string;
@@ -78,6 +78,7 @@ export interface SongNote {
   resolved: boolean;
   author_name: string | null;
   author_avatar: string | null;
+  parent_id: number | null;
   created_at: string;
   updated_at: string;
 }
