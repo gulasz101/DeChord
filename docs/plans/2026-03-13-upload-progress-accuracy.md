@@ -304,7 +304,7 @@ The following changes are already applied to `backend/app/main.py` but **not yet
 
   Copy the commit hash and update this plan file: replace the line below with a clickable link.
 
-  Commit: _(paste `git log --oneline -1` output here)_
+  Commit: [1334c56](https://github.com/anomalyco/DeChord/commit/1334c56) — fix: prevent progress regression during MIDI transcription phase
 
 ---
 
