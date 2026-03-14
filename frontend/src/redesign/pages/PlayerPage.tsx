@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import type { Band, Project, Song, SongNote, User } from "../lib/types";
 import { Fretboard } from "../components/Fretboard";
 import { ChordTimeline } from "../components/ChordTimeline";
@@ -6,6 +6,7 @@ import { TransportBar } from "../components/TransportBar";
 import { TabViewerPanel } from "../components/TabViewerPanel";
 import { StemMixer } from "../components/StemMixer";
 import { TimelineCommentModal } from "../components/TimelineCommentModal";
+import { ToastCueLayer } from "../components/ToastCueLayer";
 import { useAudioPlayer } from "../../hooks/useAudioPlayer";
 import { getTabFileUrl } from "../../lib/api";
 import { resolvePlaybackSources } from "../../lib/playbackSources";
@@ -64,6 +65,9 @@ export function PlayerPage({
   const [noteText, setNoteText] = useState("");
   const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
   const [editingText, setEditingText] = useState("");
+  const [activeToasts, setActiveToasts] = useState<Array<{ id: number; text: string }>>([]);
+  const firedNoteIds = useRef<Set<number>>(new Set());
+  const prevTimestamp = useRef<number>(0);
 
   // Stem mixer state
   const [activeStemKeys, setActiveStemKeys] = useState<Set<string>>(() => {
@@ -218,6 +222,42 @@ export function PlayerPage({
 
     player.setLoop(null);
   }, [player.setLoop, player.setPlaybackRate, player.setVolume, song.chords, song.playbackPrefs]);
+
+  useEffect(() => {
+    const currentTime = player.currentTime;
+
+    // Reset fired set if user seeked backward past any fired note
+    if (currentTime < prevTimestamp.current) {
+      for (const note of song.notes) {
+        if (note.timestampSec !== null && note.timestampSec > currentTime) {
+          firedNoteIds.current.delete(note.id);
+        }
+      }
+    }
+    prevTimestamp.current = currentTime;
+
+    // Fire notes whose timestamp has been crossed
+    for (const note of song.notes) {
+      if (
+        note.timestampSec === null ||
+        note.toastDurationSec === null ||
+        note.resolved ||
+        firedNoteIds.current.has(note.id)
+      ) {
+        continue;
+      }
+      if (currentTime >= note.timestampSec) {
+        firedNoteIds.current.add(note.id);
+        const toastId = note.id;
+        // Clear existing toast with same ID if any (e.g., from seek backward)
+        setActiveToasts((prev) => prev.filter((t) => t.id !== toastId));
+        setActiveToasts((prev) => [...prev, { id: toastId, text: note.text }]);
+        setTimeout(() => {
+          setActiveToasts((prev) => prev.filter((t) => t.id !== toastId));
+        }, note.toastDurationSec * 1000);
+      }
+    }
+  }, [player.currentTime, song.notes]);
 
   const handleChordClick = useCallback((index: number) => {
     const chord = song.chords[index];
@@ -616,6 +656,8 @@ export function PlayerPage({
           onMarkerClick={handleMarkerClick}
         />
       </div>
+
+      <ToastCueLayer toasts={activeToasts} />
 
       {modal.open && (
         <TimelineCommentModal

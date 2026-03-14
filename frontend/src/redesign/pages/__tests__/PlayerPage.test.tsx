@@ -644,14 +644,61 @@ describe("PlayerPage", () => {
     expect(screen.getByLabelText(/show for/i)).toHaveValue(6);
   });
 
-  it("default duration falls back to 4s when click is past all chords", async () => {
-    const song = makeSong({ chords: [{ start: 0, end: 5, label: "Am" }], duration: 120, notes: [] });
-    const { container } = render(<PlayerPage {...baseProps} song={song} />);
-    const lane = container.querySelector('[data-testid="comment-lane"]') as HTMLElement;
-    lane.getBoundingClientRect = () => ({ left: 0, width: 120, top: 0, right: 120, bottom: 12, height: 12, x: 0, y: 0, toJSON: () => "" });
-    // Click at pixel 60 → ts = 60s — past the only chord (ends at 5s)
-    fireEvent.click(lane, { clientX: 60 });
-    await screen.findByText(/add comment/i);
-    expect(screen.getByLabelText(/show for/i)).toHaveValue(4);
+it("default duration falls back to 4s when click is past all chords", async () => {
+  const song = makeSong({ chords: [{ start: 0, end: 5, label: "Am" }], duration: 120, notes: [] });
+  const { container } = render(<PlayerPage {...baseProps} song={song} />);
+  const lane = container.querySelector('[data-testid="comment-lane"]') as HTMLElement;
+  lane.getBoundingClientRect = () => ({ left: 0, width: 120, top: 0, right: 120, bottom: 12, height: 12, x: 0, y: 0, toJSON: () => "" });
+  // Click at pixel 60 → ts = 60s — past the only chord (ends at 5s)
+  fireEvent.click(lane, { clientX: 60 });
+  await screen.findByText(/add comment/i);
+  expect(screen.getByLabelText(/show for/i)).toHaveValue(4);
+});
+
+it("fires a toast when playback time crosses a note's timestampSec", async () => {
+  const song = makeSong({
+    notes: [
+      { id: 10, type: "time", timestampSec: 5, text: "Toast me!", toastDurationSec: 3, userId: null, ...noteDefaults },
+    ],
   });
+  render(<PlayerPage {...baseProps} song={song} />);
+
+  // No toast initially
+  expect(screen.queryByText("Toast me!")).not.toBeInTheDocument();
+
+  // Advance time past the note
+  act(() => { transportStore.update({ currentTime: 5.1 }); });
+
+  expect(await screen.findByText("Toast me!")).toBeInTheDocument();
+});
+
+it("does not fire the same toast twice without seeking backward", async () => {
+  const song = makeSong({
+    notes: [
+      { id: 11, type: "time", timestampSec: 5, text: "Once only", toastDurationSec: 10, userId: null, ...noteDefaults },
+    ],
+  });
+  render(<PlayerPage {...baseProps} song={song} />);
+  act(() => { transportStore.update({ currentTime: 5.1 }); });
+  await screen.findByText("Once only");
+  act(() => { transportStore.update({ currentTime: 5.5 }); });
+  // Still just one toast (not duplicated)
+  expect(screen.getAllByText("Once only")).toHaveLength(1);
+});
+
+it("resets fired toasts on seek backward", async () => {
+  const song = makeSong({
+    notes: [
+      { id: 12, type: "time", timestampSec: 5, text: "Replay", toastDurationSec: 10, userId: null, ...noteDefaults },
+    ],
+  });
+  render(<PlayerPage {...baseProps} song={song} />);
+  act(() => { transportStore.update({ currentTime: 5.1 }); });
+  await screen.findByText("Replay");
+  // Seek back to 0
+  act(() => { transportStore.update({ currentTime: 0 }); });
+  // Advance past note again
+  act(() => { transportStore.update({ currentTime: 5.2 }); });
+  expect(await screen.findByText("Replay")).toBeInTheDocument();
+});
 });
