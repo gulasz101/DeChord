@@ -1,6 +1,6 @@
 # Comment Threading & Timestamp Removal — Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Remove the timestamp/type selector from the Song Overview comment form, and add one-level-deep reply threading to the comments sidebar.
 
@@ -36,7 +36,7 @@
 **Files:**
 - Modify: `backend/app/db.py`
 
-- [ ] **Step 1: Locate the `_ensure_column` block for notes**
+- [x] **Step 1: Locate the `_ensure_column` block for notes**
 
   Open `backend/app/db.py`. Find the block around line 124 that calls `_ensure_column("notes", "author_user_id", ...)`. Add the `parent_id` column immediately after the existing `author_avatar` ensure call:
 
@@ -46,13 +46,13 @@
 
   This is a safe additive migration — existing rows get `NULL` automatically.
 
-- [ ] **Step 2: Verify the column appears in the migration sequence**
+- [x] **Step 2: Verify the column appears in the migration sequence**
 
   The `_ensure_column` function adds a column only if it doesn't already exist, so it is idempotent. No further migration code is needed.
 
   > **TDD note:** No isolated test is written for this migration step. The `parent_id` column is validated implicitly by the tests in Task 2 (which insert and read `parent_id`). If the column is missing those tests will fail.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
   ```bash
   git add backend/app/db.py
@@ -69,7 +69,7 @@
 **Files:**
 - Modify: `backend/app/main.py` (lines ~131–138 for model, ~2204–2260 for endpoint)
 
-- [ ] **Step 1: Write the failing backend test first**
+- [x] **Step 1: Write the failing backend test first**
 
   Open `backend/tests/test_api.py`. After the last note-related test block (around line 767), add the following five tests. Each test self-contains its own setup using `_build_client` (the existing helper already used throughout this file). Use `tmp_path` and `monkeypatch` as pytest built-in parameters.
 
@@ -201,7 +201,7 @@
       assert rows == []
   ```
 
-- [ ] **Step 2: Run tests to confirm they fail**
+- [x] **Step 2: Run tests to confirm they fail**
 
   ```bash
   cd /Users/wojciechgula/Projects/DeChord/backend
@@ -210,7 +210,7 @@
 
   Expected: all fail (422/400 errors, missing columns).
 
-- [ ] **Step 3: Update `NoteCreate` model**
+- [x] **Step 3: Update `NoteCreate` model**
 
   In `backend/app/main.py`, find `class NoteCreate` (line ~131). Replace it with:
 
@@ -224,7 +224,7 @@
       parent_id: int | None = None
   ```
 
-- [ ] **Step 4: Update `create_note` endpoint validation**
+- [x] **Step 4: Update `create_note` endpoint validation**
 
   In `backend/app/main.py`, find `async def create_note` (line ~2205). The current validation block is:
 
@@ -252,7 +252,7 @@
           raise HTTPException(400, "Cannot reply to a reply")
   ```
 
-- [ ] **Step 5: Add `parent_id` to the INSERT statement**
+- [x] **Step 5: Add `parent_id` to the INSERT statement**
 
   Still in `create_note`, update the `INSERT INTO notes` SQL:
 
@@ -305,7 +305,7 @@
   }
   ```
 
-- [ ] **Step 6: Update `_load_song_notes` to return `parent_id`**
+- [x] **Step 6: Update `_load_song_notes` to return `parent_id`**
 
   Find `async def _load_song_notes` (line ~193). The current SELECT fetches 12 columns in this order:
   `id(0), author_user_id(1), author_name(2), author_avatar(3), type(4), timestamp_sec(5), chord_index(6), text(7), toast_duration_sec(8), resolved(9), created_at(10), updated_at(11)`
@@ -338,7 +338,7 @@
   "parent_id": row[12],
   ```
 
-- [ ] **Step 7: Add cascade delete to `delete_note` endpoint**
+- [x] **Step 7: Add cascade delete to `delete_note` endpoint**
 
   Find `async def delete_note` (line ~2321). Before the existing `DELETE FROM notes WHERE id = ?` call, add:
 
@@ -359,7 +359,7 @@
       await execute("DELETE FROM notes WHERE id = ?", [note_id])
   ```
 
-- [ ] **Step 8: Run all new tests — confirm they pass**
+- [x] **Step 8: Run all new tests — confirm they pass**
 
   ```bash
   cd /Users/wojciechgula/Projects/DeChord/backend
@@ -368,7 +368,7 @@
 
   Expected: all PASS.
 
-- [ ] **Step 9: Run full backend test suite — no regressions**
+- [x] **Step 9: Run full backend test suite — no regressions**
 
   ```bash
   cd /Users/wojciechgula/Projects/DeChord/backend
@@ -377,7 +377,7 @@
 
   Expected: all existing tests still PASS.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
   ```bash
   git add backend/app/main.py backend/tests/test_api.py
@@ -397,7 +397,7 @@
 - Modify: `frontend/src/redesign/lib/types.ts`
 - Modify: `frontend/src/lib/types.ts`
 
-- [ ] **Step 1: Update `redesign/lib/types.ts`**
+- [x] **Step 1: Update `redesign/lib/types.ts`**
 
   Find `export interface SongNote` (line ~45). Add `parentId` and extend `type`:
 
@@ -418,7 +418,7 @@
   }
   ```
 
-- [ ] **Step 2: Apply the equivalent change to `lib/types.ts`**
+- [x] **Step 2: Apply the equivalent change to `lib/types.ts`**
 
   Find `export interface SongNote` (line ~71). Note that this file uses **snake_case** field names (`timestamp_sec`, `chord_index`, `author_name`, etc.) — unlike `redesign/lib/types.ts` which uses camelCase.
 
@@ -441,7 +441,7 @@
   }
   ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
   ```bash
   git add frontend/src/redesign/lib/types.ts frontend/src/lib/types.ts
@@ -458,7 +458,7 @@
 **Files:**
 - Modify: `frontend/src/lib/api.ts` (line ~204)
 
-- [ ] **Step 1: Update `createSongNote` signature**
+- [x] **Step 1: Update `createSongNote` signature**
 
   Find `export async function createSongNote` (line ~204). Replace the payload type:
 
@@ -484,7 +484,7 @@
   }
   ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
   ```bash
   git add frontend/src/lib/api.ts
@@ -501,7 +501,7 @@
 **Files:**
 - Modify: `frontend/src/redesign/lib/mockData.ts` (line ~43)
 
-- [ ] **Step 1: Update the `note()` factory function**
+- [x] **Step 1: Update the `note()` factory function**
 
   Find `function note(` (line ~43). Add `parentId` parameter with a default:
 
@@ -536,7 +536,7 @@
 
   All existing `note(...)` call sites (lines ~60–64) are unaffected because `parentId` defaults to `null`.
 
-- [ ] **Step 2: Run TypeScript check**
+- [x] **Step 2: Run TypeScript check**
 
   ```bash
   cd /Users/wojciechgula/Projects/DeChord/frontend
@@ -545,7 +545,7 @@
 
   Expected: no errors.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
   ```bash
   git add frontend/src/redesign/lib/mockData.ts
@@ -566,13 +566,13 @@
 
 Before changing any UI code, write the tests that describe the new behavior. They will fail until the UI is updated.
 
-- [ ] **Step 1: Remove timestamp-related test assertions**
+- [x] **Step 1: Remove timestamp-related test assertions**
 
   Open `frontend/src/redesign/pages/__tests__/SongDetailPage.test.tsx`.
 
   Search for any test that asserts the presence of "Timestamp", "Time Note", "Chord Note", or `timestampDraft`. Remove those assertions or the whole test block if it exists exclusively for that purpose.
 
-- [ ] **Step 2: Add `SongNote` to the test file's import**
+- [x] **Step 2: Add `SongNote` to the test file's import**
 
   At the top of the test file, find:
 
@@ -586,7 +586,7 @@ Before changing any UI code, write the tests that describe the new behavior. The
   import type { Band, Project, Song, SongNote, User } from "../../lib/types";
   ```
 
-- [ ] **Step 3: Add new comment form tests**
+- [x] **Step 3: Add new comment form tests**
 
   Add this describe block to the file (place after the existing download test):
 
@@ -624,7 +624,7 @@ Before changing any UI code, write the tests that describe the new behavior. The
   });
   ```
 
-- [ ] **Step 3: Add threading UI tests**
+- [x] **Step 3: Add threading UI tests**
 
   Add a song fixture with existing notes (including a reply):
 
@@ -721,7 +721,7 @@ Before changing any UI code, write the tests that describe the new behavior. The
   });
   ```
 
-- [ ] **Step 4: Run tests — confirm they fail**
+- [x] **Step 4: Run tests — confirm they fail**
 
   ```bash
   cd /Users/wojciechgula/Projects/DeChord/frontend
@@ -840,7 +840,7 @@ Before changing any UI code, write the tests that describe the new behavior. The
 
   > **Note on `openComments`:** This is already computed at line ~59 as `song.notes.filter((n) => !n.resolved)`. The threading code filters that further for `parentId === null` (top-level). Replies are fetched directly from `song.notes` because resolved replies should stay hidden with their parent — this is intentional.
 
-- [ ] **Step 6: Run the frontend tests**
+- [x] **Step 6: Run the frontend tests**
 
   ```bash
   cd /Users/wojciechgula/Projects/DeChord/frontend
@@ -849,7 +849,7 @@ Before changing any UI code, write the tests that describe the new behavior. The
 
   Expected: all tests PASS (including the new ones from Task 6).
 
-- [ ] **Step 7: Run TypeScript check**
+- [x] **Step 7: Run TypeScript check**
 
   ```bash
   cd /Users/wojciechgula/Projects/DeChord/frontend
@@ -858,7 +858,7 @@ Before changing any UI code, write the tests that describe the new behavior. The
 
   Expected: no errors.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
   ```bash
   git add frontend/src/redesign/pages/SongDetailPage.tsx frontend/src/redesign/pages/__tests__/SongDetailPage.test.tsx
@@ -875,7 +875,7 @@ Before changing any UI code, write the tests that describe the new behavior. The
 **Files:**
 - Modify: `App.tsx` (lines ~987 and ~1034)
 
-- [ ] **Step 1: Update the first `SongDetailPage` usage (~line 987)**
+- [x] **Step 1: Update the first `SongDetailPage` usage (~line 987)**
 
   Find the `onCreateNote` prop in the first `<SongDetailPage` usage. Replace the entire prop with:
 
@@ -896,11 +896,11 @@ Before changing any UI code, write the tests that describe the new behavior. The
 
   > **`refreshSongDetailRoute`** is already called by `onGenerateBassTab`, `onUploadStem`, and `onEditNote` in this same block — it is the standard refresh for this route. `createSongNote` is already imported at the top of `App.tsx`.
 
-- [ ] **Step 2: Apply the same update to the second usage (~line 1034)**
+- [x] **Step 2: Apply the same update to the second usage (~line 1034)**
 
   Find the second `<SongDetailPage` usage and apply identical `onCreateNote` and `onCreateReply` prop updates.
 
-- [ ] **Step 3: Run TypeScript check**
+- [x] **Step 3: Run TypeScript check**
 
   ```bash
   cd /Users/wojciechgula/Projects/DeChord/frontend
@@ -909,7 +909,7 @@ Before changing any UI code, write the tests that describe the new behavior. The
 
   Expected: no errors.
 
-- [ ] **Step 4: Run all frontend tests**
+- [x] **Step 4: Run all frontend tests**
 
   ```bash
   cd /Users/wojciechgula/Projects/DeChord/frontend
@@ -918,7 +918,7 @@ Before changing any UI code, write the tests that describe the new behavior. The
 
   Expected: all tests PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   ```bash
   git add frontend/src/App.tsx
@@ -932,14 +932,14 @@ Before changing any UI code, write the tests that describe the new behavior. The
 
 ## Final Verification
 
-- [ ] **Run `make reset` to start from a clean runtime state**
+- [x] **Run `make reset` to start from a clean runtime state**
 
   ```bash
   cd /Users/wojciechgula/Projects/DeChord
   make reset
   ```
 
-- [ ] **Run full backend test suite**
+- [x] **Run full backend test suite**
 
   ```bash
   cd /Users/wojciechgula/Projects/DeChord/backend
@@ -948,7 +948,7 @@ Before changing any UI code, write the tests that describe the new behavior. The
 
   Expected: all PASS, no regressions.
 
-- [ ] **Run full frontend test suite**
+- [x] **Run full frontend test suite**
 
   ```bash
   cd /Users/wojciechgula/Projects/DeChord/frontend
@@ -957,7 +957,7 @@ Before changing any UI code, write the tests that describe the new behavior. The
 
   Expected: all PASS, no regressions.
 
-- [ ] **Run TypeScript check**
+- [x] **Run TypeScript check**
 
   ```bash
   cd /Users/wojciechgula/Projects/DeChord/frontend
@@ -966,7 +966,7 @@ Before changing any UI code, write the tests that describe the new behavior. The
 
   Expected: no errors.
 
-- [ ] **Verify Player tests are untouched**
+- [x] **Verify Player tests are untouched**
 
   ```bash
   cd /Users/wojciechgula/Projects/DeChord/frontend
@@ -975,6 +975,6 @@ Before changing any UI code, write the tests that describe the new behavior. The
 
   Expected: all PASS.
 
-- [ ] **Update plan: mark all tasks complete**
+- [x] **Update plan: mark all tasks complete**
 
   Update this file (`docs/plans/2026-03-14-comment-threading.md`) — mark all `[ ]` as `[x]`.
