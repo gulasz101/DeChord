@@ -183,6 +183,16 @@ class BandUpdateRequest(BaseModel):
     archived: bool | None = None
 
 
+class ProjectUpdateRequest(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=200)
+    archived: bool | None = None
+
+
+class SongUpdateRequest(BaseModel):
+    title: str | None = Field(None, min_length=1, max_length=200)
+    archived: bool | None = None
+
+
 def _row_to_dict(row) -> dict:
     return row.asdict() if hasattr(row, "asdict") else dict(row)
 
@@ -1804,6 +1814,68 @@ async def list_band_projects(
     return {"projects": projects}
 
 
+@app.patch("/api/projects/{project_id}")
+async def patch_project(project_id: int, body: ProjectUpdateRequest, request: Request):
+    user = await _get_request_user(request)
+
+    rs = await execute(
+        "SELECT id, name, band_id, archived_at FROM projects WHERE id = ?",
+        [project_id],
+    )
+    if not rs.rows:
+        raise HTTPException(status_code=404, detail="Project not found.")
+    band_id = int(rs.rows[0][2])
+    await _require_band_membership(band_id, int(user["id"]))
+
+    if body.archived is not None:
+        if body.archived:
+            await execute(
+                "UPDATE projects SET archived_at = CURRENT_TIMESTAMP WHERE id = ?",
+                [project_id],
+            )
+            await execute(
+                "UPDATE songs SET archived_at = CURRENT_TIMESTAMP WHERE project_id = ?",
+                [project_id],
+            )
+            await execute(
+                """UPDATE song_stems SET archived_at = CURRENT_TIMESTAMP
+                   WHERE song_id IN (SELECT id FROM songs WHERE project_id = ?)""",
+                [project_id],
+            )
+        else:
+            await execute(
+                "UPDATE projects SET archived_at = NULL WHERE id = ?", [project_id]
+            )
+            await execute(
+                "UPDATE songs SET archived_at = NULL WHERE project_id = ?",
+                [project_id],
+            )
+            await execute(
+                """UPDATE song_stems SET archived_at = NULL
+                   WHERE song_id IN (SELECT id FROM songs WHERE project_id = ?)""",
+                [project_id],
+            )
+
+    if body.name is not None:
+        await execute(
+            "UPDATE projects SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            [body.name, project_id],
+        )
+
+    rs2 = await execute(
+        "SELECT id, band_id, name, archived_at, created_at FROM projects WHERE id = ?",
+        [project_id],
+    )
+    row = rs2.rows[0]
+    return {
+        "id": int(row[0]),
+        "band_id": int(row[1]),
+        "name": row[2],
+        "archived_at": row[3],
+        "created_at": row[4],
+    }
+
+
 @app.get("/api/bands/{band_id}/members")
 async def list_band_members(band_id: int, request: Request):
     user = await _get_request_user(request)
@@ -1852,20 +1924,22 @@ async def mark_project_activity_read(project_id: int, request: Request):
 
 
 @app.get("/api/projects/{project_id}/songs")
-async def list_project_songs(project_id: int):
+async def list_project_songs(project_id: int, include_archived: bool = False):
+    archived_filter = "" if include_archived else "AND s.archived_at IS NULL"
     rows = await execute(
-        """
+        f"""
         SELECT
             s.id,
             s.project_id,
             s.title,
             s.original_filename,
             s.created_at,
+            s.archived_at,
             (SELECT song_key FROM analyses a WHERE a.song_id = s.id ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS song_key,
             (SELECT tempo FROM analyses a WHERE a.song_id = s.id ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS tempo,
             (SELECT duration FROM analyses a WHERE a.song_id = s.id ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS duration
         FROM songs s
-        WHERE s.project_id = ?
+        WHERE s.project_id = ? {archived_filter}
         ORDER BY s.created_at DESC, s.id DESC
         """,
         [project_id],
@@ -1877,9 +1951,10 @@ async def list_project_songs(project_id: int):
             "title": row[2],
             "original_filename": row[3],
             "created_at": row[4],
-            "key": row[5],
-            "tempo": row[6],
-            "duration": row[7],
+            "archived_at": row[5],
+            "key": row[6],
+            "tempo": row[7],
+            "duration": row[8],
         }
         for row in rows.rows
     ]
@@ -1937,6 +2012,61 @@ async def get_song(song_id: int):
         "analysis": analysis,
         "notes": notes,
         "playback_prefs": prefs,
+    }
+
+
+@app.patch("/api/songs/{song_id}")
+async def patch_song(song_id: int, body: SongUpdateRequest, request: Request):
+    user = await _get_request_user(request)
+
+    rs = await execute(
+        "SELECT id, title, original_filename, project_id, archived_at FROM songs WHERE id = ?",
+        [song_id],
+    )
+    if not rs.rows:
+        raise HTTPException(status_code=404, detail="Song not found.")
+
+    # Verify user access via project → band membership
+    project_id = int(rs.rows[0][3])
+    proj_rs = await execute("SELECT band_id FROM projects WHERE id = ?", [project_id])
+    if proj_rs.rows:
+        await _require_band_membership(int(proj_rs.rows[0][0]), int(user["id"]))
+
+    if body.archived is not None:
+        if body.archived:
+            await execute(
+                "UPDATE songs SET archived_at = CURRENT_TIMESTAMP WHERE id = ?",
+                [song_id],
+            )
+            await execute(
+                "UPDATE song_stems SET archived_at = CURRENT_TIMESTAMP WHERE song_id = ?",
+                [song_id],
+            )
+        else:
+            await execute("UPDATE songs SET archived_at = NULL WHERE id = ?", [song_id])
+            await execute(
+                "UPDATE song_stems SET archived_at = NULL WHERE song_id = ?",
+                [song_id],
+            )
+
+    if body.title is not None:
+        await execute(
+            "UPDATE songs SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            [body.title, song_id],
+        )
+
+    rs2 = await execute(
+        "SELECT id, title, original_filename, project_id, archived_at, created_at FROM songs WHERE id = ?",
+        [song_id],
+    )
+    row = rs2.rows[0]
+    return {
+        "id": int(row[0]),
+        "title": row[1],
+        "original_filename": row[2],
+        "project_id": int(row[3]),
+        "archived_at": row[4],
+        "created_at": row[5],
     }
 
 
