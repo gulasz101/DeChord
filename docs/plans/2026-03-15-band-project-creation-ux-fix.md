@@ -21,7 +21,7 @@
 **Files:**
 - Create: `frontend/src/redesign/pages/__tests__/BandSelectPage.creation.test.tsx`
 
-- [ ] **Step 1: Create the test file**
+- [x] **Step 1: Create the test file**
 
 ```tsx
 // frontend/src/redesign/pages/__tests__/BandSelectPage.creation.test.tsx
@@ -155,7 +155,7 @@ describe("BandSelectPage — additional band creation", () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to confirm they all fail**
+- [x] **Step 2: Run tests to confirm they all fail**
 
 ```bash
 cd frontend && bun run test -- src/redesign/pages/__tests__/BandSelectPage.creation.test.tsx
@@ -170,7 +170,7 @@ Expected: All 8 tests FAIL. "ghost card" and "create new band" are not found bec
 **Files:**
 - Modify: `frontend/src/redesign/pages/BandSelectPage.tsx`
 
-- [ ] **Step 1: Add the ghost card + inline form block after the bands list**
+- [x] **Step 1: Add the ghost card + inline form block after the bands list**
 
 In `BandSelectPage.tsx`, the bands list is rendered in:
 ```tsx
@@ -260,7 +260,7 @@ Add this immediately after the closing `</div>` of the `space-y-4` container, st
 )}
 ```
 
-- [ ] **Step 2: Also add Enter-key support to the empty-state form input**
+- [x] **Step 2: Also add Enter-key support to the empty-state form input**
 
 In the existing empty-state section (inside `bands.length === 0`), find the input:
 ```tsx
@@ -281,7 +281,7 @@ Add `onKeyDown` handler:
   className="mt-2 w-full border px-3 py-3 text-sm"
 ```
 
-- [ ] **Step 3: Run tests to confirm they all pass**
+- [x] **Step 3: Run tests to confirm they all pass**
 
 ```bash
 cd frontend && bun run test -- src/redesign/pages/__tests__/BandSelectPage.creation.test.tsx
@@ -289,7 +289,7 @@ cd frontend && bun run test -- src/redesign/pages/__tests__/BandSelectPage.creat
 
 Expected: All 8 tests PASS.
 
-- [ ] **Step 4: Run the full test suite to check for regressions**
+- [x] **Step 4: Run the full test suite to check for regressions**
 
 ```bash
 cd frontend && bun run test
@@ -297,13 +297,15 @@ cd frontend && bun run test
 
 Expected: All tests PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/redesign/pages/BandSelectPage.tsx \
         frontend/src/redesign/pages/__tests__/BandSelectPage.creation.test.tsx
 git commit -m "feat(ui): add ghost card for band creation when bands exist [plan: docs/plans/2026-03-15-band-project-creation-ux-fix.md, Task 2, cli: claude-code, model: claude-sonnet-4-6]"
 ```
+
+Commit: https://github.com/gulasz101/DeChord/commit/a3e293d
 
 ---
 
@@ -316,7 +318,7 @@ git commit -m "feat(ui): add ghost card for band creation when bands exist [plan
 **Files:**
 - Create: `frontend/src/redesign/pages/__tests__/ProjectHomePage.creation.test.tsx`
 
-- [ ] **Step 1: Create the test file**
+- [x] **Step 1: Create the test file**
 
 ```tsx
 // frontend/src/redesign/pages/__tests__/ProjectHomePage.creation.test.tsx
@@ -514,7 +516,7 @@ describe("ProjectHomePage — project creation modal", () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to confirm they all fail**
+- [x] **Step 2: Run tests to confirm they all fail**
 
 ```bash
 cd frontend && bun run test -- src/redesign/pages/__tests__/ProjectHomePage.creation.test.tsx
@@ -529,7 +531,7 @@ Expected: All 9 tests FAIL. The "New" button has no `aria-label`, no `role="dial
 **Files:**
 - Modify: `frontend/src/redesign/pages/ProjectHomePage.tsx`
 
-- [ ] **Step 1: Add `useEffect` import**
+- [x] **Step 1: Add `useEffect` import**
 
 `ProjectHomePage.tsx` currently imports only `useState`. Change the import:
 
@@ -541,7 +543,7 @@ import { useState } from "react";
 import { useEffect, useState } from "react";
 ```
 
-- [ ] **Step 2: Add a dismiss helper and the Escape key listener inside the component**
+- [x] **Step 2: Add a dismiss helper and the Escape key listener inside the component**
 
 After the existing state declarations and `saveProject` function, add:
 
@@ -564,7 +566,7 @@ useEffect(() => {
 
 Note: `dismissCreating` is defined before this `useEffect`. ESLint exhaustive-deps will flag it — wrap `dismissCreating` in `useCallback` only if the linter requires it; otherwise inline is fine.
 
-- [ ] **Step 3: Add `aria-label` to the "New" button**
+- [x] **Step 3: Add `aria-label` to the "New" button**
 
 Find the existing sidebar "New" button:
 ```tsx
@@ -589,7 +591,7 @@ Add `aria-label`:
 </button>
 ```
 
-- [ ] **Step 4: Add the modal overlay**
+- [x] **Step 4: Add the modal overlay**
 
 At the very end of the component's returned JSX (just before the final closing `</div>`), add the modal. The modal renders outside the layout flow, over everything:
 
@@ -682,7 +684,7 @@ At the very end of the component's returned JSX (just before the final closing `
 )}
 ```
 
-- [ ] **Step 5: Run the new tests to confirm they all pass**
+- [x] **Step 5: Run the new tests to confirm they all pass**
 
 ```bash
 cd frontend && bun run test -- src/redesign/pages/__tests__/ProjectHomePage.creation.test.tsx
@@ -690,7 +692,7 @@ cd frontend && bun run test -- src/redesign/pages/__tests__/ProjectHomePage.crea
 
 Expected: All 9 tests PASS.
 
-- [ ] **Step 6: Run the full test suite to check for regressions**
+- [x] **Step 6: Run the full test suite to check for regressions**
 
 ```bash
 cd frontend && bun run test
@@ -698,13 +700,15 @@ cd frontend && bun run test
 
 Expected: All tests PASS (including existing `ProjectHomePage.collaboration.test.tsx`).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend/src/redesign/pages/ProjectHomePage.tsx \
         frontend/src/redesign/pages/__tests__/ProjectHomePage.creation.test.tsx
 git commit -m "feat(ui): add project creation modal — fixes broken New button [plan: docs/plans/2026-03-15-band-project-creation-ux-fix.md, Task 4, cli: claude-code, model: claude-sonnet-4-6]"
 ```
+
+Commit: https://github.com/gulasz101/DeChord/commit/99bd62e
 
 ---
 
