@@ -6,11 +6,13 @@ describe("SongLibraryPanel", () => {
   const defaultProps = {
     songs: [],
     selectedSongId: null,
+    projectId: 1,
     onSelect: vi.fn(),
     onUpload: vi.fn(),
+    onSongsChange: vi.fn(),
   };
 
-  it("opens file picker when Upload button is clicked", () => {
+  it("opens file picker when Upload button is clicked", async () => {
     render(<SongLibraryPanel {...defaultProps} />);
     const uploadBtn = screen.getByText("Upload");
     // Find the hidden file input in the component

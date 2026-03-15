@@ -2,24 +2,33 @@ import { useState, useRef } from "react";
 import type { SongSummary } from "../lib/types";
 import type { ProcessMode, TabGenerationQuality } from "../lib/types";
 import { ENABLE_TABS_UI } from "../lib/featureFlags";
+import { ThreeDotMenu } from "./ThreeDotMenu";
+import { RenameModal } from "./RenameModal";
+import { updateSong, listProjectSongs } from "../lib/api";
 
 interface SongLibraryPanelProps {
   songs: SongSummary[];
   selectedSongId: number | null;
   loading?: boolean;
+  projectId: number;
   onSelect: (songId: number) => void;
   onUpload: (file: File, mode: ProcessMode, quality: TabGenerationQuality) => void;
+  onSongsChange?: (songs: SongSummary[]) => void;
 }
 
 export function SongLibraryPanel({
   songs,
   selectedSongId,
   loading,
+  projectId,
   onSelect,
   onUpload,
+  onSongsChange,
 }: SongLibraryPanelProps) {
   const [mode, setMode] = useState<ProcessMode>("analysis_only");
   const [tabQuality, setTabQuality] = useState<TabGenerationQuality>("standard");
+  const [showArchived, setShowArchived] = useState(false);
+  const [renamingSong, setRenamingSong] = useState<SongSummary | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -27,6 +36,15 @@ export function SongLibraryPanel({
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-slate-100">Song Library</h2>
         <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 text-xs text-slate-400">
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+              className="rounded border-slate-600"
+            />
+            Show archived
+          </label>
           <select
             name="library-process-mode"
             value={mode}
@@ -104,26 +122,66 @@ export function SongLibraryPanel({
         ) : (
           songs.map((song) => {
             const active = song.id === selectedSongId;
+            const isArchived = !!song.archived_at;
+            if (isArchived && !showArchived) return null;
             return (
-              <button
+              <div
                 key={song.id}
-                onClick={() => onSelect(song.id)}
-                className={`w-full rounded-md border px-3 py-2 text-left transition-colors ${
+                className={`group flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors ${
                   active
                     ? "border-blue-500 bg-blue-500/20 text-blue-100"
                     : "border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-700 hover:bg-slate-800"
-                }`}
+                } ${isArchived ? "opacity-50" : ""}`}
               >
-                <div className="truncate text-sm font-medium">{song.title}</div>
-                <div className="text-xs text-slate-400">
-                  {song.key ?? "--"}
-                  {song.tempo ? ` | ${song.tempo} BPM` : ""}
-                </div>
-              </button>
+                <button
+                  onClick={() => onSelect(song.id)}
+                  className="flex-1 truncate"
+                >
+                  <div className="truncate text-sm font-medium">{song.title}</div>
+                  <div className="text-xs text-slate-400">
+                    {song.original_filename && (
+                      <span className="mr-2 text-slate-500">{song.original_filename}</span>
+                    )}
+                    {song.key ?? "--"}
+                    {song.tempo ? ` | ${song.tempo} BPM` : ""}
+                  </div>
+                </button>
+                {isArchived && (
+                  <span className="rounded bg-slate-700 px-1.5 py-0.5 text-[10px] text-slate-400">
+                    Archived
+                  </span>
+                )}
+                <ThreeDotMenu
+                  items={[
+                    { label: "Rename", onClick: () => setRenamingSong(song) },
+                    {
+                      label: isArchived ? "Unarchive" : "Archive",
+                      onClick: async () => {
+                        await updateSong(song.id, { archived: !isArchived });
+                        const updated = await listProjectSongs(projectId, showArchived);
+                        onSongsChange?.(updated.songs);
+                      },
+                    },
+                  ]}
+                />
+              </div>
             );
           })
         )}
       </div>
+      {renamingSong && (
+        <RenameModal
+          label="Song Title"
+          currentName={renamingSong.title}
+          originalFilename={renamingSong.original_filename}
+          onSave={async (newName) => {
+            await updateSong(renamingSong.id, { title: newName });
+            const updated = await listProjectSongs(projectId, showArchived);
+            onSongsChange?.(updated.songs);
+          }}
+          onClose={() => setRenamingSong(null)}
+        />
+      )}
     </section>
   );
 }

@@ -171,6 +171,10 @@ async def _run_schema_migrations() -> None:
         "source_stem_uploaded_by_name",
         "source_stem_uploaded_by_name TEXT",
     )
+    await _ensure_column("bands", "archived_at", "archived_at TEXT")
+    await _ensure_column("projects", "archived_at", "archived_at TEXT")
+    await _ensure_column("songs", "archived_at", "archived_at TEXT")
+    await _ensure_column("song_stems", "archived_at", "archived_at TEXT")
 
 
 async def init_db() -> None:
