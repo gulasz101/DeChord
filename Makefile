@@ -1,6 +1,6 @@
 # Makefile
 .PHONY: \
-	install download-models test reset \
+	install download-models test test-scripts reset \
 	backend frontend dev \
 	portless-proxy-up portless-proxy-down portless-routes \
 	backend-up backend-down backend-attach backend-status backend-logs \
@@ -33,6 +33,9 @@ frontend:
 test:
 	cd backend && uv run pytest tests/ -v
 	cd frontend && bun run test
+
+test-scripts:
+	bash ops/tests/run_all.sh
 
 reset:
 	@$(MAKE) down
