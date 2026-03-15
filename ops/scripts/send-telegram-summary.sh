@@ -8,6 +8,7 @@ Usage: ops/scripts/send-telegram-summary.sh [--title TITLE] [--summary-file PATH
 Options:
   --title TITLE         Override the message title.
   --summary-file PATH   Read the summary body from PATH.
+  --sentinel-file PATH  Read title and summary from a JSON sentinel file.
   --skip                Exit successfully without sending anything.
 EOF
 }
@@ -44,6 +45,7 @@ DEFAULT_TITLE="Codex finished work"
 SUMMARY_FILE=""
 SKIP_SEND=0
 TITLE="${DEFAULT_TITLE}"
+SENTINEL_FILE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -59,6 +61,10 @@ while [[ $# -gt 0 ]]; do
       SKIP_SEND=1
       shift
       ;;
+    --sentinel-file)
+      SENTINEL_FILE="${2:?Missing value for --sentinel-file}"
+      shift 2
+      ;;
     --help|-h)
       usage
       exit 0
@@ -70,6 +76,19 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# Resolve sentinel file into --title and --summary-file equivalents.
+if [[ -n "${SENTINEL_FILE:-}" ]]; then
+  if [[ ! -f "${SENTINEL_FILE}" ]]; then
+    echo "Sentinel file not found: ${SENTINEL_FILE}" >&2
+    exit 1
+  fi
+  TITLE="$(python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['title'])" "${SENTINEL_FILE}")"
+  TMP_SUMMARY="$(mktemp)"
+  python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['summary'], end='')" "${SENTINEL_FILE}" > "${TMP_SUMMARY}"
+  SUMMARY_FILE="${TMP_SUMMARY}"
+  trap 'rm -f "${TMP_SUMMARY:-}"' EXIT
+fi
 
 if [[ "${SKIP_SEND}" -eq 1 ]]; then
   echo "Telegram summary skipped."
