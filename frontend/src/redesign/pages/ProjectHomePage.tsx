@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Band, Project, User } from "../lib/types";
 
 interface ProjectHomePageProps {
@@ -43,6 +43,21 @@ export function ProjectHomePage({ user, band, project, onSelectProject, onCreate
     }
   };
 
+  const dismissCreating = () => {
+    setProjectName("");
+    setProjectDescription("");
+    setIsCreatingProject(false);
+  };
+
+  useEffect(() => {
+    if (!isCreatingProject) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") dismissCreating();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isCreatingProject]);
+
   return (
     <div className="me-mesh min-h-screen" style={{ background: "linear-gradient(160deg, #0a0e27 0%, #111638 40%, #0a0e27 100%)" }}>
       {/* Header */}
@@ -65,6 +80,7 @@ export function ProjectHomePage({ user, band, project, onSelectProject, onCreate
             <h3 className="text-xs font-medium" style={{ fontFamily: "Playfair Display, serif", color: "#7a7a90" }}>Projects</h3>
             <button
               onClick={() => setIsCreatingProject(true)}
+              aria-label="Create new project"
               className="text-[10px] font-semibold uppercase tracking-[0.18em] transition-colors hover:text-white"
               style={{ color: "#a78bfa" }}
             >
@@ -232,6 +248,93 @@ export function ProjectHomePage({ user, band, project, onSelectProject, onCreate
           )}
         </main>
       </div>
+
+      {/* Project creation modal */}
+      {isCreatingProject && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="New Project"
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: "rgba(10, 14, 39, 0.8)" }}
+          onClick={dismissCreating}
+        >
+          <div
+            className="w-full max-w-md border p-8"
+            style={{
+              borderRadius: "6px",
+              background: "#111638",
+              borderColor: "rgba(124, 58, 237, 0.25)",
+              backdropFilter: "blur(12px)",
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2
+              className="mb-6 text-2xl"
+              style={{ fontFamily: "Playfair Display, serif", color: "#e2e2f0" }}
+            >
+              New Project
+            </h2>
+
+            <label
+              className="block text-xs font-medium uppercase tracking-[0.18em]"
+              style={{ color: "#a78bfa" }}
+            >
+              Project Name
+              <input
+                aria-label="Project Name"
+                value={projectName}
+                onChange={(event) => setProjectName(event.target.value)}
+                autoFocus
+                className="mt-2 w-full border px-3 py-3 text-sm"
+                style={{
+                  borderRadius: "3px",
+                  background: "rgba(10, 14, 39, 0.7)",
+                  borderColor: "rgba(192, 192, 192, 0.12)",
+                  color: "#e2e2f0",
+                }}
+              />
+            </label>
+
+            <label
+              className="mt-4 block text-xs font-medium uppercase tracking-[0.18em]"
+              style={{ color: "#7a7a90" }}
+            >
+              Description
+              <textarea
+                aria-label="Project Description"
+                value={projectDescription}
+                onChange={(event) => setProjectDescription(event.target.value)}
+                className="mt-2 min-h-24 w-full border px-3 py-3 text-sm"
+                style={{
+                  borderRadius: "3px",
+                  background: "rgba(10, 14, 39, 0.7)",
+                  borderColor: "rgba(192, 192, 192, 0.12)",
+                  color: "#e2e2f0",
+                }}
+              />
+            </label>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={dismissCreating}
+                className="px-4 py-2 text-sm transition-colors hover:text-white"
+                style={{ color: "#7a7a90" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void saveProject()}
+                disabled={!projectName.trim() || isSavingProject}
+                className="px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ borderRadius: "3px", background: "linear-gradient(135deg, #14b8a6, #0f766e)" }}
+              >
+                Save Project
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
