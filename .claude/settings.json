@@ -1,5 +1,18 @@
 {
   "enabledPlugins": {
     "context-mode@context-mode": true
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'TTY_ID=$(tty 2>/dev/null | tr \"/\" \"_\") || exit 0; sentinel=\"/tmp/dechord-notify-${TTY_ID}.pending\"; [ -f \"$sentinel\" ] || exit 0; REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; \"$REPO_ROOT/ops/scripts/send-telegram-summary.sh\" --sentinel-file \"$sentinel\" && rm -f \"$sentinel\"; exit 0'"
+          }
+        ]
+      }
+    ]
   }
 }
