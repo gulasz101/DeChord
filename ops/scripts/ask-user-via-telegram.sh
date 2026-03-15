@@ -133,6 +133,9 @@ BRANCH_NAME="$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || ec
 
 # Fetch baseline update_id (ignore messages that arrived before we started).
 CURRENT_OFFSET=$(tg_max_update_id)
+if [[ "$CURRENT_OFFSET" == "0" ]]; then
+  echo "⚠️  Could not fetch baseline update_id (curl failed?) — pre-existing messages may be accepted as answers" >&2
+fi
 printf '%s\n' "$CURRENT_OFFSET" > "$OFFSET_FILE"
 chmod 600 "$OFFSET_FILE"
 
@@ -173,10 +176,9 @@ for update in data.get("result", []):
     msg = update.get("message", {})
     if str(msg.get("chat", {}).get("id", "")) == chat_id:
         text = msg.get("text", "").strip()
-        if text:
-            print(update["update_id"])
-            print(text)
-            break
+        print(update["update_id"])
+        print(text if text else "__SKIP__")
+        break
 PY
 2>/dev/null || true)
 
@@ -186,7 +188,7 @@ PY
     CURRENT_OFFSET="$NEW_OFFSET"
     printf '%s\n' "$CURRENT_OFFSET" > "$OFFSET_FILE"
 
-    if [[ -n "$REPLY_TEXT" ]]; then
+    if [[ -n "$REPLY_TEXT" ]] && [[ "$REPLY_TEXT" != "__SKIP__" ]]; then
       tg_send "✅ Got it! Forwarding to agent — continuing work..."
       printf '%s\n' "$REPLY_TEXT"
       exit 0

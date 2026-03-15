@@ -7,6 +7,12 @@ OPS_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SCRIPT="${OPS_DIR}/scripts/ask-user-via-telegram.sh"
 PASS=0; FAIL=0
 
+# Ensure flock is on PATH (installed via util-linux from homebrew but may not be linked)
+FLOCK_BREW_PATH="/opt/homebrew/opt/util-linux/bin"
+if [[ -x "${FLOCK_BREW_PATH}/flock" ]]; then
+  export PATH="${FLOCK_BREW_PATH}:${PATH}"
+fi
+
 run_test() {
   local name="$1"; shift
   if "$@" 2>/dev/null; then
@@ -72,11 +78,11 @@ test_offset_file_deleted_at_startup() {
 test_flock_missing_error() {
   local fake_dir
   fake_dir=$(mktemp -d)
-  printf '#!/usr/bin/env bash\nexit 127\n' > "${fake_dir}/flock"
-  chmod +x "${fake_dir}/flock"
-
+  # Strip util-linux from PATH so flock is not found, but keep all other tools
+  local no_flock_path
+  no_flock_path=$(printf '%s' "$PATH" | tr ':' '\n' | grep -v 'util-linux' | tr '\n' ':' | sed 's/:$//')
   local output
-  output=$(PATH="${fake_dir}:${PATH}" "$SCRIPT" "Q?" 2>&1 || true)
+  output=$(PATH="${fake_dir}:${no_flock_path}" "$SCRIPT" "Q?" 2>&1 || true)
   rm -rf "$fake_dir"
 
   [[ "$output" == *"flock"* ]] && [[ "$output" == *"brew"* ]]
