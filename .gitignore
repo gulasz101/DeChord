@@ -33,3 +33,4 @@ test songs/
 
 # Local worktrees
 .worktrees/
+/.playwright-mcp
