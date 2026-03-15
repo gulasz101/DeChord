@@ -5,6 +5,7 @@ import type {
   SongDetailResponse,
   SongsListResponse,
   SongStemsResponse,
+  SongStemUploadResponse,
   SongTabsResponse,
   SongTabRegeneratePayload,
   SongNote,
@@ -173,6 +174,19 @@ export async function uploadSongStem(
     body: form,
   });
   if (!res.ok) throw new Error("Failed to upload stem");
+  return res.json();
+}
+
+export async function uploadSongStem(
+  songId: number,
+  payload: { file: File; stemName: string; description: string },
+): Promise<SongStemUploadResponse> {
+  const form = new FormData();
+  form.append("file", payload.file);
+  form.append("stem_name", payload.stemName);
+  form.append("description", payload.description);
+  const res = await fetch(`${BASE}/api/songs/${songId}/stems`, { method: "POST", body: form });
+  if (!res.ok) throw new Error("Stem upload failed");
   return res.json();
 }
 

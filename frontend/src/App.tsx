@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   claimIdentity,
   createBand,
@@ -9,6 +9,7 @@ import {
   getProjectActivity,
   getJobStatus,
   getResult,
+  pollUntilComplete,
   getSong,
   getSongTabs,
   listBandMembers,
@@ -24,11 +25,12 @@ import {
   listSongStems,
   resolveSongNote,
   resolveIdentity,
+  savePlaybackPrefs,
   setApiIdentityUserId,
   updateSongNote,
   updateProject,
 } from "./lib/api";
-import type { ProcessMode, TabGenerationQuality } from "./lib/types";
+import type { JobStatus, PlaybackPrefs, ProcessMode, TabGenerationQuality } from "./lib/types";
 import type { Band, Project, Song, StemInfo, User, SongNote, Chord } from "./redesign/lib/types";
 import { LandingPage } from "./redesign/pages/LandingPage";
 import { BandSelectPage } from "./redesign/pages/BandSelectPage";
@@ -37,6 +39,7 @@ import { ProcessingJourneyPage } from "./redesign/pages/ProcessingJourneyPage";
 import { SongLibraryPage } from "./redesign/pages/SongLibraryPage";
 import { SongDetailPage } from "./redesign/pages/SongDetailPage";
 import { PlayerPage } from "./redesign/pages/PlayerPage";
+import { deriveStemWarning } from "./lib/uploadWarnings";
 
 type Route =
   | { page: "landing" }
@@ -114,6 +117,13 @@ function mapProjectSongSummaryToSong(raw: {
     stems: [],
     notes: [],
     updatedAt: raw.created_at,
+    tabSourceUrl: null,
+    playbackPrefs: {
+      speedPercent: 100,
+      volume: 1,
+      loopStartIndex: null,
+      loopEndIndex: null,
+    },
   };
 }
 
@@ -447,6 +457,12 @@ export default function App() {
   const [isClaimed, setIsClaimed] = useState(false);
   const [showArchivedBands, setShowArchivedBands] = useState(false);
   const [showArchivedProjects, setShowArchivedProjects] = useState(false);
+  const [songUploadLoading, setSongUploadLoading] = useState(false);
+  const [songUploadStatus, setSongUploadStatus] = useState<Pick<JobStatus, "message" | "progress_pct" | "stage_progress_pct"> | null>(null);
+  const [songUploadWarning, setSongUploadWarning] = useState<string | null>(null);
+  const [songUploadError, setSongUploadError] = useState<string | null>(null);
+  const [stemUploadLoading, setStemUploadLoading] = useState(false);
+  const [stemUploadError, setStemUploadError] = useState<string | null>(null);
 
   const refreshBands = useCallback(async (includeArchived = false) => {
     const loadedBands = await loadBandHierarchy(includeArchived);
@@ -505,6 +521,28 @@ export default function App() {
     }
     return response.json() as Promise<{ unread_count: number }>;
   }, [identityUserId]);
+
+  const updateSongEverywhere = useCallback((songId: string, updater: (song: Song) => Song) => {
+    setBands((currentBands) => currentBands.map((band) => ({
+      ...band,
+      projects: band.projects.map((project) => ({
+        ...project,
+        songs: project.songs.map((song) => (
+          song.id === songId ? updater(song) : song
+        )),
+      })),
+    })));
+
+    setRoute((currentRoute) => {
+      if ((currentRoute.page !== "song-detail" && currentRoute.page !== "player") || currentRoute.song.id !== songId) {
+        return currentRoute;
+      }
+      return {
+        ...currentRoute,
+        song: updater(currentRoute.song),
+      };
+    });
+  }, []);
 
   const bootstrap = useCallback(async () => {
     try {
@@ -794,6 +832,147 @@ export default function App() {
     user,
   ]);
 
+  const handleSongUpload = useCallback(async (
+    band: Band,
+    project: Project,
+    file: File,
+    processMode: ProcessMode,
+    tabGenerationQuality: TabGenerationQuality,
+  ) => {
+    if (!user) return;
+    setSongUploadLoading(true);
+    setSongUploadStatus(null);
+    setSongUploadWarning(null);
+    setSongUploadError(null);
+
+    try {
+      const upload = await uploadAudio(file, processMode, tabGenerationQuality);
+      const analysisResult = await pollUntilComplete(upload.job_id, (status) => {
+        setSongUploadStatus({
+          message: status.message ?? status.progress ?? "Processing...",
+          progress_pct: status.progress_pct ?? 0,
+          stage_progress_pct: status.stage_progress_pct ?? 0,
+        });
+        const warning = deriveStemWarning(status);
+        if (warning) setSongUploadWarning(warning);
+      });
+
+      const refreshedBands = await loadBandHierarchy(user);
+      setBands(refreshedBands);
+      const refreshedBand = refreshedBands.find((candidate) => candidate.id === band.id) ?? band;
+      const refreshedProject = refreshedBand.projects.find((candidate) => candidate.id === project.id) ?? project;
+      const uploadedSongId = String(analysisResult.song_id ?? upload.song_id);
+      const refreshedSong = refreshedProject.songs.find((candidate) => candidate.id === uploadedSongId)
+        ?? mapProjectSongSummaryToSong({
+          id: Number(uploadedSongId),
+          project_id: Number(refreshedProject.id),
+          title: file.name.replace(/\.[^.]+$/, "") || "Untitled",
+          original_filename: file.name,
+          created_at: new Date().toISOString(),
+          key: analysisResult.key,
+          tempo: analysisResult.tempo,
+          duration: analysisResult.duration,
+        });
+      const detailedSong = await loadSongDetails(refreshedSong);
+      setRoute({ page: "song-detail", band: refreshedBand, project: refreshedProject, song: detailedSong });
+    } catch (error) {
+      setSongUploadError(error instanceof Error ? error.message : "Upload failed");
+    } finally {
+      setSongUploadLoading(false);
+    }
+  }, [loadSongDetails, user]);
+
+  const handleStemUpload = useCallback(async (
+    band: Band,
+    project: Project,
+    song: Song,
+    payload: { file: File; stemName: string; description: string },
+  ) => {
+    const songId = Number(song.id);
+    if (Number.isNaN(songId)) return;
+    setStemUploadLoading(true);
+    setStemUploadError(null);
+    try {
+      await uploadSongStem(songId, payload);
+      const refreshedSong = await loadSongDetails(song);
+      setRoute({ page: "song-detail", band, project, song: refreshedSong });
+    } catch (error) {
+      setStemUploadError(error instanceof Error ? error.message : "Stem upload failed");
+    } finally {
+      setStemUploadLoading(false);
+    }
+  }, [loadSongDetails]);
+
+  const handlePlaybackPrefsSave = useCallback(async (
+    routeSong: Song,
+    prefs: PlaybackPrefs,
+  ) => {
+    const songId = Number(routeSong.id);
+    if (Number.isNaN(songId)) return;
+
+    await savePlaybackPrefs(songId, prefs);
+    const mappedPrefs = {
+      speedPercent: prefs.speed_percent,
+      volume: prefs.volume,
+      loopStartIndex: prefs.loop_start_index,
+      loopEndIndex: prefs.loop_end_index,
+    };
+    updateSongEverywhere(routeSong.id, (song) => ({ ...song, playbackPrefs: mappedPrefs }));
+  }, [updateSongEverywhere]);
+
+  const handleCreateNote = useCallback(async (
+    routeSong: Song,
+    payload: {
+      type: "time" | "chord";
+      text: string;
+      timestamp_sec?: number;
+      chord_index?: number;
+      toast_duration_sec?: number;
+    },
+  ) => {
+    if (!user) return;
+    const songId = Number(routeSong.id);
+    if (Number.isNaN(songId)) return;
+
+    const created = await createSongNote(songId, payload);
+    const mapped = mapNote(created, user);
+    updateSongEverywhere(routeSong.id, (song) => ({
+      ...song,
+      notes: [...song.notes, mapped],
+    }));
+  }, [updateSongEverywhere, user]);
+
+  const handleUpdateNote = useCallback(async (
+    routeSong: Song,
+    noteId: number,
+    payload: { text?: string; toast_duration_sec?: number },
+  ) => {
+    await updateSongNote(noteId, payload);
+    updateSongEverywhere(routeSong.id, (song) => ({
+      ...song,
+      notes: song.notes.map((note) => (
+        note.id === noteId
+          ? {
+              ...note,
+              text: payload.text ?? note.text,
+              toastDurationSec: payload.toast_duration_sec ?? note.toastDurationSec ?? null,
+            }
+          : note
+      )),
+    }));
+  }, [updateSongEverywhere]);
+
+  const handleDeleteNote = useCallback(async (
+    routeSong: Song,
+    noteId: number,
+  ) => {
+    await deleteSongNote(noteId);
+    updateSongEverywhere(routeSong.id, (song) => ({
+      ...song,
+      notes: song.notes.filter((note) => note.id !== noteId),
+    }));
+  }, [updateSongEverywhere]);
+
   if (!user) {
     return <LandingPage onGetStarted={() => setRoute({ page: "bands" })} onSignIn={() => setRoute({ page: "bands" })} />;
   }
@@ -926,6 +1105,10 @@ export default function App() {
               },
             });
           }}
+          uploadLoading={songUploadLoading}
+          uploadStatus={songUploadStatus}
+          uploadWarning={songUploadWarning}
+          uploadError={songUploadError}
           onSelectSong={(song) => {
             void (async () => {
               const detailed = await loadSongDetails(song);
@@ -996,6 +1179,11 @@ export default function App() {
           band={route.band}
           project={route.project}
           song={route.song}
+          onUploadStem={(payload) => {
+            void handleStemUpload(route.band, route.project, route.song, payload);
+          }}
+          uploadStemLoading={stemUploadLoading}
+          uploadStemError={stemUploadError}
           onDownloadStem={(stemKey) => {
             const songId = Number(route.song.id);
             if (Number.isNaN(songId) || typeof window === "undefined") return;
@@ -1066,6 +1254,18 @@ export default function App() {
           band={route.band}
           project={route.project}
           song={route.song}
+          onCreateNote={(payload) => {
+            void handleCreateNote(route.song, payload);
+          }}
+          onUpdateNote={(noteId, payload) => {
+            void handleUpdateNote(route.song, noteId, payload);
+          }}
+          onDeleteNote={(noteId) => {
+            void handleDeleteNote(route.song, noteId);
+          }}
+          onSavePlaybackPrefs={(prefs) => {
+            void handlePlaybackPrefsSave(route.song, prefs);
+          }}
           onCreateNote={async ({ type, text, timestampSec, chordIndex, toastDurationSec }: {
             type: "time" | "chord";
             text: string;

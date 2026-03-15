@@ -116,10 +116,15 @@ export interface StemInfo {
   duration: number | null;
   created_at?: string;
   archived_at?: string | null;
+  description?: string | null;
 }
 
 export interface SongStemsResponse {
   stems: StemInfo[];
+}
+
+export interface SongStemUploadResponse {
+  stem: StemInfo;
 }
 
 export interface SongTabMeta {

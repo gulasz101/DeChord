@@ -7,6 +7,7 @@ import { resolvePlaybackSources } from "../lib/playbackSources";
 const {
   claimIdentityMock,
   uploadAudioMock,
+  pollUntilCompleteMock,
   uploadSongStemMock,
   getJobStatusMock,
   getResultMock,
@@ -27,6 +28,7 @@ const {
   resolveSongNoteMock,
   deleteSongNoteMock,
   playerPagePropsSpy,
+  savePlaybackPrefsMock,
 } = vi.hoisted(() => ({
   claimIdentityMock: vi.fn().mockResolvedValue({
     user: {
@@ -40,6 +42,10 @@ const {
   uploadAudioMock: vi.fn().mockResolvedValue({
     job_id: "job-77",
     song_id: 77,
+  }),
+  pollUntilCompleteMock: vi.fn().mockImplementation(async (_jobId, onProgress) => {
+    onProgress?.({ status: "processing", message: "Splitting stems...", progress_pct: 48, stage_progress_pct: 12, stems_status: "failed", stems_error: "lameenc missing" });
+    return { song_id: 31, key: "Am", tempo: 132, duration: 55, chords: [] };
   }),
   uploadSongStemMock: vi.fn().mockResolvedValue({
     stems: [{ stem_key: "bass", relative_path: "stems/30/bass-di.wav", mime_type: "audio/x-wav", duration: 48 }],
@@ -130,6 +136,13 @@ const {
   resolveSongNoteMock: vi.fn().mockResolvedValue({ id: 301, resolved: true }),
   deleteSongNoteMock: vi.fn().mockResolvedValue(undefined),
   playerPagePropsSpy: vi.fn(),
+  savePlaybackPrefsMock: vi.fn().mockResolvedValue({ speed_percent: 120, volume: 1, loop_start_index: null, loop_end_index: null }),
+  createSongNoteMock: vi.fn()
+    .mockResolvedValueOnce({ id: 77, type: "time", text: "Watch the Em push", timestamp_sec: 0, chord_index: null, toast_duration_sec: null })
+    .mockResolvedValueOnce({ id: 78, type: "time", text: "Hit the pocket here", timestamp_sec: 12, chord_index: null, toast_duration_sec: 2 })
+    .mockResolvedValueOnce({ id: 79, type: "chord", text: "Mute the release", timestamp_sec: null, chord_index: 0, toast_duration_sec: null }),
+  updateSongNoteMock: vi.fn().mockResolvedValue({ id: 90, text: "Lock this transition tighter", toast_duration_sec: null }),
+  deleteSongNoteMock: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../redesign/pages/PlayerPage", () => ({
@@ -200,7 +213,6 @@ vi.mock("../redesign/pages/PlayerPage", () => ({
       </div>
     );
   },
-}));
 
 vi.mock("../lib/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../lib/api")>();
@@ -225,6 +237,12 @@ vi.mock("../lib/api", async (importOriginal) => {
     getSong: getSongMock,
     getSongTabs: getSongTabsMock,
     listSongStems: listSongStemsMock,
+    pollUntilComplete: pollUntilCompleteMock,
+    uploadSongStem: uploadSongStemMock,
+    savePlaybackPrefs: savePlaybackPrefsMock,
+    createSongNote: createSongNoteMock,
+    updateSongNote: updateSongNoteMock,
+    deleteSongNote: deleteSongNoteMock,
     claimIdentity: claimIdentityMock,
     uploadAudio: uploadAudioMock,
     uploadSongStem: uploadSongStemMock,
@@ -238,6 +256,30 @@ vi.mock("../lib/api", async (importOriginal) => {
     deleteSongNote: deleteSongNoteMock,
   };
 });
+
+class MockAudio {
+  currentTime = 0;
+  duration = 48;
+  volume = 1;
+  playbackRate = 1;
+  src = "";
+  private listeners = new Map<string, Array<() => void>>();
+
+  play() {
+    return Promise.resolve();
+  }
+
+  pause() {}
+
+  addEventListener(event: string, listener: () => void) {
+    const current = this.listeners.get(event) ?? [];
+    current.push(listener);
+    this.listeners.set(event, current);
+    if (event === "loadedmetadata") {
+      queueMicrotask(() => listener());
+    }
+  }
+}
 
 describe("App integration", () => {
   beforeEach(() => {
@@ -263,7 +305,10 @@ describe("App integration", () => {
     resolveSongNoteMock.mockReset();
     deleteSongNoteMock.mockReset();
     playerPagePropsSpy.mockReset();
+    savePlaybackPrefsMock.mockReset();
     vi.useRealTimers();
+    Element.prototype.scrollIntoView = vi.fn();
+    vi.stubGlobal("Audio", MockAudio);
     claimIdentityMock.mockResolvedValue({
       user: {
         id: 1,
@@ -1143,6 +1188,245 @@ describe("App integration", () => {
       });
     });
     promptSpy.mockRestore();
+  });
+
+
+  it("uploads a song from the opus 5-3 library flow", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    await waitFor(() => {
+      expect(screen.getByText("Your Bands")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Default Band"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library →")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("+ Upload Song"));
+    const input = screen.getByLabelText("Upload Song File") as HTMLInputElement;
+    const file = new File([new Uint8Array([1, 2, 3])], "fresh-demo.mp3", { type: "audio/mpeg" });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(uploadAudioMock).toHaveBeenCalledWith(file, "analysis_and_stems", "standard");
+      expect(pollUntilCompleteMock).toHaveBeenCalled();
+    });
+  });
+
+
+  it("uploads a manual stem from song detail", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    await waitFor(() => {
+      expect(screen.getByText("Your Bands")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Default Band"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library →")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("The Trooper"));
+    await waitFor(() => {
+      expect(screen.getByText("Upload Stem")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Upload Stem"));
+    fireEvent.change(screen.getByLabelText("Stem Name"), { target: { value: "Bass Guide" } });
+    fireEvent.change(screen.getByLabelText("Stem Description"), { target: { value: "Manual cleaned bass stem" } });
+    const file = new File([new Uint8Array([1, 2, 3])], "bass-guide.wav", { type: "audio/wav" });
+    fireEvent.change(screen.getByLabelText("Stem Upload File"), { target: { files: [file] } });
+    fireEvent.click(screen.getByText("Save Stem"));
+
+    await waitFor(() => {
+      expect(uploadSongStemMock).toHaveBeenCalledWith(30, {
+        file,
+        stemName: "Bass Guide",
+        description: "Manual cleaned bass stem",
+      });
+    });
+  });
+
+
+  it("persists player speed changes through the redesign shell", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    await waitFor(() => {
+      expect(screen.getByText("Your Bands")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Default Band"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library →")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("The Trooper"));
+    await waitFor(() => {
+      expect(screen.getByText("▶ Open Player")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("▶ Open Player"));
+    await waitFor(() => {
+      expect(screen.getByText("Tab Viewer")).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByDisplayValue("100%"), { target: { value: "120" } });
+
+    await waitFor(() => {
+      expect(savePlaybackPrefsMock).toHaveBeenCalledWith(30, expect.objectContaining({ speed_percent: 120 }));
+    });
+  });
+
+  it("creates, edits, and deletes comments through the redesign player flow", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    await waitFor(() => {
+      expect(screen.getByText("Your Bands")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Default Band"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library →")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("The Trooper"));
+    await waitFor(() => {
+      expect(screen.getByText("▶ Open Player")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("▶ Open Player"));
+    await waitFor(() => {
+      expect(screen.getByText("Tab Viewer")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText(/Comments/));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Comment Text")).toBeTruthy();
+      expect(screen.getByText("Tighten this entrance")).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText("Comment Text"), { target: { value: "Watch the Em push" } });
+    fireEvent.click(screen.getByText("Save Time Note"));
+
+    await waitFor(() => {
+      expect(createSongNoteMock).toHaveBeenCalledWith(30, expect.objectContaining({
+        type: "time",
+        text: "Watch the Em push",
+      }));
+      expect(screen.getByText("Watch the Em push")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByLabelText("Edit note 90"));
+    fireEvent.change(screen.getByLabelText("Edit Comment 90"), { target: { value: "Lock this transition tighter" } });
+    fireEvent.click(screen.getByText("Save Edit"));
+
+    await waitFor(() => {
+      expect(updateSongNoteMock).toHaveBeenCalledWith(90, { text: "Lock this transition tighter" });
+      expect(screen.getByText("Lock this transition tighter")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByLabelText("Delete note 90"));
+    await waitFor(() => {
+      expect(deleteSongNoteMock).toHaveBeenCalledWith(90);
+      expect(screen.queryByText("Lock this transition tighter")).toBeNull();
+    });
+  });
+
+  it("supports direct timeline note interactions in the redesign player", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Get Started Free"));
+    await waitFor(() => {
+      expect(screen.getByText("Your Bands")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Default Band"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library →")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Song Library →"));
+    await waitFor(() => {
+      expect(screen.getByText("Song Library")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("The Trooper"));
+    await waitFor(() => {
+      expect(screen.getByText("▶ Open Player")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("▶ Open Player"));
+    await waitFor(() => {
+      expect(screen.getByText("Tab Viewer")).toBeTruthy();
+    });
+
+    const noteLane = screen.getByTitle("Click to add/edit timed note");
+    Object.defineProperty(noteLane, "getBoundingClientRect", {
+      value: () => ({ left: 0, width: 200 }),
+    });
+    fireEvent.click(noteLane, { clientX: 50 });
+
+    await waitFor(() => {
+      expect(screen.getByText("Add Timed Note")).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText("Add your reminder..."), { target: { value: "Hit the pocket here" } });
+    fireEvent.click(screen.getByText("Save Note"));
+
+    await waitFor(() => {
+      expect(createSongNoteMock).toHaveBeenCalledWith(30, expect.objectContaining({
+        type: "time",
+        text: "Hit the pocket here",
+      }));
+    });
+
+    const chordBlock = screen.getAllByText("Em").find((node) => node.className.includes("font-semibold")) as HTMLElement;
+    fireEvent.doubleClick(chordBlock);
+
+    await waitFor(() => {
+      expect(screen.getByText("Add Chord Note")).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText("Add your reminder..."), { target: { value: "Mute the release" } });
+    fireEvent.click(screen.getByText("Save Note"));
+
+    await waitFor(() => {
+      expect(createSongNoteMock).toHaveBeenCalledWith(30, expect.objectContaining({
+        type: "chord",
+        text: "Mute the release",
+        chord_index: 0,
+      }));
+    });
+
+    fireEvent.click(screen.getAllByTitle("Edit note")[0]);
+    await waitFor(() => {
+      expect(screen.getByText("Edit Timed Note")).toBeTruthy();
+    });
   });
 
   it("falls back to single-track playback when no stems", () => {

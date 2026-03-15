@@ -81,6 +81,7 @@ export interface Song {
   playbackPrefs?: SongPlaybackPrefs | null;
   notes: SongNote[];
   updatedAt: string;
+  tabSourceUrl?: string | null;
 }
 
 export interface Project {
