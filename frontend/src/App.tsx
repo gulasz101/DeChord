@@ -26,6 +26,7 @@ import {
   resolveIdentity,
   setApiIdentityUserId,
   updateSongNote,
+  updateProject,
 } from "./lib/api";
 import type { ProcessMode, TabGenerationQuality } from "./lib/types";
 import type { Band, Project, Song, StemInfo, User, SongNote, Chord } from "./redesign/lib/types";
@@ -445,6 +446,7 @@ export default function App() {
   const [identityUserId, setIdentityUserId] = useState<number | null>(null);
   const [isClaimed, setIsClaimed] = useState(false);
   const [showArchivedBands, setShowArchivedBands] = useState(false);
+  const [showArchivedProjects, setShowArchivedProjects] = useState(false);
 
   const refreshBands = useCallback(async (includeArchived = false) => {
     const loadedBands = await loadBandHierarchy(includeArchived);
@@ -873,6 +875,24 @@ export default function App() {
             setRoute({ page: "songs", band: route.band, project: route.project });
           }}
           onBack={goBack}
+          onRenameProject={async (projectId, newName) => {
+            await updateProject(Number(projectId), { name: newName });
+            const loaded = await refreshBands(showArchivedBands);
+            const refreshedBand = loaded?.find((b) => b.id === route.band.id);
+            if (refreshedBand) setRoute((r) => r.page === "project" ? { ...r, band: refreshedBand } : r);
+          }}
+          onArchiveProject={async (projectId, archived) => {
+            await updateProject(Number(projectId), { archived });
+            const loaded = await refreshBands(showArchivedBands);
+            const refreshedBand = loaded?.find((b) => b.id === route.band.id);
+            if (refreshedBand) setRoute((r) => r.page === "project" ? { ...r, band: refreshedBand } : r);
+          }}
+          showArchivedProjects={showArchivedProjects}
+          onToggleShowArchivedProjects={() => {
+            const next = !showArchivedProjects;
+            setShowArchivedProjects(next);
+            void refreshBands(showArchivedBands);
+          }}
         />
       );
     case "songs":

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Band, Project, User } from "../lib/types";
+import { ThreeDotMenu } from "../../components/ThreeDotMenu";
+import { RenameModal } from "../../components/RenameModal";
 
 interface ProjectHomePageProps {
   user: User;
@@ -9,6 +11,10 @@ interface ProjectHomePageProps {
   onCreateProject?: (payload: { name: string; description: string }) => Promise<void> | void;
   onOpenSongs: () => void;
   onBack: () => void;
+  onRenameProject?: (projectId: string, newName: string) => Promise<void>;
+  onArchiveProject?: (projectId: string, archived: boolean) => Promise<void>;
+  showArchivedProjects?: boolean;
+  onToggleShowArchivedProjects?: () => void;
 }
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
@@ -23,8 +29,9 @@ const ACTIVITY_ICONS: Record<string, string> = {
   stem_upload: "🎵", comment: "💬", status_change: "✅", song_added: "➕", comment_resolved: "☑️",
 };
 
-export function ProjectHomePage({ user, band, project, onSelectProject, onCreateProject, onOpenSongs, onBack }: ProjectHomePageProps) {
+export function ProjectHomePage({ user, band, project, onSelectProject, onCreateProject, onOpenSongs, onBack, onRenameProject, onArchiveProject, showArchivedProjects, onToggleShowArchivedProjects }: ProjectHomePageProps) {
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [renamingProject, setRenamingProject] = useState<Project | null>(null);
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [isSavingProject, setIsSavingProject] = useState(false);
@@ -87,18 +94,51 @@ export function ProjectHomePage({ user, band, project, onSelectProject, onCreate
               New
             </button>
           </div>
+          <div className="mb-2 flex items-center justify-between px-1">
+            <label className="flex cursor-pointer select-none items-center gap-1.5 text-[10px]" style={{ color: "#7a7a90" }}>
+              <input
+                type="checkbox"
+                checked={showArchivedProjects ?? false}
+                onChange={onToggleShowArchivedProjects}
+                className="rounded"
+              />
+              Show archived
+            </label>
+          </div>
           <div className="space-y-1">
-            {band.projects.map((p) => (
-              <button key={p.id} onClick={() => onSelectProject(p)}
-                className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition-colors"
-                style={{ background: p.id === project?.id ? "rgba(124, 58, 237, 0.15)" : "transparent", color: p.id === project?.id ? "#a78bfa" : "#c0c0c0" }}>
-                <span>{p.name}</span>
-                {p.unreadCount > 0 && (
-                  <span aria-label="project-unread-count" className="flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold text-white" style={{ background: "#7c3aed" }}>
-                    {p.unreadCount}
+            {band.projects.filter((p) => showArchivedProjects || !p.archived_at).map((p) => (
+              <div key={p.id} className="relative group/proj">
+                <button
+                  onClick={() => onSelectProject(p)}
+                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition-colors${p.archived_at ? " opacity-50" : ""}`}
+                  style={{ background: p.id === project?.id ? "rgba(124, 58, 237, 0.15)" : "transparent", color: p.id === project?.id ? "#a78bfa" : "#c0c0c0" }}
+                >
+                  <span className="flex items-center gap-1 truncate">
+                    {p.name}
+                    {p.archived_at && (
+                      <span className="ml-1 rounded px-1 py-0.5 text-[9px] font-medium uppercase" style={{ background: "rgba(122,122,144,0.2)", color: "#7a7a90" }}>
+                        Archived
+                      </span>
+                    )}
                   </span>
-                )}
-              </button>
+                  {p.unreadCount > 0 && (
+                    <span aria-label="project-unread-count" className="flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold text-white" style={{ background: "#7c3aed" }}>
+                      {p.unreadCount}
+                    </span>
+                  )}
+                </button>
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/proj:opacity-100 transition-opacity">
+                  <ThreeDotMenu
+                    items={[
+                      { label: "Rename", onClick: () => setRenamingProject(p) },
+                      {
+                        label: p.archived_at ? "Unarchive" : "Archive",
+                        onClick: () => void onArchiveProject?.(p.id, !p.archived_at),
+                      },
+                    ]}
+                  />
+                </div>
+              </div>
             ))}
           </div>
 
@@ -334,6 +374,15 @@ export function ProjectHomePage({ user, band, project, onSelectProject, onCreate
             </div>
           </div>
         </div>
+      )}
+
+      {renamingProject && (
+        <RenameModal
+          label="Project Name"
+          currentName={renamingProject.name}
+          onSave={(newName) => onRenameProject?.(renamingProject.id, newName) ?? Promise.resolve()}
+          onClose={() => setRenamingProject(null)}
+        />
       )}
     </div>
   );
