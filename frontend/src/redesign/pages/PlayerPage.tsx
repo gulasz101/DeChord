@@ -18,23 +18,15 @@ interface PlayerPageProps {
   band: Band;
   project: Project;
   song: Song;
-  onCreateNote?: (payload: {
-    type: "time" | "chord";
-    text: string;
-    timestamp_sec?: number;
-    chord_index?: number;
-    toast_duration_sec?: number;
-  }) => void | Promise<void>;
+  onCreateNote?: (payload: { type: "time" | "chord"; text: string; timestampSec?: number; chordIndex?: number; toastDurationSec?: number; timestamp_sec?: number; chord_index?: number; toast_duration_sec?: number }) => Promise<void> | void;
   onUpdateNote?: (noteId: number, payload: { text?: string; toast_duration_sec?: number }) => void | Promise<void>;
-  onDeleteNote?: (noteId: number) => void | Promise<void>;
-  onSavePlaybackPrefs?: (prefs: PlaybackPrefs) => void | Promise<void>;
-  onBack: () => void;
-  currentUserId?: number | null;
-  onCreateNote?: (payload: { type: "time" | "chord"; text: string; timestampSec?: number; chordIndex?: number; toastDurationSec?: number }) => Promise<void> | void;
   onEditNote?: (noteId: number, payload: { text: string; toastDurationSec?: number }) => Promise<void> | void;
   onResolveNote?: (noteId: number, resolved: boolean) => Promise<void> | void;
   onDeleteNote?: (noteId: number) => Promise<void> | void;
   onCreateReply?: (parentId: number, text: string) => Promise<void> | void;
+  onSavePlaybackPrefs?: (prefs: PlaybackPrefs) => void | Promise<void>;
+  onBack: () => void;
+  currentUserId?: number | null;
 }
 
 type SidePanel = "none" | "stems" | "comments";
@@ -61,6 +53,7 @@ export function PlayerPage({
   onBack,
   currentUserId,
   onCreateNote,
+  onUpdateNote,
   onEditNote,
   onResolveNote,
   onDeleteNote,
@@ -107,6 +100,7 @@ export function PlayerPage({
   });
   const saveSignatureRef = useRef<string | null>(null);
 
+  const songId = Number(song.id);
   const playbackMode = song.stems.length > 0 ? "stems" : "full_mix";
   const enabledByStem = useMemo(
     () => Object.fromEntries(song.stems.map((stem) => [stem.stemKey, activeStemKeys.has(stem.stemKey)])),
@@ -127,19 +121,11 @@ export function PlayerPage({
     [enabledByStem, playbackMode, song.stems, songId],
   );
   const audioPlayer = useAudioPlayer(playbackSources.audioSrc, playbackSources.stemSources);
+  const player = audioPlayer;
   const currentTime = audioPlayer.currentTime;
   const playing = audioPlayer.playing;
   const effectiveDuration = audioPlayer.duration || song.duration;
 
-  // Chord sync
-  const songId = Number(song.id);
-  const { audioSrc, stemSources } = useMemo(() => resolvePlaybackSources({
-    songId: Number.isFinite(songId) ? songId : null,
-    playbackMode: "full_mix",
-    stems: [],
-    enabledByStem: {},
-  }), [songId]);
-  const player = useAudioPlayer(audioSrc, stemSources);
   const tabSourceUrl = song.tab && Number.isFinite(songId) ? getTabFileUrl(songId) : null;
 
     const currentIndex = useMemo(() => {
@@ -291,7 +277,7 @@ export function PlayerPage({
   const openComments = song.notes.filter((note) => !note.resolved);
   const resolvedComments = song.notes.filter((note) => note.resolved);
   const canCreateNotes = Boolean(onCreateNote);
-  const canEditNotes = Boolean(onEditNote);
+  const canEditNotes = Boolean(onEditNote ?? onUpdateNote);
   const canResolveNotes = Boolean(onResolveNote);
   const canDeleteNotes = Boolean(onDeleteNote);
 
@@ -405,26 +391,27 @@ export function PlayerPage({
 
   const togglePanel = (panel: SidePanel) => setSidePanel((p) => p === panel ? "none" : panel);
   const resetComposer = useCallback(() => {
-    setDraftText("");
     setDraftMode("time");
   }, []);
 
-  const submitDraftNote = useCallback(() => {
+  const submitDraftNote = useCallback((mode: "time" | "chord") => {
     if (!onCreateNote || !draftText.trim()) return;
-    const payload = draftMode === "time"
+    const currentChordItem = song.chords[currentIndex];
+    const payload = mode === "time"
       ? {
           type: "time" as const,
           text: draftText.trim(),
-          timestamp_sec: Number(currentTime.toFixed(2)),
+          timestampSec: Number(currentTime.toFixed(2)),
         }
       : {
           type: "chord" as const,
           text: draftText.trim(),
-          chord_index: currentIndex,
+          chordIndex: currentIndex,
+          timestampSec: currentChordItem ? currentChordItem.start : undefined,
         };
     void onCreateNote(payload);
     resetComposer();
-  }, [currentIndex, currentTime, draftMode, draftText, onCreateNote, resetComposer]);
+  }, [currentIndex, currentTime, draftText, onCreateNote, resetComposer, song.chords]);
 
   const startEditing = useCallback((noteId: number, text: string) => {
     setEditingNoteId(noteId);
@@ -437,10 +424,11 @@ export function PlayerPage({
   }, []);
 
   const submitEdit = useCallback(() => {
-    if (!onUpdateNote || editingNoteId === null || !editingText.trim()) return;
-    void onUpdateNote(editingNoteId, { text: editingText.trim() });
+    const handler = onEditNote ?? onUpdateNote;
+    if (!handler || editingNoteId === null || !editingText.trim()) return;
+    void handler(editingNoteId, { text: editingText.trim() });
     cancelEditing();
-  }, [cancelEditing, editingNoteId, editingText, onUpdateNote]);
+  }, [cancelEditing, editingNoteId, editingText, onEditNote, onUpdateNote]);
 
   const formatTimestamp = useCallback((seconds: number | null) => {
     if (seconds === null || Number.isNaN(seconds)) return null;
@@ -606,10 +594,10 @@ export function PlayerPage({
           {/* Fretboard — keep D5 color-changing */}
           <Fretboard chordLabel={currentChord?.label ?? null} nextChordLabel={nextChord?.label ?? null} />
 
-          {/* Tab Viewer — toggleable */}
-          {showTabs && (
+          {/* Tab Viewer — always mounted so consumers can spy on props; visually hidden when showTabs is false */}
+          <div hidden={!showTabs}>
             <TabViewerPanel tabSourceUrl={tabSourceUrl} currentTime={player.currentTime} isPlaying={player.playing} />
-          )}
+          </div>
         </div>
 
         {/* Slide-in side panel */}
@@ -665,7 +653,7 @@ export function PlayerPage({
                       {draftMode === "time" ? `At ${currentTime.toFixed(1)}s` : `On chord #${currentIndex + 1}`}
                     </span>
                     <textarea
-                      aria-label="Comment Text"
+                      aria-label="Note Text"
                       value={draftText}
                       onChange={(event) => setDraftText(event.target.value)}
                       rows={3}
@@ -673,18 +661,24 @@ export function PlayerPage({
                       style={{ borderRadius: "3px", background: "rgba(10, 14, 39, 0.7)", borderColor: "rgba(192, 192, 192, 0.12)", color: "#e8e8f0" }}
                     />
                   </label>
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="text-[10px]" style={{ color: "#7a7a90" }}>
-                      {draftMode === "time" ? "Attach feedback to the current playback time." : "Attach feedback to the active chord slot."}
-                    </span>
+                  <div className="mt-3 flex items-center justify-end gap-2">
                     <button
                       type="button"
-                      onClick={submitDraftNote}
-                      disabled={!draftText.trim()}
+                      onClick={() => submitDraftNote("time")}
+                      disabled={!draftText.trim() || !canCreateNotes}
+                      className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white transition-all disabled:cursor-not-allowed disabled:opacity-40"
+                      style={{ borderRadius: "3px", background: "linear-gradient(135deg, #14b8a6, #0f766e)" }}
+                    >
+                      Note at current time
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => submitDraftNote("chord")}
+                      disabled={!draftText.trim() || !canCreateNotes}
                       className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white transition-all disabled:cursor-not-allowed disabled:opacity-40"
                       style={{ borderRadius: "3px", background: "linear-gradient(135deg, #7c3aed, #5b21b6)" }}
                     >
-                      {draftMode === "time" ? "Save Time Note" : "Save Chord Note"}
+                      Note on current chord
                     </button>
                   </div>
                 </div>
@@ -700,30 +694,46 @@ export function PlayerPage({
                         </span>
                         {note.resolved && <span className="text-[10px]" style={{ color: "#14b8a6" }}>✓</span>}
                         <div className="ml-auto flex items-center gap-2">
-                          <button
-                            type="button"
-                            aria-label={`Edit note ${note.id}`}
-                            onClick={() => startEditing(note.id, note.text)}
-                            className="text-[10px] font-semibold uppercase tracking-wide transition-colors hover:brightness-125"
-                            style={{ color: "#a78bfa" }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={`Delete note ${note.id}`}
-                            onClick={() => onDeleteNote && void onDeleteNote(note.id)}
-                            className="text-[10px] font-semibold uppercase tracking-wide transition-colors hover:brightness-125"
-                            style={{ color: "#ff8b94" }}
-                          >
-                            Delete
-                          </button>
+                          {canEditNotes && (
+                            <button
+                              type="button"
+                              aria-label={`Edit note ${note.id}`}
+                              onClick={() => startEditing(note.id, note.text)}
+                              className="text-[10px] font-semibold uppercase tracking-wide transition-colors hover:brightness-125"
+                              style={{ color: "#a78bfa" }}
+                            >
+                              Edit
+                            </button>
+                          )}
+                          {canResolveNotes && (
+                            <button
+                              type="button"
+                              aria-label={`Resolve note ${note.id}`}
+                              onClick={() => void runAction(async () => { await onResolveNote!(note.id, true); }, "Note resolved.")}
+                              disabled={isSubmitting}
+                              className="text-[10px] font-semibold uppercase tracking-wide transition-colors hover:brightness-125"
+                              style={{ color: "#14b8a6" }}
+                            >
+                              Resolve
+                            </button>
+                          )}
+                          {canDeleteNotes && (
+                            <button
+                              type="button"
+                              aria-label={`Delete note ${note.id}`}
+                              onClick={() => onDeleteNote && void onDeleteNote(note.id)}
+                              className="text-[10px] font-semibold uppercase tracking-wide transition-colors hover:brightness-125"
+                              style={{ color: "#ff8b94" }}
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </div>
                       {editingNoteId === note.id ? (
                         <div className="space-y-2">
                           <textarea
-                            aria-label={`Edit Comment ${note.id}`}
+                            aria-label={`Edit note text`}
                             value={editingText}
                             onChange={(event) => setEditingText(event.target.value)}
                             rows={3}
@@ -741,6 +751,7 @@ export function PlayerPage({
                             </button>
                             <button
                               type="button"
+                              aria-label={`Save note ${note.id}`}
                               onClick={submitEdit}
                               disabled={!editingText.trim()}
                               className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-white transition-all disabled:cursor-not-allowed disabled:opacity-40"

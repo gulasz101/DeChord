@@ -1,13 +1,96 @@
+import { describe, expect, it, vi } from "vitest";
+import "@testing-library/jest-dom";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { SongDetailPage } from "../SongDetailPage";
+import type { Band, Project, Song, SongNote, User } from "../../lib/types";
+
+const user: User = {
+  id: "u1",
+  name: "Guest Musician",
+  email: "guest@dechord.local",
+  instrument: "Bass",
+  avatar: "GM",
+};
+
+const song: Song = {
+  id: "30",
+  title: "The Trooper",
+  artist: "Unknown Artist",
+  key: "Em",
+  tempo: 160,
+  duration: 48,
+  status: "ready",
+  chords: [{ start: 0, end: 2, label: "Em" }],
+  stems: [
+    {
+      id: "bass-1",
+      stemKey: "bass",
+      label: "Bass",
+      uploaderName: "System",
+      sourceType: "System",
+      description: "stems/30/bass.wav",
+      version: 1,
+      isArchived: false,
+      createdAt: "2026-03-09",
+    },
+  ],
+  notes: [],
+  updatedAt: "2026-03-09",
+};
+
+const project: Project = {
+  id: "20",
+  name: "Default Project",
+  description: "",
+  songs: [song],
+  recentActivity: [],
+  unreadCount: 0,
+};
+
+const band: Band = {
+  id: "10",
+  name: "Default Band",
+  avatarColor: "#7c3aed",
+  members: [],
+  projects: [project],
+};
+
+describe("SongDetailPage", () => {
+  it("wires per-stem and all-stems download actions", () => {
+    const onDownloadStem = vi.fn();
+    const onDownloadAllStems = vi.fn();
+
+    render(
+      <SongDetailPage
+        user={user}
+        band={band}
+        project={project}
+        song={song}
+        onOpenPlayer={() => {}}
+        onBack={() => {}}
+        onDownloadStem={onDownloadStem}
+        onDownloadAllStems={onDownloadAllStems}
+      />,
+    );
+
+    const downloadButtons = screen.getAllByText("Download");
+    fireEvent.click(downloadButtons[0]);
+    expect(onDownloadStem).toHaveBeenCalledWith("bass");
+
+    fireEvent.click(screen.getByText("Download All Stems"));
+    expect(onDownloadAllStems).toHaveBeenCalledTimes(1);
+  });
+
   const noteParent: SongNote = {
     id: 10, type: "general", timestampSec: null, chordIndex: null,
     text: "Top-level comment", toastDurationSec: null,
-    authorName: "Mike R.", authorAvatar: "MR", resolved: false,
+    authorName: "Mike R.", authorAvatar: "MR", userId: 1, resolved: false,
     parentId: null, createdAt: "2026-03-01T10:00:00Z", updatedAt: "2026-03-01T10:00:00Z",
   };
   const noteReply: SongNote = {
     id: 11, type: "general", timestampSec: null, chordIndex: null,
     text: "Reply to Mike", toastDurationSec: null,
-    authorName: "Jake T.", authorAvatar: "JT", resolved: false,
+    authorName: "Jake T.", authorAvatar: "JT", userId: 2, resolved: false,
     parentId: 10, createdAt: "2026-03-01T11:00:00Z", updatedAt: "2026-03-01T11:00:00Z",
   };
   const songWithNotes: Song = { ...song, notes: [noteParent, noteReply] };
@@ -324,6 +407,7 @@
       expect(screen.getAllByText("Select a stem file").length).toBeGreaterThan(0);
     });
     expect(onUploadStem).not.toHaveBeenCalled();
+  });
 
   it("submits a manual stem upload with name and description", () => {
     const onUploadStem = vi.fn();

@@ -123,6 +123,7 @@ def test_identity_resolve_bootstraps_truthful_default_band_access(
                 "name": "Default Band",
                 "owner_user_id": 1,
                 "created_at": bands_response.json()["bands"][0]["created_at"],
+                "archived_at": None,
                 "project_count": 1,
             }
         ]

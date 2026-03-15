@@ -1201,13 +1201,6 @@ export default function App() {
             await refreshSongDetailRoute();
             await refreshProjectCollaboration(route.band.id, route.project.id);
           }}
-          onUploadStem={async ({ stemKey, file }) => {
-            const songId = Number(route.song.id);
-            if (Number.isNaN(songId)) return;
-            await uploadSongStem(songId, { stemKey, file });
-            await refreshSongDetailRoute();
-            await refreshProjectCollaboration(route.band.id, route.project.id);
-          }}
           onGenerateBassTab={async (sourceStemKey) => {
             const songId = Number(route.song.id);
             if (Number.isNaN(songId)) return;

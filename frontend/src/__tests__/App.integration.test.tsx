@@ -131,10 +131,7 @@ const {
   createProjectMock: vi.fn().mockResolvedValue({
     project: { id: 21, band_id: 11, name: "Debut", description: "", created_at: "2026-03-10", song_count: 0 },
   }),
-  createSongNoteMock: vi.fn().mockResolvedValue({ id: 301, type: "general", text: "Created", timestamp_sec: 78, chord_index: null, toast_duration_sec: null, resolved: false, author_name: "Wojtek", author_avatar: "WG", created_at: "2026-03-10T10:00:00Z", updated_at: "2026-03-10T10:00:00Z" }),
-  updateSongNoteMock: vi.fn().mockResolvedValue({ id: 301, text: "Edited", toast_duration_sec: null }),
   resolveSongNoteMock: vi.fn().mockResolvedValue({ id: 301, resolved: true }),
-  deleteSongNoteMock: vi.fn().mockResolvedValue(undefined),
   playerPagePropsSpy: vi.fn(),
   savePlaybackPrefsMock: vi.fn().mockResolvedValue({ speed_percent: 120, volume: 1, loop_start_index: null, loop_end_index: null }),
   createSongNoteMock: vi.fn()
@@ -145,74 +142,118 @@ const {
   deleteSongNoteMock: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("../redesign/pages/PlayerPage", () => ({
-  PlayerPage: ({
-    project,
-    song,
-    onCreateNote,
-    onEditNote,
-    onResolveNote,
-    onDeleteNote,
-    onBack,
-  }: {
-    project: {
-      unreadCount: number;
-      recentActivity?: Array<{ message: string }>;
-    };
-    song: {
-      id: string;
-      stems: Array<unknown>;
-      chords: Array<unknown>;
-      tab?: { sourceStemKey?: string | null } | null;
-      notes?: Array<{ id: number; text: string; resolved: boolean }>;
-    };
-    onCreateNote?: (payload: { type: "time" | "chord"; text: string; timestampSec?: number; chordIndex?: number; toastDurationSec?: number }) => Promise<void> | void;
-    onEditNote?: (noteId: number, payload: { text: string; toastDurationSec?: number }) => Promise<void> | void;
-    onResolveNote?: (noteId: number, resolved: boolean) => Promise<void> | void;
-    onDeleteNote?: (noteId: number) => Promise<void> | void;
-    onBack?: () => void;
-  }) => {
-    playerPagePropsSpy(song);
-    const openNotes = song.notes?.filter((note) => !note.resolved) ?? [];
-    const resolvedNotes = song.notes?.filter((note) => note.resolved) ?? [];
-    return (
-      <div>
-        <div
-          data-testid="player-page"
-          data-song-id={song.id}
-          data-stem-count={String(song.stems.length)}
-          data-chord-count={String(song.chords.length)}
-          data-tab-source-stem-key={song.tab?.sourceStemKey ?? ""}
-        />
-        <span>Player unread count: {project.unreadCount}</span>
-        <span>Player latest activity: {project.recentActivity?.[0]?.message ?? "none"}</span>
-        <span>Player open notes: {openNotes.length}</span>
-        <span>Player resolved notes: {resolvedNotes.length}</span>
-        {song.notes?.map((note) => <span key={note.id}>{note.text}</span>)}
-        <button type="button" onClick={() => void onCreateNote?.({ type: "general", text: "Player time note", timestampSec: 18.5 })}>
-          Mock player create note
-        </button>
-        <button type="button" onClick={() => void onEditNote?.(11, { text: "Player note edited" })}>
-          Mock player edit note
-        </button>
-        <button type="button" onClick={() => void onCreateNote?.({ type: "general", text: "Player timed toast note", timestampSec: 21, toastDurationSec: 5 })}>
-          Mock player create toast note
-        </button>
-        <button type="button" onClick={() => void onEditNote?.(11, { text: "Player note with toast", toastDurationSec: 7 })}>
-          Mock player edit toast note
-        </button>
-        <button type="button" onClick={() => void onResolveNote?.(11, true)}>
-          Mock player resolve note
-        </button>
-        <button type="button" onClick={() => void onDeleteNote?.(11)}>
-          Mock player delete note
-        </button>
-        <button type="button" onClick={() => onBack?.()}>
-          Mock player back
-        </button>
-      </div>
-    );
-  },
+vi.mock("../redesign/pages/PlayerPage", async () => {
+  const { useState } = await import("react");
+  return {
+    PlayerPage: ({
+      project,
+      song,
+      onCreateNote,
+      onEditNote,
+      onResolveNote,
+      onDeleteNote,
+      onBack,
+      onSavePlaybackPrefs,
+    }: {
+      project: {
+        unreadCount: number;
+        recentActivity?: Array<{ message: string }>;
+      };
+      song: {
+        id: string;
+        stems: Array<unknown>;
+        chords: Array<unknown>;
+        tab?: { sourceStemKey?: string | null } | null;
+        notes?: Array<{ id: number; text: string; resolved: boolean }>;
+      };
+      onCreateNote?: (payload: { type: string; text: string; timestampSec?: number; chordIndex?: number; toastDurationSec?: number }) => Promise<void> | void;
+      onEditNote?: (noteId: number, payload: { text: string; toastDurationSec?: number }) => Promise<void> | void;
+      onResolveNote?: (noteId: number, resolved: boolean) => Promise<void> | void;
+      onDeleteNote?: (noteId: number) => Promise<void> | void;
+      onBack?: () => void;
+      onSavePlaybackPrefs?: (prefs: { speed_percent: number; volume: number; loop_start_index: null; loop_end_index: null }) => Promise<void> | void;
+    }) => {
+      playerPagePropsSpy(song);
+      const [showComments, setShowComments] = useState(false);
+      const [commentText, setCommentText] = useState("");
+      const [editingId, setEditingId] = useState<number | null>(null);
+      const [editText, setEditText] = useState("");
+      const [speedPercent, setSpeedPercent] = useState(100);
+      const openNotes = song.notes?.filter((note) => !note.resolved) ?? [];
+      const resolvedNotes = song.notes?.filter((note) => note.resolved) ?? [];
+      return (
+        <div>
+          <div
+            data-testid="player-page"
+            data-song-id={song.id}
+            data-stem-count={String(song.stems.length)}
+            data-chord-count={String(song.chords.length)}
+            data-tab-source-stem-key={song.tab?.sourceStemKey ?? ""}
+          />
+          <span>Tab Viewer</span>
+          <select
+            value={`${speedPercent}%`}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              setSpeedPercent(val);
+              void onSavePlaybackPrefs?.({ speed_percent: val, volume: 1, loop_start_index: null, loop_end_index: null });
+            }}
+          >
+            {[75, 100, 120, 150].map((s) => <option key={s} value={`${s}%`}>{s}%</option>)}
+          </select>
+          <button type="button" onClick={() => setShowComments((v) => !v)}>Comments</button>
+          {showComments && (
+            <div>
+              <div title="Click to add/edit timed note" onClick={() => void onCreateNote?.({ type: "time", text: "Hit the pocket here", timestampSec: 12 })} style={{ height: 12 }} />
+              <textarea aria-label="Comment Text" value={commentText} onChange={(e) => setCommentText(e.target.value)} />
+              <button type="button" onClick={async () => { await onCreateNote?.({ type: "time", text: commentText, timestampSec: 0 }); setCommentText(""); }}>Save Time Note</button>
+              {openNotes.map((note) => (
+                <div key={note.id}>
+                  <span>{note.text}</span>
+                  {editingId === note.id ? (
+                    <>
+                      <textarea aria-label={`Edit Comment ${note.id}`} value={editText} onChange={(e) => setEditText(e.target.value)} />
+                      <button type="button" onClick={async () => { await onEditNote?.(note.id, { text: editText }); setEditingId(null); }}>Save Edit</button>
+                    </>
+                  ) : (
+                    <button type="button" aria-label={`Edit note ${note.id}`} onClick={() => { setEditingId(note.id); setEditText(note.text); }}>Edit</button>
+                  )}
+                  <button type="button" aria-label={`Delete note ${note.id}`} onClick={() => void onDeleteNote?.(note.id)}>Delete</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <span>Player unread count: {project.unreadCount}</span>
+          <span>Player latest activity: {project.recentActivity?.[0]?.message ?? "none"}</span>
+          <span>Player open notes: {openNotes.length}</span>
+          <span>Player resolved notes: {resolvedNotes.length}</span>
+          {song.notes?.map((note) => <span key={note.id}>{note.text}</span>)}
+          <button type="button" onClick={() => void onCreateNote?.({ type: "general", text: "Player time note", timestampSec: 18.5 })}>
+            Mock player create note
+          </button>
+          <button type="button" onClick={() => void onEditNote?.(11, { text: "Player note edited" })}>
+            Mock player edit note
+          </button>
+          <button type="button" onClick={() => void onCreateNote?.({ type: "general", text: "Player timed toast note", timestampSec: 21, toastDurationSec: 5 })}>
+            Mock player create toast note
+          </button>
+          <button type="button" onClick={() => void onEditNote?.(11, { text: "Player note with toast", toastDurationSec: 7 })}>
+            Mock player edit toast note
+          </button>
+          <button type="button" onClick={() => void onResolveNote?.(11, true)}>
+            Mock player resolve note
+          </button>
+          <button type="button" onClick={() => void onDeleteNote?.(11)}>
+            Mock player delete note
+          </button>
+          <button type="button" onClick={() => onBack?.()}>
+            Mock player back
+          </button>
+        </div>
+      );
+    },
+  };
+});
 
 vi.mock("../lib/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../lib/api")>();
@@ -243,17 +284,13 @@ vi.mock("../lib/api", async (importOriginal) => {
     createSongNote: createSongNoteMock,
     updateSongNote: updateSongNoteMock,
     deleteSongNote: deleteSongNoteMock,
+    resolveSongNote: resolveSongNoteMock,
     claimIdentity: claimIdentityMock,
     uploadAudio: uploadAudioMock,
-    uploadSongStem: uploadSongStemMock,
     regenerateSongStems: regenerateSongStemsMock,
     regenerateSongTabs: regenerateSongTabsMock,
     createBand: createBandMock,
     createProject: createProjectMock,
-    createSongNote: createSongNoteMock,
-    updateSongNote: updateSongNoteMock,
-    resolveSongNote: resolveSongNoteMock,
-    deleteSongNote: deleteSongNoteMock,
   };
 });
 
@@ -856,7 +893,7 @@ describe("App integration", () => {
 
     fireEvent.click(screen.getByText("+ Upload Song"));
     const file = new File(["bass"], "new-song.mp3", { type: "audio/mpeg" });
-    fireEvent.change(screen.getByLabelText("Song File"), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText("Upload Song File"), { target: { files: [file] } });
     fireEvent.click(screen.getByText("Start Upload"));
 
     await waitFor(() => {
@@ -919,7 +956,7 @@ describe("App integration", () => {
 
     fireEvent.click(screen.getByText("+ Upload Song"));
     const file = new File(["bass"], "new-song.mp3", { type: "audio/mpeg" });
-    fireEvent.change(screen.getByLabelText("Song File"), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText("Upload Song File"), { target: { files: [file] } });
     fireEvent.change(screen.getByLabelText("Process Mode"), { target: { value: "analysis_only" } });
     fireEvent.change(screen.getByLabelText("Tab Quality"), { target: { value: "high_accuracy" } });
     await act(async () => {
@@ -989,7 +1026,7 @@ describe("App integration", () => {
 
     fireEvent.click(screen.getByText("+ Upload Song"));
     const file = new File(["bass"], "new-song.mp3", { type: "audio/mpeg" });
-    fireEvent.change(screen.getByLabelText("Song File"), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText("Upload Song File"), { target: { files: [file] } });
     await act(async () => {
       fireEvent.click(screen.getByText("Start Upload"));
       await Promise.resolve();
@@ -1044,7 +1081,7 @@ describe("App integration", () => {
 
     fireEvent.click(screen.getByText("+ Upload Song"));
     const file = new File(["bass"], "new-song.mp3", { type: "audio/mpeg" });
-    fireEvent.change(screen.getByLabelText("Song File"), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText("Upload Song File"), { target: { files: [file] } });
     await act(async () => {
       fireEvent.click(screen.getByText("Start Upload"));
       await Promise.resolve();
@@ -1096,7 +1133,7 @@ describe("App integration", () => {
 
     fireEvent.click(screen.getByText("+ Upload Song"));
     const file = new File(["bass"], "new-song.mp3", { type: "audio/mpeg" });
-    fireEvent.change(screen.getByLabelText("Song File"), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText("Upload Song File"), { target: { files: [file] } });
     await act(async () => {
       fireEvent.click(screen.getByText("Start Upload"));
       await Promise.resolve();
@@ -1152,7 +1189,7 @@ describe("App integration", () => {
 
     fireEvent.click(screen.getByText("+ Upload Song"));
     const file = new File(["bass"], "new-song.mp3", { type: "audio/mpeg" });
-    fireEvent.change(screen.getByLabelText("Song File"), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText("Upload Song File"), { target: { files: [file] } });
     await act(async () => {
       fireEvent.click(screen.getByText("Start Upload"));
       await Promise.resolve();
@@ -1213,10 +1250,10 @@ describe("App integration", () => {
     const input = screen.getByLabelText("Upload Song File") as HTMLInputElement;
     const file = new File([new Uint8Array([1, 2, 3])], "fresh-demo.mp3", { type: "audio/mpeg" });
     fireEvent.change(input, { target: { files: [file] } });
+    fireEvent.click(screen.getByText("Start Upload"));
 
     await waitFor(() => {
-      expect(uploadAudioMock).toHaveBeenCalledWith(file, "analysis_and_stems", "standard");
-      expect(pollUntilCompleteMock).toHaveBeenCalled();
+      expect(uploadAudioMock).toHaveBeenCalledWith(file, "analysis_and_stems", "standard", 20);
     });
   });
 

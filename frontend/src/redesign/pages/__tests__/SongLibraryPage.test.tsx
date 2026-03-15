@@ -64,6 +64,8 @@ describe("SongLibraryPage", () => {
     const file = new File([new Uint8Array([1, 2, 3])], "demo.mp3", { type: "audio/mpeg" });
     await fireEvent.change(screen.getByLabelText("Upload Song File"), { target: { files: [file] } });
 
+    fireEvent.click(screen.getByRole("button", { name: /start upload/i }));
+
     expect(onUploadSong).toHaveBeenCalledWith(file, "analysis_only", "high_accuracy");
   });
 

@@ -168,59 +168,13 @@ export function ProjectHomePage({ user, band, project, onSelectProject, onCreate
               <p className="mt-2 max-w-xl text-sm" style={{ color: "#7a7a90" }}>
                 Projects keep songs, stems, and bass tabs grouped under a band. Start by naming the first one.
               </p>
-              {!isCreatingProject ? (
-                <button
-                  onClick={() => setIsCreatingProject(true)}
-                  className="mt-5 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110"
-                  style={{ borderRadius: "3px", background: "linear-gradient(135deg, #7c3aed, #5b21b6)" }}
-                >
-                  Create Project
-                </button>
-              ) : (
-                <div className="mt-6 space-y-4">
-                  <label className="block text-xs font-medium uppercase tracking-[0.18em]" style={{ color: "#a78bfa" }}>
-                    Project Name
-                    <input
-                      aria-label="Project Name"
-                      value={projectName}
-                      onChange={(event) => setProjectName(event.target.value)}
-                      className="mt-2 w-full border px-3 py-3 text-sm"
-                      style={{ borderRadius: "3px", background: "rgba(10, 14, 39, 0.7)", borderColor: "rgba(192, 192, 192, 0.12)", color: "#e2e2f0" }}
-                    />
-                  </label>
-                  <label className="block text-xs font-medium uppercase tracking-[0.18em]" style={{ color: "#7a7a90" }}>
-                    Description
-                    <textarea
-                      aria-label="Project Description"
-                      value={projectDescription}
-                      onChange={(event) => setProjectDescription(event.target.value)}
-                      className="mt-2 min-h-28 w-full border px-3 py-3 text-sm"
-                      style={{ borderRadius: "3px", background: "rgba(10, 14, 39, 0.7)", borderColor: "rgba(192, 192, 192, 0.12)", color: "#e2e2f0" }}
-                    />
-                  </label>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => {
-                        setProjectName("");
-                        setProjectDescription("");
-                        setIsCreatingProject(false);
-                      }}
-                      className="px-4 py-2 text-sm transition-colors hover:text-white"
-                      style={{ color: "#7a7a90" }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => void saveProject()}
-                      disabled={!projectName.trim() || isSavingProject}
-                      className="px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-                      style={{ borderRadius: "3px", background: "linear-gradient(135deg, #14b8a6, #0f766e)" }}
-                    >
-                      Save Project
-                    </button>
-                  </div>
-                </div>
-              )}
+              <button
+                onClick={() => setIsCreatingProject(true)}
+                className="mt-5 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+                style={{ borderRadius: "3px", background: "linear-gradient(135deg, #7c3aed, #5b21b6)" }}
+              >
+                Create Project
+              </button>
             </section>
           ) : (
             <>
@@ -324,7 +278,7 @@ export function ProjectHomePage({ user, band, project, onSelectProject, onCreate
               <input
                 aria-label="Project Name"
                 value={projectName}
-                onChange={(event) => setProjectName(event.target.value)}
+                onChange={(e) => setProjectName(e.target.value)}
                 autoFocus
                 className="mt-2 w-full border px-3 py-3 text-sm"
                 style={{

@@ -126,37 +126,28 @@ describe("api stems/status contract", () => {
     }
   });
 
-  it("uploads a manual stem with name and description", async () => {
+  it("uploads a stem file and returns updated stems list", async () => {
     const originalFetch = globalThis.fetch;
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        stem: {
-          stem_key: "bass_guide",
-          relative_path: "stems/7/bass_guide.wav",
-          mime_type: "audio/wav",
-          duration: null,
-          description: "Manual cleaned bass stem",
-        },
+        stems: [{ stem_key: "bass", mime_type: "audio/wav", duration: null, source_type: "user", display_name: "bass.wav" }],
       }),
     });
     (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
 
     try {
-      const file = new File([new Uint8Array([1, 2, 3])], "bass-guide.wav", {
-        type: "audio/wav",
-      });
-      const res = await uploadSongStem(7, { file, stemName: "Bass Guide", description: "Manual cleaned bass stem" });
+      const file = new File([new Uint8Array([1, 2, 3])], "bass.wav", { type: "audio/wav" });
+      const res = await uploadSongStem(7, { stemKey: "bass", file });
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
       const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-      expect(url).toBe("/api/songs/7/stems");
+      expect(url).toBe("/api/songs/7/stems/upload");
       expect(init.method).toBe("POST");
       const form = init.body as FormData;
-      expect(form.get("stem_name")).toBe("Bass Guide");
-      expect(form.get("description")).toBe("Manual cleaned bass stem");
+      expect(form.get("stem_key")).toBe("bass");
       expect(form.get("file")).toBe(file);
-      expect(res.stem.stem_key).toBe("bass_guide");
+      expect(res.stems[0].stem_key).toBe("bass");
     } finally {
       (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
     }

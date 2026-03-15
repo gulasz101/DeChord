@@ -39,11 +39,18 @@ export function SongLibraryPage({
   const [processMode, setProcessMode] = useState<ProcessMode>("analysis_and_stems");
   const [tabQuality, setTabQuality] = useState<TabGenerationQuality>("standard");
   const [dragActive, setDragActive] = useState(false);
+  const [stagedFile, setStagedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleSelectedFile = (file: File | null | undefined) => {
-    if (!file || !onUploadSong || uploadLoading) return;
-    onUploadSong(file, processMode, tabQuality);
+    if (!file || uploadLoading) return;
+    setStagedFile(file);
+  };
+
+  const handleStartUpload = () => {
+    if (!stagedFile || !onUploadSong || uploadLoading) return;
+    onUploadSong(stagedFile, processMode, tabQuality);
+    setStagedFile(null);
   };
 
   const handleDrop = (event: DragEvent<HTMLButtonElement>) => {
@@ -146,6 +153,21 @@ export function SongLibraryPage({
                 </select>
               </label>
             </div>
+
+            {stagedFile && (
+              <div className="mt-4 flex items-center justify-between gap-4">
+                <span className="text-xs truncate" style={{ color: "#c0c0c0" }}>{stagedFile.name}</span>
+                <button
+                  type="button"
+                  onClick={handleStartUpload}
+                  disabled={uploadLoading}
+                  className="shrink-0 px-5 py-2 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                  style={{ borderRadius: "3px", background: "linear-gradient(135deg, #14b8a6, #0f766e)" }}
+                >
+                  Start Upload
+                </button>
+              </div>
+            )}
 
             {uploadStatus ? (
               <div className="mt-4 rounded border px-4 py-3 text-sm" style={{ borderColor: "rgba(20, 184, 166, 0.18)", background: "rgba(20, 184, 166, 0.06)", color: "#d7fff9" }}>
