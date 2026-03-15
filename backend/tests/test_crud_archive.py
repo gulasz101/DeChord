@@ -270,3 +270,100 @@ def test_list_songs_include_archived():
     res = client.get(_get_project_songs_url(project_id) + "?include_archived=true")
     ids = [s["id"] for s in res.json().get("songs", [])]
     assert song_id in ids
+
+
+# ── Stem archive ──────────────────────────────────────────────────────────────
+
+
+def test_patch_stem_archive():
+    """Requires an existing song with a stem. Use the default project's first song if any,
+    or insert a stem directly via DB."""
+    import app.db as db_mod
+
+    async def insert_song_and_stem(project_id):
+        song_rs = await db_mod.execute(
+            """INSERT INTO songs (project_id, user_id, title, original_filename, audio_blob)
+               VALUES (?, ?, 'Stem Test Song', 'stem_test.mp3', X'')
+               RETURNING id""",
+            [project_id, 1],
+        )
+        song_id = int(song_rs.rows[0][0])
+        stem_rs = await db_mod.execute(
+            """INSERT INTO song_stems (song_id, stem_key, audio_blob, mime_type,
+               source_type, display_name, version_label)
+               VALUES (?, 'bass', X'', 'audio/wav', 'system', 'Bass', 'v1')
+               RETURNING id""",
+            [song_id],
+        )
+        return song_id, int(stem_rs.rows[0][0])
+
+    client = _client_with_user()
+    band_id = _get_default_band_id(client)
+    project_id = _get_default_project_id(client, band_id)
+    _, stem_id = asyncio.run(insert_song_and_stem(project_id))
+
+    res = client.patch(f"/api/stems/{stem_id}", json={"archived": True})
+    assert res.status_code == 200
+    assert res.json()["archived_at"] is not None
+
+
+def test_patch_stem_unarchive():
+    import app.db as db_mod
+
+    async def insert_song_and_stem(project_id):
+        song_rs = await db_mod.execute(
+            """INSERT INTO songs (project_id, user_id, title, original_filename, audio_blob)
+               VALUES (?, ?, 'Stem Test Song 2', 'stem_test2.mp3', X'')
+               RETURNING id""",
+            [project_id, 1],
+        )
+        song_id = int(song_rs.rows[0][0])
+        stem_rs = await db_mod.execute(
+            """INSERT INTO song_stems (song_id, stem_key, audio_blob, mime_type,
+               source_type, display_name, version_label)
+               VALUES (?, 'drums', X'', 'audio/wav', 'system', 'Drums', 'v1')
+               RETURNING id""",
+            [song_id],
+        )
+        return song_id, int(stem_rs.rows[0][0])
+
+    client = _client_with_user()
+    band_id = _get_default_band_id(client)
+    project_id = _get_default_project_id(client, band_id)
+    song_id, stem_id = asyncio.run(insert_song_and_stem(project_id))
+
+    client.patch(f"/api/stems/{stem_id}", json={"archived": True})
+    res = client.patch(f"/api/stems/{stem_id}", json={"archived": False})
+    assert res.status_code == 200
+    assert res.json()["archived_at"] is None
+
+
+def test_list_stems_excludes_archived_by_default():
+    import app.db as db_mod
+
+    async def insert_song_and_stem(project_id):
+        song_rs = await db_mod.execute(
+            """INSERT INTO songs (project_id, user_id, title, original_filename, audio_blob)
+               VALUES (?, ?, 'Stem Filter Song', 'stem_filter.mp3', X'')
+               RETURNING id""",
+            [project_id, 1],
+        )
+        song_id = int(song_rs.rows[0][0])
+        stem_rs = await db_mod.execute(
+            """INSERT INTO song_stems (song_id, stem_key, audio_blob, mime_type,
+               source_type, display_name, version_label)
+               VALUES (?, 'vocals', X'', 'audio/wav', 'system', 'Vocals', 'v1')
+               RETURNING id""",
+            [song_id],
+        )
+        return song_id, int(stem_rs.rows[0][0])
+
+    client = _client_with_user()
+    band_id = _get_default_band_id(client)
+    project_id = _get_default_project_id(client, band_id)
+    song_id, stem_id = asyncio.run(insert_song_and_stem(project_id))
+    client.patch(f"/api/stems/{stem_id}", json={"archived": True})
+
+    res = client.get(f"/api/songs/{song_id}/stems")
+    ids = [s["id"] for s in res.json().get("stems", [])]
+    assert stem_id not in ids

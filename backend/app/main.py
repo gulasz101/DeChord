@@ -509,7 +509,7 @@ def _build_version_label(prefix: str) -> str:
 
 _STEM_SELECT = """
     SELECT id, stem_key, mime_type, duration, source_type, display_name, description,
-           version_label, generation_id, uploaded_by_name, created_by_name, created_at, updated_at
+           version_label, generation_id, uploaded_by_name, created_by_name, created_at, updated_at, archived_at
     FROM song_stems
 """
 
@@ -527,13 +527,13 @@ def _serialize_song_stem(row) -> dict:
         "source_type": source_type,
         "display_name": display_name,
         "description": row[6],
-        "version_label": str(row[7]) if row[7] else "legacy",
+        "version_label": row[7],
         "generation_id": row[8],
         "uploaded_by_name": row[9],
         "created_by_name": row[10],
         "created_at": row[11],
         "updated_at": row[12],
-        "is_archived": False,
+        "archived_at": str(row[13]) if row[13] else None,
     }
 
 
@@ -2071,8 +2071,14 @@ async def patch_song(song_id: int, body: SongUpdateRequest, request: Request):
 
 
 @app.get("/api/songs/{song_id}/stems")
-async def get_song_stems(song_id: int):
-    return {"stems": await _load_song_stems(song_id)}
+async def get_song_stems(song_id: int, include_archived: bool = False):
+    archived_filter = "" if include_archived else "AND archived_at IS NULL"
+    rs = await execute(
+        f"{_STEM_SELECT} WHERE song_id = ? {archived_filter} ORDER BY created_at ASC, id ASC",
+        [song_id],
+    )
+    stems = [_serialize_song_stem(row) for row in rs.rows]
+    return {"stems": stems}
 
 
 @app.post("/api/songs/{song_id}/stems/upload")
@@ -2232,6 +2238,7 @@ async def get_stem_audio(stem_id: int):
 class StemUpdateRequest(BaseModel):
     display_name: str | None = None
     description: str | None = None
+    archived: bool | None = None
 
 
 @app.patch("/api/stems/{stem_id}")
@@ -2247,14 +2254,50 @@ async def patch_stem(stem_id: int, body: StemUpdateRequest, request: Request):
         updates["display_name"] = body.display_name
     if body.description is not None:
         updates["description"] = body.description
-    if not updates:
-        return stem
 
-    set_clause = ", ".join(f"{k} = ?" for k in updates)
-    await execute(
-        f"UPDATE song_stems SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        list(updates.values()) + [stem_id],
+    if body.archived is not None:
+        if body.archived:
+            await execute(
+                "UPDATE song_stems SET archived_at = CURRENT_TIMESTAMP WHERE id = ?",
+                [stem_id],
+            )
+        else:
+            await execute(
+                "UPDATE song_stems SET archived_at = NULL WHERE id = ?", [stem_id]
+            )
+
+    if updates:
+        set_clause = ", ".join(f"{k} = ?" for k in updates)
+        await execute(
+            f"UPDATE song_stems SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            list(updates.values()) + [stem_id],
+        )
+
+    # Return updated stem with archived_at
+    rs = await execute(
+        """SELECT id, stem_key, mime_type, duration, source_type, display_name,
+                  description, version_label, generation_id, uploaded_by_name,
+                  created_by_name, created_at, updated_at, archived_at
+           FROM song_stems WHERE id = ?""",
+        [stem_id],
     )
+    row = rs.rows[0]
+    return {
+        "id": int(row[0]),
+        "stem_key": row[1],
+        "mime_type": row[2],
+        "duration": row[3],
+        "source_type": row[4],
+        "display_name": row[5],
+        "description": row[6],
+        "version_label": row[7],
+        "generation_id": row[8],
+        "uploaded_by_name": row[9],
+        "created_by_name": row[10],
+        "created_at": row[11],
+        "updated_at": row[12],
+        "archived_at": str(row[13]) if row[13] else None,
+    }
 
     old_name = stem["display_name"]
     new_name = updates.get("display_name", old_name)
