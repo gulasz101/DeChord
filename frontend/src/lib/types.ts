@@ -55,6 +55,7 @@ export interface SongSummary {
   title: string;
   original_filename: string | null;
   created_at: string;
+  archived_at: string | null;
   key: string | null;
   tempo: number | null;
   duration: number | null;
@@ -114,6 +115,7 @@ export interface StemInfo {
   mime_type: string | null;
   duration: number | null;
   created_at?: string;
+  archived_at?: string | null;
 }
 
 export interface SongStemsResponse {
@@ -169,6 +171,7 @@ export interface BandSummary {
   name: string;
   owner_user_id: number;
   created_at: string;
+  archived_at: string | null;
   project_count: number;
 }
 
@@ -190,6 +193,7 @@ export interface ProjectSummary {
   name: string;
   description: string | null;
   created_at: string;
+  archived_at: string | null;
   song_count: number;
   unread_count: number;
 }
@@ -258,4 +262,25 @@ export interface ProjectActivityResponse {
   activity: ProjectActivityItem[];
   unread_count: number;
   presence_state: PresenceState;
+}
+
+export interface BandUpdatePayload {
+  name?: string;
+  archived?: boolean;
+}
+
+export interface ProjectUpdatePayload {
+  name?: string;
+  archived?: boolean;
+}
+
+export interface SongUpdatePayload {
+  title?: string;
+  archived?: boolean;
+}
+
+export interface StemUpdatePayload {
+  display_name?: string;
+  description?: string;
+  archived?: boolean;
 }

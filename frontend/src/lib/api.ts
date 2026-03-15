@@ -17,11 +17,19 @@ import type {
   BandMembersListResponse,
   BandCreatePayload,
   BandCreateResponse,
+  BandUpdatePayload,
+  BandSummary,
   ProjectActivityResponse,
   ProjectsListResponse,
   ProjectCreatePayload,
   ProjectCreateResponse,
+  ProjectUpdatePayload,
+  ProjectSummary,
   ProjectSongsListResponse,
+  SongUpdatePayload,
+  SongSummary,
+  StemUpdatePayload,
+  StemInfo,
 } from "./types";
 
 const BASE = "";
@@ -149,12 +157,6 @@ export async function listSongs(): Promise<SongsListResponse> {
 export async function getSong(songId: number): Promise<SongDetailResponse> {
   const res = await fetch(`${BASE}/api/songs/${songId}`);
   if (!res.ok) throw new Error("Failed to fetch song");
-  return res.json();
-}
-
-export async function listSongStems(songId: number): Promise<SongStemsResponse> {
-  const res = await fetch(`${BASE}/api/songs/${songId}/stems`);
-  if (!res.ok) throw new Error("Failed to fetch stems");
   return res.json();
 }
 
@@ -287,15 +289,45 @@ export async function claimIdentity(payload: IdentityClaimPayload): Promise<Iden
   return res.json();
 }
 
-export async function listBands(): Promise<BandsListResponse> {
-  const res = await fetchWithIdentity(`${BASE}/api/bands`);
+export async function listBands(includeArchived = false): Promise<BandsListResponse> {
+  const url = includeArchived ? `${BASE}/api/bands?include_archived=true` : `${BASE}/api/bands`;
+  const res = await fetchWithIdentity(url);
   if (!res.ok) throw new Error("Failed to fetch bands");
   return res.json();
 }
 
-export async function listBandProjects(bandId: number): Promise<ProjectsListResponse> {
-  const res = await fetchWithIdentity(`${BASE}/api/bands/${bandId}/projects`);
+export async function updateBand(
+  bandId: number,
+  payload: BandUpdatePayload,
+): Promise<BandSummary> {
+  const res = await fetchWithIdentity(`${BASE}/api/bands/${bandId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Failed to update band");
+  return res.json();
+}
+
+export async function listBandProjects(bandId: number, includeArchived = false): Promise<ProjectsListResponse> {
+  const url = includeArchived
+    ? `${BASE}/api/bands/${bandId}/projects?include_archived=true`
+    : `${BASE}/api/bands/${bandId}/projects`;
+  const res = await fetchWithIdentity(url);
   if (!res.ok) throw new Error("Failed to fetch projects");
+  return res.json();
+}
+
+export async function updateProject(
+  projectId: number,
+  payload: ProjectUpdatePayload,
+): Promise<ProjectSummary> {
+  const res = await fetchWithIdentity(`${BASE}/api/projects/${projectId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Failed to update project");
   return res.json();
 }
 
@@ -353,8 +385,46 @@ export async function createProject(
   return res.json();
 }
 
-export async function listProjectSongs(projectId: number): Promise<ProjectSongsListResponse> {
-  const res = await fetch(`${BASE}/api/projects/${projectId}/songs`);
+export async function listProjectSongs(projectId: number, includeArchived = false): Promise<ProjectSongsListResponse> {
+  const url = includeArchived
+    ? `${BASE}/api/projects/${projectId}/songs?include_archived=true`
+    : `${BASE}/api/projects/${projectId}/songs`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to fetch project songs");
+  return res.json();
+}
+
+export async function updateSong(
+  songId: number,
+  payload: SongUpdatePayload,
+): Promise<SongSummary> {
+  const res = await fetchWithIdentity(`${BASE}/api/songs/${songId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Failed to update song");
+  return res.json();
+}
+
+export async function listSongStems(songId: number, includeArchived = false): Promise<SongStemsResponse> {
+  const url = includeArchived
+    ? `${BASE}/api/songs/${songId}/stems?include_archived=true`
+    : `${BASE}/api/songs/${songId}/stems`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch stems");
+  return res.json();
+}
+
+export async function updateStem(
+  stemId: number,
+  payload: StemUpdatePayload,
+): Promise<StemInfo> {
+  const res = await fetchWithIdentity(`${BASE}/api/stems/${stemId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Failed to update stem");
   return res.json();
 }

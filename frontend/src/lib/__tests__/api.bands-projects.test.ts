@@ -14,6 +14,10 @@ import {
   setApiIdentityUserId,
   updateSongNote,
   uploadSongStem,
+  updateBand,
+  updateProject,
+  updateSong,
+  updateStem,
 } from "../api";
 
 afterEach(() => {
@@ -221,6 +225,118 @@ describe("api bands/projects/songs contract", () => {
         body: JSON.stringify({ name: "Album Prep", description: "Spring set" }),
       });
       expect(res.project.band_id).toBe(11);
+    } finally {
+      (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
+    }
+  });
+
+  it("updateBand sends PATCH with name payload", async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 1, name: "New Name", archived_at: null }),
+    });
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      const res = await updateBand(1, { name: "New Name" });
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/bands/1",
+        expect.objectContaining({ method: "PATCH" }),
+      );
+      expect(res.name).toBe("New Name");
+    } finally {
+      (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
+    }
+  });
+
+  it("updateBand sends archive payload", async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 1, name: "Band", archived_at: "2026-03-15T00:00:00" }),
+    });
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      const res = await updateBand(1, { archived: true });
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(body.archived).toBe(true);
+      expect(res.archived_at).toBeTruthy();
+    } finally {
+      (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
+    }
+  });
+
+  it("listBands appends include_archived param when true", async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ bands: [] }),
+    });
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      await listBands(true);
+      expect(fetchMock.mock.calls[0][0]).toContain("include_archived=true");
+    } finally {
+      (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
+    }
+  });
+
+  it("updateProject sends PATCH with name payload", async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 5, name: "Renamed Project", archived_at: null }),
+    });
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      const res = await updateProject(5, { name: "Renamed Project" });
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/projects/5",
+        expect.objectContaining({ method: "PATCH" }),
+      );
+      expect(res.name).toBe("Renamed Project");
+    } finally {
+      (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
+    }
+  });
+
+  it("updateSong sends PATCH with title payload", async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 8, title: "New Title", original_filename: "test.mp3", archived_at: null }),
+    });
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      const res = await updateSong(8, { title: "New Title" });
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/songs/8",
+        expect.objectContaining({ method: "PATCH" }),
+      );
+      expect(res.title).toBe("New Title");
+    } finally {
+      (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
+    }
+  });
+
+  it("updateStem sends PATCH with archived payload", async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 1, stem_key: "bass", archived_at: "2026-03-15T00:00:00" }),
+    });
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      const res = await updateStem(1, { archived: true });
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(body.archived).toBe(true);
+      expect(res.archived_at).toBeTruthy();
     } finally {
       (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
     }
