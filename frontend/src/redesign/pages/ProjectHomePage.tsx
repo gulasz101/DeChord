@@ -127,7 +127,7 @@ export function ProjectHomePage({ user, band, project, onSelectProject, onCreate
                     </span>
                   )}
                 </button>
-                <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/proj:opacity-100 transition-opacity">
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/proj:opacity-100 has-[[aria-expanded=true]]:opacity-100 transition-opacity">
                   <ThreeDotMenu
                     items={[
                       { label: "Rename", onClick: () => setRenamingProject(p) },

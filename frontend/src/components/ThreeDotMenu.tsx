@@ -38,6 +38,7 @@ export function ThreeDotMenu({ items, className = "" }: ThreeDotMenuProps) {
       <button
         type="button"
         aria-label="More options"
+        aria-expanded={open}
         onClick={(e) => {
           e.stopPropagation();
           setOpen((o) => !o);
