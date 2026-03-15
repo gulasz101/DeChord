@@ -1,5 +1,7 @@
 import { useState } from "react";
 import type { Band, User } from "../lib/types";
+import { ThreeDotMenu } from "../../components/ThreeDotMenu";
+import { RenameModal } from "../../components/RenameModal";
 
 interface BandSelectPageProps {
   user: User;
@@ -9,6 +11,10 @@ interface BandSelectPageProps {
   isClaimed?: boolean;
   onClaimAccount?: () => void;
   onCreateBand?: (payload: { name: string }) => Promise<void> | void;
+  onRenameBand?: (bandId: string, newName: string) => Promise<void>;
+  onArchiveBand?: (bandId: string, archived: boolean) => Promise<void>;
+  showArchived?: boolean;
+  onToggleShowArchived?: () => void;
 }
 
 export function BandSelectPage({
@@ -19,10 +25,15 @@ export function BandSelectPage({
   isClaimed = false,
   onClaimAccount,
   onCreateBand,
+  onRenameBand,
+  onArchiveBand,
+  showArchived,
+  onToggleShowArchived,
 }: BandSelectPageProps) {
   const [isCreatingBand, setIsCreatingBand] = useState(false);
   const [bandName, setBandName] = useState("");
   const [isSavingBand, setIsSavingBand] = useState(false);
+  const [renamingBand, setRenamingBand] = useState<Band | null>(null);
 
   const saveBand = async () => {
     const trimmedName = bandName.trim();
@@ -124,33 +135,72 @@ export function BandSelectPage({
           </section>
         )}
 
+        {bands.length > 0 && (
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-xs" style={{ color: "#7a7a90" }}>
+              {bands.length} band{bands.length !== 1 ? "s" : ""}
+            </span>
+            <label className="flex cursor-pointer select-none items-center gap-2 text-xs" style={{ color: "#7a7a90" }}>
+              <input
+                type="checkbox"
+                checked={showArchived ?? false}
+                onChange={onToggleShowArchived}
+                className="rounded"
+              />
+              Show archived
+            </label>
+          </div>
+        )}
+
         <div className="space-y-4">
           {bands.map((band) => (
-            <button key={band.id} onClick={() => onSelectBand(band)}
-              className="group flex w-full items-center gap-5 border p-6 text-left transition-all hover:border-purple-500/30 hover:shadow-lg hover:shadow-purple-500/5"
-              style={{ borderRadius: "6px", background: "rgba(255, 255, 255, 0.03)", borderColor: "rgba(192, 192, 192, 0.06)", backdropFilter: "blur(12px)" }}>
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center text-xl font-bold text-white" style={{ borderRadius: "3px", background: band.avatarColor }}>
-                {band.name.charAt(0)}
-              </div>
-              <div className="flex-1">
-                <h2 className="text-xl group-hover:text-purple-300" style={{ fontFamily: "Playfair Display, serif", color: "#e2e2f0" }}>{band.name}</h2>
-                <div className="mt-1 flex items-center gap-3">
-                  <span className="text-xs" style={{ color: "#7a7a90" }}>{band.members.length} members</span>
-                  <span className="text-xs" style={{ color: "#5a5a6e" }}>·</span>
-                  <span className="text-xs" style={{ color: "#7a7a90" }}>{band.projects.length} project{band.projects.length !== 1 ? "s" : ""}</span>
-                  <span className="text-xs" style={{ color: "#5a5a6e" }}>·</span>
-                  <div className="flex -space-x-1.5">
-                    {band.members.slice(0, 4).map((m) => (
-                      <div key={m.id} className="flex h-5 w-5 items-center justify-center rounded-full border text-[8px] font-bold text-white"
-                        style={{ background: m.isOnline ? "#14b8a6" : "#1e1e3a", borderColor: "#0a0e27" }}>
-                        {m.avatar}
-                      </div>
-                    ))}
+            <div key={band.id} className="relative group/card">
+              <button
+                onClick={() => onSelectBand(band)}
+                className={`group flex w-full items-center gap-5 border p-6 text-left transition-all hover:border-purple-500/30 hover:shadow-lg hover:shadow-purple-500/5 ${band.archived_at ? "opacity-50" : ""}`}
+                style={{ borderRadius: "6px", background: "rgba(255, 255, 255, 0.03)", borderColor: "rgba(192, 192, 192, 0.06)", backdropFilter: "blur(12px)" }}
+              >
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center text-xl font-bold text-white" style={{ borderRadius: "3px", background: band.avatarColor }}>
+                  {band.name.charAt(0)}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl group-hover:text-purple-300" style={{ fontFamily: "Playfair Display, serif", color: "#e2e2f0" }}>{band.name}</h2>
+                    {band.archived_at && (
+                      <span className="rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide" style={{ background: "rgba(122, 122, 144, 0.2)", color: "#7a7a90" }}>
+                        Archived
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1 flex items-center gap-3">
+                    <span className="text-xs" style={{ color: "#7a7a90" }}>{band.members.length} members</span>
+                    <span className="text-xs" style={{ color: "#5a5a6e" }}>·</span>
+                    <span className="text-xs" style={{ color: "#7a7a90" }}>{band.projects.length} project{band.projects.length !== 1 ? "s" : ""}</span>
+                    <span className="text-xs" style={{ color: "#5a5a6e" }}>·</span>
+                    <div className="flex -space-x-1.5">
+                      {band.members.slice(0, 4).map((m) => (
+                        <div key={m.id} className="flex h-5 w-5 items-center justify-center rounded-full border text-[8px] font-bold text-white"
+                          style={{ background: m.isOnline ? "#14b8a6" : "#1e1e3a", borderColor: "#0a0e27" }}>
+                          {m.avatar}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
+                <span className="text-sm transition-transform group-hover:translate-x-1" style={{ color: "#c0c0c0" }}>→</span>
+              </button>
+              <div className="absolute right-16 top-1/2 -translate-y-1/2 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                <ThreeDotMenu
+                  items={[
+                    { label: "Rename", onClick: () => setRenamingBand(band) },
+                    {
+                      label: band.archived_at ? "Unarchive" : "Archive",
+                      onClick: () => onArchiveBand?.(band.id, !band.archived_at),
+                    },
+                  ]}
+                />
               </div>
-              <span className="text-sm transition-transform group-hover:translate-x-1" style={{ color: "#c0c0c0" }}>→</span>
-            </button>
+            </div>
           ))}
         </div>
 
@@ -227,6 +277,15 @@ export function BandSelectPage({
               </div>
             )}
           </div>
+        )}
+
+        {renamingBand && (
+          <RenameModal
+            label="Band Name"
+            currentName={renamingBand.name}
+            onSave={(newName) => onRenameBand?.(renamingBand.id, newName) ?? Promise.resolve()}
+            onClose={() => setRenamingBand(null)}
+          />
         )}
       </main>
     </div>

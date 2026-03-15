@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   claimIdentity,
   createBand,
+  updateBand,
   createProject,
   createSongNote,
   deleteSongNote,
@@ -400,8 +401,8 @@ function isTransientJourneyPollingError(error: unknown): boolean {
   return error instanceof Error && error.message === "Failed to fetch";
 }
 
-async function loadBandHierarchy(): Promise<Band[]> {
-  const bandsResponse = await listBands();
+async function loadBandHierarchy(includeArchived = false): Promise<Band[]> {
+  const bandsResponse = await listBands(includeArchived);
   const mappedBands: Band[] = [];
 
   for (const band of bandsResponse.bands) {
@@ -430,6 +431,7 @@ async function loadBandHierarchy(): Promise<Band[]> {
       avatarColor: "#7c3aed",
       projects: mappedProjects,
       members: membersResponse.members.map(mapBandMember),
+      archived_at: band.archived_at,
     });
   }
 
@@ -442,9 +444,10 @@ export default function App() {
   const [bands, setBands] = useState<Band[]>([]);
   const [identityUserId, setIdentityUserId] = useState<number | null>(null);
   const [isClaimed, setIsClaimed] = useState(false);
+  const [showArchivedBands, setShowArchivedBands] = useState(false);
 
-  const refreshBands = useCallback(async () => {
-    const loadedBands = await loadBandHierarchy();
+  const refreshBands = useCallback(async (includeArchived = false) => {
+    const loadedBands = await loadBandHierarchy(includeArchived);
     setBands(loadedBands);
     return loadedBands;
   }, []);
@@ -534,6 +537,7 @@ export default function App() {
       window.clearTimeout(handle);
     };
   }, [bootstrap]);
+
 
   const loadSongDetails = useCallback(
     async (song: Song): Promise<Song> => {
@@ -831,6 +835,20 @@ export default function App() {
           }}
           onSignOut={() => {
             setRoute({ page: "landing" });
+          }}
+          onRenameBand={async (bandId, newName) => {
+            await updateBand(Number(bandId), { name: newName });
+            await refreshBands(showArchivedBands);
+          }}
+          onArchiveBand={async (bandId, archived) => {
+            await updateBand(Number(bandId), { archived });
+            await refreshBands(showArchivedBands);
+          }}
+          showArchived={showArchivedBands}
+          onToggleShowArchived={() => {
+            const next = !showArchivedBands;
+            setShowArchivedBands(next);
+            void refreshBands(next);
           }}
         />
       );

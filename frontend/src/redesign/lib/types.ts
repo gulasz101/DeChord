@@ -90,6 +90,7 @@ export interface Project {
   songs: Song[];
   recentActivity: ActivityItem[];
   unreadCount: number;
+  archived_at?: string | null;
 }
 
 export interface Band {
@@ -98,6 +99,7 @@ export interface Band {
   members: BandMember[];
   projects: Project[];
   avatarColor: string;
+  archived_at?: string | null;
 }
 
 export interface BandMember {
