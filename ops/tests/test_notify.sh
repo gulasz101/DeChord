@@ -79,11 +79,20 @@ test_headless_no_sentinel() {
   fake_tty_dir=$(mktemp -d)
   printf '#!/usr/bin/env bash\nexit 1\n' > "${fake_tty_dir}/tty"
   chmod +x "${fake_tty_dir}/tty"
+  # Derive what TTY_ID the fake tty would produce (empty since tty exits 1)
+  # Clean up any sentinel that might have been left by a prior test run
+  local fake_tty_sentinel="/tmp/dechord-notify-${fake_tty_dir//\//_}.pending"
+  rm -f "$fake_tty_sentinel"
   local result
   PATH="${fake_tty_dir}:${PATH}" "$SCRIPT" "T" "S" 2>/dev/null
   result=$?
   rm -rf "$fake_tty_dir"
-  [[ $result -eq 0 ]]
+  # Verify exit code is 0
+  [[ $result -eq 0 ]] || return 1
+  # Verify no sentinel file was created (tty exited 1 so no TTY_PATH, no sentinel)
+  local count
+  count=$(ls /tmp/dechord-notify-*.pending 2>/dev/null | wc -l)
+  [[ $count -eq 0 ]]
 }
 
 run_test "sentinel created with correct JSON" test_sentinel_created

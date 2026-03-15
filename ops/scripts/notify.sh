@@ -8,7 +8,7 @@ TITLE="${1:?Usage: notify.sh \"title\" \"summary body\"}"
 SUMMARY="${2:?Usage: notify.sh \"title\" \"summary body\"}"
 
 # Sweep stale sentinel files older than 24 hours using python3 (macOS-safe).
-python3 - <<'PY' 2>/dev/null || true
+python3 - <<'PY' || true
 import os, glob, time
 threshold = time.time() - 86400
 for f in glob.glob('/tmp/dechord-notify-*.pending'):
