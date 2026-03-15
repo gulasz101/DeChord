@@ -1,0 +1,97 @@
+<h2>Band Creation: Where should "Create Band" live?</h2>
+<p class="subtitle">Currently the "Create Your First Band" form only appears when you have zero bands. Once you have one, there's no way to create more. Which approach should we take?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 16px; background: #0a0e27;">
+      <div class="mock-nav" style="background: #111638; border-bottom: 1px solid rgba(192,192,192,0.06); padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #e2e2f0;">
+        <span style="color: #a78bfa; font-weight: 700;">♪ DeChord</span>
+        <span style="color: #7a7a90;">WG · Sign Out</span>
+      </div>
+      <div style="padding: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <span style="color: #e2e2f0; font-size: 14px;">Your Bands</span>
+          <button style="background: linear-gradient(135deg,#7c3aed,#5b21b6); color: white; border: none; padding: 5px 12px; border-radius: 3px; font-size: 10px; font-weight: 700; cursor: pointer;">+ New Band</button>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(192,192,192,0.06); border-radius: 6px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px;">
+          <div style="width: 32px; height: 32px; background: #7c3aed; border-radius: 3px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 700;">S</div>
+          <div>
+            <div style="color: #e2e2f0; font-size: 12px;">Shredders</div>
+            <div style="color: #7a7a90; font-size: 10px;">3 members · 2 projects</div>
+          </div>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(192,192,192,0.06); border-radius: 6px; padding: 10px 14px; display: flex; align-items: center; gap: 10px;">
+          <div style="width: 32px; height: 32px; background: #14b8a6; border-radius: 3px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 700;">J</div>
+          <div>
+            <div style="color: #e2e2f0; font-size: 12px;">Jazz Cats</div>
+            <div style="color: #7a7a90; font-size: 10px;">2 members · 1 project</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Button in header row</h3>
+      <p>"+ New Band" button sits next to the "Your Bands" heading. Always visible, unobtrusive.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 16px; background: #0a0e27;">
+      <div style="background: #111638; border-bottom: 1px solid rgba(192,192,192,0.06); padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #e2e2f0;">
+        <span style="color: #a78bfa; font-weight: 700;">♪ DeChord</span>
+        <span style="color: #7a7a90;">WG · Sign Out</span>
+      </div>
+      <div style="padding: 16px;">
+        <div style="margin-bottom: 12px;">
+          <span style="color: #e2e2f0; font-size: 14px;">Your Bands</span>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(192,192,192,0.06); border-radius: 6px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px;">
+          <div style="width: 32px; height: 32px; background: #7c3aed; border-radius: 3px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 700;">S</div>
+          <div>
+            <div style="color: #e2e2f0; font-size: 12px;">Shredders</div>
+            <div style="color: #7a7a90; font-size: 10px;">3 members · 2 projects</div>
+          </div>
+        </div>
+        <!-- Ghost "create" card at bottom -->
+        <div style="border: 1px dashed rgba(124,58,237,0.3); border-radius: 6px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <div style="width: 32px; height: 32px; background: rgba(124,58,237,0.1); border-radius: 3px; display: flex; align-items: center; justify-content: center; color: #a78bfa; font-size: 18px;">+</div>
+          <div style="color: #a78bfa; font-size: 12px;">Create new band…</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Ghost card at bottom of list</h3>
+      <p>Dashed "+  Create new band…" card appended after existing bands. Feels native to the list.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 16px; background: #0a0e27;">
+      <div style="background: #111638; border-bottom: 1px solid rgba(192,192,192,0.06); padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #e2e2f0;">
+        <span style="color: #a78bfa; font-weight: 700;">♪ DeChord</span>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <button style="background: linear-gradient(135deg,#7c3aed,#5b21b6); color: white; border: none; padding: 5px 12px; border-radius: 3px; font-size: 10px; font-weight: 700;">+ New Band</button>
+          <span style="color: #7a7a90; font-size: 10px;">WG · Sign Out</span>
+        </div>
+      </div>
+      <div style="padding: 16px;">
+        <div style="margin-bottom: 12px;">
+          <span style="color: #e2e2f0; font-size: 14px;">Your Bands</span>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(192,192,192,0.06); border-radius: 6px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px;">
+          <div style="width: 32px; height: 32px; background: #7c3aed; border-radius: 3px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 700;">S</div>
+          <div>
+            <div style="color: #e2e2f0; font-size: 12px;">Shredders</div>
+            <div style="color: #7a7a90; font-size: 10px;">3 members · 2 projects</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Button in top nav bar</h3>
+      <p>"+ New Band" in the global nav. Prominent but shares space with sign-out and user info.</p>
+    </div>
+  </div>
+
+</div>

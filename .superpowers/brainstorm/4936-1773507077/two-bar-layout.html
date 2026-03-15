@@ -1,0 +1,91 @@
+<h2>Two-bar layout in the transport area</h2>
+<p class="subtitle">Comment lane (top) + seek lane (bottom) — hover the dots to see previews</p>
+
+<div class="mockup">
+  <div class="mockup-header">Transport Bar — Full Layout Preview</div>
+  <div class="mockup-body" style="background: #0a0e27; padding: 20px; font-family: system-ui, sans-serif;">
+
+    <!-- Transport controls row -->
+    <div style="background: rgba(17,22,56,0.9); border: 1px solid rgba(192,192,192,0.06); border-radius: 4px; padding: 14px 16px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+
+        <!-- Controls -->
+        <button style="background:none; border:none; color:#c0c0c0; font-size:16px; cursor:pointer; padding:0 4px;">⏪</button>
+        <div style="background: linear-gradient(135deg,#7c3aed,#5b21b6); width:36px; height:36px; border-radius:4px; display:flex; align-items:center; justify-content:center; color:white; font-size:14px; flex-shrink:0;">▶</div>
+        <button style="background:none; border:none; color:#c0c0c0; font-size:16px; cursor:pointer; padding:0 4px;">⏩</button>
+        <span style="color:#e2e2f0; font-family:monospace; font-size:12px; white-space:nowrap;">1:23</span>
+
+        <!-- Right side: two stacked bars -->
+        <div style="flex:1; display:flex; flex-direction:column; gap:5px;">
+
+          <!-- BAR 1: Comment lane -->
+          <div style="position:relative;">
+            <div style="font-size:9px; color:#7a7a90; letter-spacing:0.05em; margin-bottom:3px; text-transform:uppercase;">Comments</div>
+            <div style="height:12px; background: rgba(30,30,58,0.7); border-radius:6px; border: 1px solid rgba(124,58,237,0.15); cursor:crosshair; position:relative; overflow:visible;">
+
+              <!-- existing dot with hover preview -->
+              <div style="position:absolute; left:30%; top:50%; transform:translate(-50%,-50%);">
+                <div class="comment-dot" style="width:10px; height:10px; border-radius:50%; background:#a78bfa; border:1.5px solid #e2e2f0; cursor:pointer; position:relative;">
+                  <!-- hover preview -->
+                  <div class="dot-preview" style="position:absolute; bottom:16px; left:50%; transform:translateX(-50%); background:rgba(17,22,56,0.97); border:1px solid rgba(167,139,250,0.4); border-radius:6px; padding:6px 10px; white-space:nowrap; pointer-events:none; box-shadow: 0 4px 16px rgba(124,58,237,0.3); z-index:20;">
+                    <div style="font-size:10px; color:#a78bfa; font-weight:600; margin-bottom:2px;">Sarah K.</div>
+                    <div style="font-size:10px; color:#e2e2f0;">"Watch the bass line here"</div>
+                    <div style="font-size:9px; color:#7a7a90; margin-top:2px;">@ 1:23 · shows for 4.2s</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- another dot, no hover -->
+              <div style="position:absolute; left:62%; top:50%; transform:translate(-50%,-50%); width:10px; height:10px; border-radius:50%; background:#a78bfa; border:1.5px solid #e2e2f0; cursor:pointer;"></div>
+
+              <!-- click hint overlay text -->
+              <div style="position:absolute; right:8px; top:50%; transform:translateY(-50%); font-size:8px; color:rgba(167,139,250,0.35); pointer-events:none; letter-spacing:0.04em;">click to add</div>
+            </div>
+          </div>
+
+          <!-- BAR 2: Seek / playback -->
+          <div style="position:relative;">
+            <div style="font-size:9px; color:#7a7a90; letter-spacing:0.05em; margin-bottom:3px; text-transform:uppercase;">Playback</div>
+            <div style="position:relative;">
+              <div style="height:3px; background:rgba(167,139,250,0.2); border-radius:2px; position:relative;">
+                <div style="position:absolute; left:0; top:0; height:100%; width:34%; background:linear-gradient(90deg,#7c3aed,#a78bfa); border-radius:2px;"></div>
+                <div style="position:absolute; left:34%; top:50%; transform:translate(-50%,-50%); width:10px; height:10px; border-radius:50%; background:#a78bfa; border:1.5px solid white;"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <span style="color:#8a8a9a; font-family:monospace; font-size:12px; white-space:nowrap;">4:01</span>
+
+        <!-- Speed -->
+        <select style="background:rgba(10,14,39,0.6); border:1px solid rgba(192,192,192,0.12); color:#e2e2f0; font-size:11px; padding:3px 6px; border-radius:6px;">
+          <option>100%</option>
+        </select>
+
+        <!-- Volume -->
+        <div style="display:flex; align-items:center; gap:4px;">
+          <span style="color:#7a7a90; font-size:11px;">🔊</span>
+          <div style="width:64px; height:3px; background:rgba(20,184,166,0.2); border-radius:2px; position:relative;">
+            <div style="width:75%; height:100%; background:linear-gradient(90deg,#14b8a6,#2dd4bf); border-radius:2px;"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Caption -->
+    <div style="margin-top:12px; font-size:11px; color:#7a7a90; text-align:center;">
+      Top bar: click empty space → add comment modal · hover dot → preview · click dot → edit/reply modal<br>
+      Bottom bar: existing seek slider (unchanged)
+    </div>
+
+  </div>
+</div>
+
+<style>
+.comment-dot .dot-preview { display: none; }
+.comment-dot:hover .dot-preview { display: block; }
+</style>
+
+<p class="subtitle" style="margin-top:16px;">Does this layout feel right? Any tweaks to the label placement, bar heights, or preview style?</p>

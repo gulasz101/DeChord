@@ -19,13 +19,14 @@ for f in glob.glob('/tmp/dechord-notify-*.pending'):
         pass
 PY
 
-# Resolve TTY-scoped sentinel path. Exit cleanly if no controlling terminal.
-TTY_PATH=$(tty 2>/dev/null) || {
-  echo "⚠️  notify.sh: no TTY detected (headless session) — skipping sentinel creation" >&2
-  exit 0
-}
-TTY_ID=$(printf '%s' "$TTY_PATH" | tr '/' '_')
-SENTINEL="/tmp/dechord-notify-${TTY_ID}.pending"
+# Resolve TTY-scoped sentinel path. Fall back to a unique headless sentinel if no TTY.
+TTY_PATH=$(tty 2>/dev/null) || TTY_PATH=""
+if [ -n "$TTY_PATH" ]; then
+  TTY_ID=$(printf '%s' "$TTY_PATH" | tr '/' '_')
+  SENTINEL="/tmp/dechord-notify-${TTY_ID}.pending"
+else
+  SENTINEL="/tmp/dechord-notify-headless-$(date +%s)-$$.pending"
+fi
 
 # Write sentinel atomically: write to tmp, chmod, then rename.
 TMP=$(mktemp)

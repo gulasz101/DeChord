@@ -1,0 +1,121 @@
+<h2>Project Creation: How should the form appear?</h2>
+<p class="subtitle">Currently the "New" button in the project sidebar silently does nothing when a project is already selected. The form is buried in an unreachable branch. Where/how should it appear?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 0; background: #0a0e27; display: flex; flex-direction: column;">
+      <div style="background: #111638; border-bottom: 1px solid rgba(192,192,192,0.06); padding: 8px 14px; display: flex; justify-content: space-between; font-size: 11px; color: #e2e2f0;">
+        <span>← Bands &nbsp;|&nbsp; <b>Shredders</b></span>
+        <span style="color: #7a7a90;">WG</span>
+      </div>
+      <div style="display: flex; flex: 1;">
+        <!-- Sidebar -->
+        <div style="width: 140px; border-right: 1px solid rgba(192,192,192,0.06); padding: 10px 8px; background: rgba(255,255,255,0.02); font-size: 11px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="color: #7a7a90; text-transform: uppercase; font-size: 9px; letter-spacing: .1em;">Projects</span>
+            <span style="color: #a78bfa; font-size: 9px; font-weight: 700;">New</span>
+          </div>
+          <div style="background: rgba(124,58,237,0.15); color: #a78bfa; padding: 6px 8px; border-radius: 4px; margin-bottom: 4px;">Album Prep</div>
+          <div style="color: #c0c0c0; padding: 6px 8px; margin-bottom: 4px;">Live Set</div>
+          <!-- Ghost item appears inline -->
+          <div style="border: 1px dashed rgba(124,58,237,0.3); border-radius: 4px; padding: 6px 8px; color: #a78bfa; font-size: 10px;">+ New project…</div>
+        </div>
+        <!-- Main -->
+        <div style="flex: 1; padding: 12px 14px;">
+          <!-- Inline form expands below sidebar -->
+          <div style="background: rgba(124,58,237,0.07); border: 1px solid rgba(124,58,237,0.2); border-radius: 4px; padding: 10px 12px; margin-bottom: 8px;">
+            <div style="color: #a78bfa; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; margin-bottom: 6px;">Project Name</div>
+            <div style="background: rgba(10,14,39,0.7); border: 1px solid rgba(192,192,192,0.12); border-radius: 3px; padding: 6px 8px; color: #5a5a6e; font-size: 11px; margin-bottom: 8px;">e.g. Album Prep</div>
+            <div style="display: flex; gap: 8px;">
+              <span style="color: #7a7a90; font-size: 10px; padding: 4px 8px; cursor: pointer;">Cancel</span>
+              <span style="background: linear-gradient(135deg,#14b8a6,#0f766e); color: white; font-size: 10px; padding: 4px 10px; border-radius: 3px; cursor: pointer;">Save</span>
+            </div>
+          </div>
+          <div style="color: #7a7a90; font-size: 10px;">← Form slides in below the sidebar, overlaying main content area</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Inline form in main area</h3>
+      <p>Clicking "New" shows a compact form in the main content area (above the current project view). Ghost item appears in the sidebar list.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 0; background: #0a0e27; display: flex; flex-direction: column; position: relative;">
+      <div style="background: #111638; border-bottom: 1px solid rgba(192,192,192,0.06); padding: 8px 14px; display: flex; justify-content: space-between; font-size: 11px; color: #e2e2f0;">
+        <span>← Bands &nbsp;|&nbsp; <b>Shredders</b></span>
+        <span style="color: #7a7a90;">WG</span>
+      </div>
+      <div style="display: flex; flex: 1; position: relative;">
+        <div style="width: 140px; border-right: 1px solid rgba(192,192,192,0.06); padding: 10px 8px; background: rgba(255,255,255,0.02); font-size: 11px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="color: #7a7a90; text-transform: uppercase; font-size: 9px; letter-spacing: .1em;">Projects</span>
+            <span style="color: #a78bfa; font-size: 9px; font-weight: 700;">New</span>
+          </div>
+          <div style="background: rgba(124,58,237,0.15); color: #a78bfa; padding: 6px 8px; border-radius: 4px; margin-bottom: 4px;">Album Prep</div>
+          <div style="color: #c0c0c0; padding: 6px 8px;">Live Set</div>
+        </div>
+        <div style="flex: 1; padding: 12px; position: relative;">
+          <div style="color: #7a7a90; font-size: 10px; margin-bottom: 8px;">Current project content…</div>
+          <!-- Modal overlay -->
+          <div style="position: absolute; inset: 0; background: rgba(10,14,39,0.85); display: flex; align-items: center; justify-content: center; border-radius: 4px;">
+            <div style="background: #111638; border: 1px solid rgba(124,58,237,0.25); border-radius: 6px; padding: 16px; width: 200px;">
+              <div style="color: #e2e2f0; font-size: 12px; font-weight: 700; margin-bottom: 10px;">New Project</div>
+              <div style="color: #a78bfa; font-size: 9px; text-transform: uppercase; letter-spacing: .12em; margin-bottom: 4px;">Name</div>
+              <div style="background: rgba(10,14,39,0.7); border: 1px solid rgba(192,192,192,0.12); border-radius: 3px; padding: 6px 8px; color: #5a5a6e; font-size: 11px; margin-bottom: 6px;">e.g. Album Prep</div>
+              <div style="color: #a78bfa; font-size: 9px; text-transform: uppercase; letter-spacing: .12em; margin-bottom: 4px;">Description</div>
+              <div style="background: rgba(10,14,39,0.7); border: 1px solid rgba(192,192,192,0.12); border-radius: 3px; padding: 6px 8px; color: #5a5a6e; font-size: 11px; height: 30px; margin-bottom: 10px;"></div>
+              <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <span style="color: #7a7a90; font-size: 10px; padding: 4px 8px; cursor: pointer;">Cancel</span>
+                <span style="background: linear-gradient(135deg,#14b8a6,#0f766e); color: white; font-size: 10px; padding: 4px 10px; border-radius: 3px;">Save</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Modal dialog</h3>
+      <p>"New" opens a centered modal over the page. Focused, dismissable with Escape/Cancel. Keeps the sidebar and project view intact behind it.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 0; background: #0a0e27; display: flex; flex-direction: column;">
+      <div style="background: #111638; border-bottom: 1px solid rgba(192,192,192,0.06); padding: 8px 14px; display: flex; justify-content: space-between; font-size: 11px; color: #e2e2f0;">
+        <span>← Bands &nbsp;|&nbsp; <b>Shredders</b></span>
+        <span style="color: #7a7a90;">WG</span>
+      </div>
+      <div style="display: flex; flex: 1;">
+        <!-- Sidebar expands to show form -->
+        <div style="width: 160px; border-right: 1px solid rgba(192,192,192,0.06); padding: 10px 8px; background: rgba(255,255,255,0.02); font-size: 11px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="color: #7a7a90; text-transform: uppercase; font-size: 9px; letter-spacing: .1em;">Projects</span>
+            <span style="color: #a78bfa; font-size: 9px; font-weight: 700;">New ↑</span>
+          </div>
+          <div style="color: #c0c0c0; padding: 6px 8px; border-radius: 4px; margin-bottom: 4px; opacity: 0.5;">Album Prep</div>
+          <div style="color: #c0c0c0; padding: 6px 8px; margin-bottom: 6px; opacity: 0.5;">Live Set</div>
+          <!-- Inline form inside sidebar -->
+          <div style="background: rgba(124,58,237,0.08); border: 1px solid rgba(124,58,237,0.2); border-radius: 4px; padding: 8px;">
+            <div style="color: #a78bfa; font-size: 8px; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 4px;">Name</div>
+            <div style="background: rgba(10,14,39,0.7); border: 1px solid rgba(192,192,192,0.12); border-radius: 2px; padding: 4px 6px; color: #5a5a6e; font-size: 10px; margin-bottom: 6px;">project name…</div>
+            <div style="display: flex; gap: 4px; justify-content: flex-end;">
+              <span style="color: #7a7a90; font-size: 9px; padding: 3px 5px;">✕</span>
+              <span style="background: linear-gradient(135deg,#14b8a6,#0f766e); color: white; font-size: 9px; padding: 3px 7px; border-radius: 2px;">Save</span>
+            </div>
+          </div>
+        </div>
+        <div style="flex: 1; padding: 12px; opacity: 0.4;">
+          <div style="color: #7a7a90; font-size: 10px;">Project content unchanged behind</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Inline form inside sidebar</h3>
+      <p>"New" expands a mini form directly inside the sidebar panel. Most compact; keeps context visible but sidebar gets tight.</p>
+    </div>
+  </div>
+
+</div>

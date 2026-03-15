@@ -1,0 +1,63 @@
+<h2>Toast Style — Which visual direction?</h2>
+<p class="subtitle">All variants drop from top-left. Pick the style that feels right for a music player.</p>
+
+<div class="cards">
+
+  <!-- Option A: Minimal pill -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f0f0f;padding:20px;min-height:160px;display:flex;flex-direction:column;gap:8px;align-items:flex-start;font-family:system-ui">
+      <!-- stacked toasts simulation -->
+      <div style="background:rgba(255,255,255,0.08);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.12);border-radius:999px;padding:8px 16px;font-size:13px;color:#fff;display:flex;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,0.4)">
+        <span style="width:6px;height:6px;border-radius:50%;background:#a78bfa;flex-shrink:0"></span>
+        "try the bass line an octave lower here"
+      </div>
+      <div style="background:rgba(255,255,255,0.06);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.08);border-radius:999px;padding:8px 16px;font-size:13px;color:rgba(255,255,255,0.7);display:flex;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,0.3)">
+        <span style="width:6px;height:6px;border-radius:50%;background:#60a5fa;flex-shrink:0"></span>
+        "tension resolves to Dm here"
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Frosted Pill</h3>
+      <p>Compact pills with glass blur. Dot accent marks the author colour. Subtle, stays out of the way.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Card with author -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f0f0f;padding:20px;min-height:160px;display:flex;flex-direction:column;gap:8px;align-items:flex-start;font-family:system-ui">
+      <div style="background:rgba(20,20,30,0.92);backdrop-filter:blur(16px);border-left:3px solid #a78bfa;border-radius:0 10px 10px 0;padding:10px 14px;font-size:13px;color:#fff;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+        <div style="font-size:10px;color:#a78bfa;font-weight:600;letter-spacing:.08em;margin-bottom:4px;text-transform:uppercase">Wojciech · 0:42</div>
+        "try the bass line an octave lower here — the root note will cut through better in the mix"
+      </div>
+      <div style="background:rgba(20,20,30,0.85);backdrop-filter:blur(16px);border-left:3px solid #60a5fa;border-radius:0 10px 10px 0;padding:10px 14px;font-size:13px;color:rgba(255,255,255,0.8);max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,0.4)">
+        <div style="font-size:10px;color:#60a5fa;font-weight:600;letter-spacing:.08em;margin-bottom:4px;text-transform:uppercase">Anna · 1:05</div>
+        "tension resolves to Dm here"
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Comment Card</h3>
+      <p>Left-accent card with author name + timestamp. Richer context but takes more space.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Bold banner -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f0f0f;padding:20px;min-height:160px;display:flex;flex-direction:column;gap:8px;align-items:flex-start;font-family:system-ui">
+      <div style="background:linear-gradient(135deg,#7c3aed,#4f46e5);border-radius:10px;padding:12px 16px;font-size:13px;color:#fff;max-width:300px;box-shadow:0 8px 32px rgba(124,58,237,0.4)">
+        <div style="font-size:10px;color:rgba(255,255,255,0.7);margin-bottom:4px;font-weight:500">● NOW PLAYING NOTE</div>
+        "try the bass line an octave lower here"
+      </div>
+      <div style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);border-radius:10px;padding:12px 16px;font-size:13px;color:#fff;max-width:260px;box-shadow:0 8px 32px rgba(14,165,233,0.35)">
+        <div style="font-size:10px;color:rgba(255,255,255,0.7);margin-bottom:4px;font-weight:500">● NOW PLAYING NOTE</div>
+        "tension resolves to Dm here"
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Coloured Banner</h3>
+      <p>High-contrast gradient cards. Impossible to miss. More visual noise but very readable at a glance.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:24px">All options animate in from the top-left (slide + fade). Which overall direction fits best?</p>

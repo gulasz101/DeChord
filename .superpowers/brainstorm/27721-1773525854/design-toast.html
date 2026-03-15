@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toast Design Preview</title>
+<style>
+  body { background: #0a0a0f; font-family: system-ui, sans-serif; margin: 0; padding: 24px; color: #fff; }
+  h2 { margin: 0 0 6px; font-size: 18px; }
+  .sub { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 32px; }
+
+  /* ---- TOAST CONTAINER (exactly as it will be in prod) ---- */
+  .toast-container {
+    position: relative; /* relative for demo, fixed in prod */
+    top: 0; left: 0;
+    display: flex;
+    flex-direction: column-reverse; /* newest on top visually */
+    gap: 8px;
+    width: 340px;
+    pointer-events: none;
+  }
+
+  /* ---- TOAST ITEM ---- */
+  .toast {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    line-height: 1.45;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    animation: slideInLeft 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .toast.exiting {
+    animation: fadeOut 0.35s ease forwards;
+  }
+  .toast-author {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+  .toast-text {
+    color: #fff;
+    font-size: 13px;
+  }
+
+  /* ---- AUTHOR GRADIENTS (8 presets, assigned by hash) ---- */
+  .g0 { background: linear-gradient(135deg, #7c3aed, #4f46e5); } /* violet → indigo */
+  .g1 { background: linear-gradient(135deg, #0e7490, #0284c7); } /* cyan → blue */
+  .g2 { background: linear-gradient(135deg, #be185d, #9333ea); } /* pink → purple */
+  .g3 { background: linear-gradient(135deg, #065f46, #0d9488); } /* emerald → teal */
+  .g4 { background: linear-gradient(135deg, #b45309, #d97706); } /* amber */
+  .g5 { background: linear-gradient(135deg, #1d4ed8, #0ea5e9); } /* blue → sky */
+  .g6 { background: linear-gradient(135deg, #9f1239, #e11d48); } /* rose */
+  .g7 { background: linear-gradient(135deg, #4d7c0f, #16a34a); } /* lime → green */
+
+  @keyframes slideInLeft {
+    from { transform: translateX(-110%); opacity: 0; }
+    to   { transform: translateX(0);     opacity: 1; }
+  }
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to   { opacity: 0; transform: scale(0.97); }
+  }
+
+  /* stagger delays for demo */
+  .toast:nth-child(1) { animation-delay: 0.0s; }
+  .toast:nth-child(2) { animation-delay: 0.15s; }
+  .toast:nth-child(3) { animation-delay: 0.30s; }
+  .toast:nth-child(4) { animation-delay: 0.45s; }
+  .toast:nth-child(5) { animation-delay: 0.60s; }
+
+  .section-label { font-size: 11px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: .1em; margin: 28px 0 10px; }
+  .note { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 20px; max-width: 380px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<h2>Toast Design — Live Preview</h2>
+<p class="sub">Toasts slide in from the left · fade out on dismiss · max 5 stacked · newest on top</p>
+
+<p class="section-label">↓ Top-left corner of the player (newest toast appears at top)</p>
+
+<div class="toast-container">
+  <!-- oldest at bottom (rendered first in col-reverse) -->
+  <div class="toast g3">
+    <span class="toast-author">Anna</span>
+    <span class="toast-text">tension resolves to Dm here</span>
+  </div>
+  <div class="toast g5">
+    <span class="toast-author">Marek</span>
+    <span class="toast-text">try palm muting this whole section for contrast</span>
+  </div>
+  <div class="toast g2">
+    <span class="toast-author">Kasia</span>
+    <span class="toast-text">great spot to improvise — Dorian mode works here</span>
+  </div>
+  <div class="toast g0">
+    <span class="toast-author">Wojciech</span>
+    <span class="toast-text">try the bass line an octave lower — cuts through better in the mix</span>
+  </div>
+  <!-- newest on top -->
+  <div class="toast g6">
+    <span class="toast-author">Piotr</span>
+    <span class="toast-text">bend up a half step on the last note — it lifts the phrase</span>
+  </div>
+</div>
+
+<p class="note">
+  <strong>Color assignment:</strong> each author name is hashed to one of 8 gradients — consistent across sessions, no config needed.<br><br>
+  <strong>Overflow:</strong> if a 6th toast fires, the oldest is removed immediately before the new one slides in.<br><br>
+  <strong>Layout:</strong> <code>flex-col-reverse</code> so new items naturally appear at the top with no JS reorder logic.
+</p>
+</body>
+</html>

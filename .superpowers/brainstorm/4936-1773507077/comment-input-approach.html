@@ -1,0 +1,118 @@
+<h2>How should the comment input appear?</h2>
+<p class="subtitle">When you click on the note lane (the dark bar above the seek slider), how does the input open?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: #0a0e27; padding: 16px; font-family: monospace; font-size: 11px;">
+      <div style="background: rgba(17,22,56,0.9); border: 1px solid rgba(192,192,192,0.06); border-radius: 4px; padding: 12px;">
+        <!-- Transport bar mock -->
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="color:#c0c0c0">⏪</span>
+          <div style="background: linear-gradient(135deg,#7c3aed,#5b21b6); width:28px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; color:white; font-size:12px;">▶</div>
+          <span style="color:#c0c0c0">⏩</span>
+          <span style="color:#e2e2f0; font-size:10px;">1:23</span>
+          <div style="flex:1; position:relative;">
+            <!-- Note lane -->
+            <div style="height:10px; background:rgba(30,30,58,0.6); border-radius:4px; margin-bottom:4px; position:relative;">
+              <div style="position:absolute; left:35%; top:50%; transform:translate(-50%,-50%); width:8px; height:8px; border-radius:50%; background:#a78bfa; border:1px solid #e2e2f0;"></div>
+              <!-- Popover anchored at click point -->
+              <div style="position:absolute; left:60%; top:14px; background:rgba(17,22,56,0.97); border:1px solid rgba(124,58,237,0.5); border-radius:6px; padding:8px 10px; width:160px; z-index:10; box-shadow: 0 4px 20px rgba(124,58,237,0.3);">
+                <div style="color:#a78bfa; font-size:9px; margin-bottom:4px;">💬 Add comment @ 2:14</div>
+                <div style="background:rgba(30,30,58,0.8); border:1px solid rgba(192,192,192,0.1); border-radius:4px; padding:4px 6px; color:#8a8a9a; font-size:9px; margin-bottom:4px;">Type your comment...</div>
+                <div style="display:flex; gap:4px; align-items:center;">
+                  <span style="color:#8a8a9a; font-size:8px;">Show for:</span>
+                  <div style="background:rgba(30,30,58,0.8); border:1px solid rgba(192,192,192,0.1); border-radius:3px; padding:2px 5px; color:#e2e2f0; font-size:9px;">4.2s</div>
+                  <button style="background:linear-gradient(135deg,#7c3aed,#5b21b6); border:none; border-radius:3px; color:white; font-size:8px; padding:2px 6px; cursor:pointer;">Save</button>
+                </div>
+              </div>
+            </div>
+            <div style="height:3px; background:rgba(167,139,250,0.3); border-radius:2px; position:relative;">
+              <div style="position:absolute; left:0; top:0; height:100%; width:40%; background:#a78bfa; border-radius:2px;"></div>
+            </div>
+          </div>
+          <span style="color:#8a8a9a; font-size:10px;">4:01</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Anchored Popover</h3>
+      <p>Small popover floats above the click point on the note lane. Compact, contextual, stays near the timeline. Playback pauses while typing.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: #0a0e27; padding: 16px; font-family: monospace; font-size: 11px;">
+      <div style="background: rgba(17,22,56,0.9); border: 1px solid rgba(192,192,192,0.06); border-radius: 4px; padding: 12px;">
+        <!-- Transport bar mock -->
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="color:#c0c0c0">⏪</span>
+          <div style="background: linear-gradient(135deg,#7c3aed,#5b21b6); width:28px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; color:white; font-size:12px;">▶</div>
+          <span style="color:#c0c0c0">⏩</span>
+          <span style="color:#e2e2f0; font-size:10px;">1:23</span>
+          <div style="flex:1; position:relative;">
+            <div style="height:10px; background:rgba(30,30,58,0.6); border-radius:4px; margin-bottom:4px;"></div>
+            <div style="height:3px; background:rgba(167,139,250,0.3); border-radius:2px;"></div>
+          </div>
+          <span style="color:#8a8a9a; font-size:10px;">4:01</span>
+        </div>
+        <!-- Inline panel below transport bar -->
+        <div style="margin-top:8px; background:rgba(30,30,58,0.7); border:1px solid rgba(124,58,237,0.4); border-radius:6px; padding:10px; display:flex; align-items:center; gap:8px;">
+          <span style="color:#a78bfa; font-size:10px; white-space:nowrap;">💬 @ 2:14</span>
+          <div style="flex:1; background:rgba(10,14,39,0.6); border:1px solid rgba(192,192,192,0.1); border-radius:4px; padding:4px 8px; color:#8a8a9a; font-size:9px;">Type your comment...</div>
+          <span style="color:#8a8a9a; font-size:9px; white-space:nowrap;">Show: <span style="color:#e2e2f0">4.2s</span></span>
+          <button style="background:linear-gradient(135deg,#7c3aed,#5b21b6); border:none; border-radius:3px; color:white; font-size:9px; padding:3px 8px; cursor:pointer;">Save</button>
+          <button style="background:transparent; border:none; color:#8a8a9a; font-size:10px; cursor:pointer;">✕</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Inline Panel (below transport bar)</h3>
+      <p>A slim input bar slides into view below the transport bar. No overlay, always visible layout. Feels integrated into the player UI.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: #0a0e27; padding: 16px; font-family: monospace; font-size: 11px;">
+      <div style="background: rgba(17,22,56,0.9); border: 1px solid rgba(192,192,192,0.06); border-radius: 4px; padding: 12px;">
+        <!-- Transport bar mock -->
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <span style="color:#c0c0c0">⏪</span>
+          <div style="background: linear-gradient(135deg,#7c3aed,#5b21b6); width:28px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; color:white; font-size:12px;">▶</div>
+          <span style="color:#c0c0c0">⏩</span>
+          <span style="color:#e2e2f0; font-size:10px;">1:23</span>
+          <div style="flex:1;">
+            <div style="height:10px; background:rgba(30,30,58,0.6); border-radius:4px; margin-bottom:4px;"></div>
+            <div style="height:3px; background:rgba(167,139,250,0.3); border-radius:2px;"></div>
+          </div>
+          <span style="color:#8a8a9a; font-size:10px;">4:01</span>
+        </div>
+      </div>
+      <!-- Modal overlay -->
+      <div style="margin-top:8px; position:relative;">
+        <div style="background:rgba(10,10,30,0.6); border-radius:6px; padding:4px; display:flex; align-items:center; justify-content:center;">
+          <div style="background:rgba(17,22,56,0.98); border:1px solid rgba(124,58,237,0.6); border-radius:8px; padding:14px 16px; width:220px; box-shadow: 0 8px 32px rgba(124,58,237,0.4);">
+            <div style="color:#a78bfa; font-size:10px; font-weight:bold; margin-bottom:8px;">💬 Add Timeline Comment</div>
+            <div style="color:#8a8a9a; font-size:8px; margin-bottom:3px;">Timestamp: <span style="color:#e2e2f0">2:14</span></div>
+            <div style="background:rgba(30,30,58,0.8); border:1px solid rgba(192,192,192,0.1); border-radius:4px; padding:6px; color:#8a8a9a; font-size:9px; margin-bottom:6px; height:30px;">Type your comment...</div>
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
+              <span style="color:#8a8a9a; font-size:8px;">Display duration:</span>
+              <div style="background:rgba(30,30,58,0.8); border:1px solid rgba(192,192,192,0.1); border-radius:3px; padding:2px 6px; color:#e2e2f0; font-size:9px; flex:1;">4.2 seconds</div>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <button style="flex:1; background:linear-gradient(135deg,#7c3aed,#5b21b6); border:none; border-radius:4px; color:white; font-size:9px; padding:4px; cursor:pointer;">Save Comment</button>
+              <button style="background:rgba(30,30,58,0.8); border:1px solid rgba(192,192,192,0.1); border-radius:4px; color:#8a8a9a; font-size:9px; padding:4px 8px; cursor:pointer;">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Modal Dialog</h3>
+      <p>A centered modal with a slightly larger form. More room for text, clear focus. More formal — better if comments tend to be longer.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top: 16px;">Click to select your preferred approach, or just tell me in the terminal.</p>

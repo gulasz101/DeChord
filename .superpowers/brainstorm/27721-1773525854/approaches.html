@@ -1,0 +1,42 @@
+<h2>Implementation Approach — How should stacking & animation work?</h2>
+<p class="subtitle">All three produce the same visual result. The difference is in complexity and smoothness.</p>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Pure CSS + JS class toggling <span style="font-size:11px;background:#166534;color:#bbf7d0;border-radius:4px;padding:2px 6px;margin-left:6px;font-weight:600">Recommended</span></h3>
+      <p>Toasts are a <code>flex-col</code> container fixed to top-left. Entry uses a CSS keyframe (<code>slideInLeft</code>), exit adds a <code>fading-out</code> class triggering a CSS fade. Author color is derived from a hash of the author name mapped to one of 8 preset gradients. Zero new dependencies.</p>
+      <div class="pros-cons" style="margin-top:10px">
+        <div class="pros"><h4>Pros</h4><ul><li>No new deps</li><li>Predictable, testable</li><li>Works with existing Tailwind setup</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>No layout animation when toasts reorder</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Framer Motion <code>AnimatePresence</code></h3>
+      <p>Each toast wrapped in a Framer Motion <code>&lt;motion.div&gt;</code>. <code>AnimatePresence</code> handles mount/unmount transitions automatically. The stack smoothly reflows when the oldest toast exits — no jumping. Already used elsewhere in the project or easy to add.</p>
+      <div class="pros-cons" style="margin-top:10px">
+        <div class="pros"><h4>Pros</h4><ul><li>Buttery layout transitions on reorder</li><li>Declarative, easy to tweak</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Adds ~40 KB dep if not already present</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>CSS <code>@starting-style</code> + <code>transition</code> (modern native)</h3>
+      <p>Uses the new CSS <code>@starting-style</code> rule (Chrome 117+, Firefox 129+) for true enter transitions on newly inserted DOM nodes. Exit via JS opacity transition. Most declarative pure-CSS solution, no JS animation logic at all.</p>
+      <div class="pros-cons" style="margin-top:10px">
+        <div class="pros"><h4>Pros</h4><ul><li>Zero JS animation code</li><li>Future-proof native approach</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Browser support still maturing</li><li>No reorder animation</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>
