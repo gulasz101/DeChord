@@ -1247,14 +1247,8 @@ export default function App() {
           band={route.band}
           project={route.project}
           song={route.song}
-          onCreateNote={(payload) => {
-            void handleCreateNote(route.song, payload);
-          }}
           onUpdateNote={(noteId, payload) => {
             void handleUpdateNote(route.song, noteId, payload);
-          }}
-          onDeleteNote={(noteId) => {
-            void handleDeleteNote(route.song, noteId);
           }}
           onSavePlaybackPrefs={(prefs) => {
             void handlePlaybackPrefsSave(route.song, prefs);

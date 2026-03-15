@@ -179,6 +179,7 @@ vi.mock("../redesign/pages/PlayerPage", async () => {
       const [editingId, setEditingId] = useState<number | null>(null);
       const [editText, setEditText] = useState("");
       const [speedPercent, setSpeedPercent] = useState(100);
+      const [showTimedNoteModal, setShowTimedNoteModal] = useState(false);
       const openNotes = song.notes?.filter((note) => !note.resolved) ?? [];
       const resolvedNotes = song.notes?.filter((note) => note.resolved) ?? [];
       return (
@@ -204,7 +205,14 @@ vi.mock("../redesign/pages/PlayerPage", async () => {
           <button type="button" onClick={() => setShowComments((v) => !v)}>Comments</button>
           {showComments && (
             <div>
-              <div title="Click to add/edit timed note" onClick={() => void onCreateNote?.({ type: "time", text: "Hit the pocket here", timestampSec: 12 })} style={{ height: 12 }} />
+              <div title="Click to add/edit timed note" onClick={() => setShowTimedNoteModal(true)} style={{ height: 12 }} />
+              {showTimedNoteModal && (
+                <div>
+                  <span>Add Timed Note</span>
+                  <input placeholder="Add your reminder..." />
+                  <button onClick={() => { void onCreateNote?.({ type: "time", text: "Hit the pocket here", timestampSec: 12 }); setShowTimedNoteModal(false); }}>Save Note</button>
+                </div>
+              )}
               <textarea aria-label="Comment Text" value={commentText} onChange={(e) => setCommentText(e.target.value)} />
               <button type="button" onClick={async () => { await onCreateNote?.({ type: "time", text: commentText, timestampSec: 0 }); setCommentText(""); }}>Save Time Note</button>
               {openNotes.map((note) => (
@@ -1326,7 +1334,7 @@ describe("App integration", () => {
       expect(screen.getByText("Tab Viewer")).toBeTruthy();
     });
 
-    fireEvent.change(screen.getByDisplayValue("100%"), { target: { value: "120" } });
+    fireEvent.change(screen.getByDisplayValue("100%"), { target: { value: "120%" } });
 
     await waitFor(() => {
       expect(savePlaybackPrefsMock).toHaveBeenCalledWith(30, expect.objectContaining({ speed_percent: 120 }));
@@ -1334,6 +1342,15 @@ describe("App integration", () => {
   });
 
   it("creates, edits, and deletes comments through the redesign player flow", async () => {
+    getSongMock.mockResolvedValue({
+      song: { id: 30, title: "The Trooper", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-09" },
+      analysis: { key: "Em", tempo: 160, duration: 48, chords: [] },
+      notes: [
+        { id: 90, type: "general", timestamp_sec: null, chord_index: null, text: "Tighten this entrance", toast_duration_sec: null, resolved: false, author_name: "Wojtek", author_avatar: "WG", user_id: 1, parent_id: null, created_at: "2026-03-10T10:00:00Z", updated_at: "2026-03-10T10:00:00Z" },
+      ],
+      playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+    });
+
     render(<App />);
 
     fireEvent.click(screen.getByText("Get Started Free"));
@@ -1361,10 +1378,13 @@ describe("App integration", () => {
       expect(screen.getByText("Tab Viewer")).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByText(/Comments/));
+    await waitFor(() => {
+      expect(screen.getByText("Comments")).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText("Comments"));
     await waitFor(() => {
       expect(screen.getByLabelText("Comment Text")).toBeTruthy();
-      expect(screen.getByText("Tighten this entrance")).toBeTruthy();
+      expect(screen.getAllByText("Tighten this entrance").length).toBeGreaterThanOrEqual(1);
     });
 
     fireEvent.change(screen.getByLabelText("Comment Text"), { target: { value: "Watch the Em push" } });
@@ -1395,6 +1415,13 @@ describe("App integration", () => {
   });
 
   it("supports direct timeline note interactions in the redesign player", async () => {
+    getSongMock.mockResolvedValue({
+      song: { id: 30, title: "The Trooper", original_filename: "demo.mp3", mime_type: "audio/mpeg", created_at: "2026-03-09" },
+      analysis: { key: "Em", tempo: 160, duration: 48, chords: [] },
+      notes: [],
+      playback_prefs: { speed_percent: 100, volume: 1, loop_start_index: null, loop_end_index: null },
+    });
+
     render(<App />);
 
     fireEvent.click(screen.getByText("Get Started Free"));
@@ -1421,6 +1448,11 @@ describe("App integration", () => {
     await waitFor(() => {
       expect(screen.getByText("Tab Viewer")).toBeTruthy();
     });
+
+    await waitFor(() => {
+      expect(screen.getByText("Comments")).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText("Comments"));
 
     const noteLane = screen.getByTitle("Click to add/edit timed note");
     Object.defineProperty(noteLane, "getBoundingClientRect", {
