@@ -8,6 +8,7 @@
     </rule>
     <rule>After every push: add a clickable commit URL to the completed task entry in the plan file.</rule>
     <rule>Delegate commit message writing and plan link updates to a subagent subprocess. Never perform these in the main session.</rule>
+    <rule>Never leave work uncommitted!</rule>
   </section>
 
   <section id="plans-and-tasks">
