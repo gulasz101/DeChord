@@ -94,6 +94,7 @@ export function BandSelectPage({
                     aria-label="Band Name"
                     value={bandName}
                     onChange={(event) => setBandName(event.target.value)}
+                    onKeyDown={(event) => { if (event.key === "Enter") void saveBand(); }}
                     className="mt-2 w-full border px-3 py-3 text-sm"
                     style={{ borderRadius: "3px", background: "rgba(10, 14, 39, 0.7)", borderColor: "rgba(192, 192, 192, 0.12)", color: "#e2e2f0" }}
                   />
@@ -152,6 +153,81 @@ export function BandSelectPage({
             </button>
           ))}
         </div>
+
+        {/* Ghost card / inline creation form — only when bands exist */}
+        {bands.length > 0 && (
+          <div className="mt-4">
+            {!isCreatingBand ? (
+              <button
+                onClick={() => setIsCreatingBand(true)}
+                className="flex w-full items-center gap-5 border p-6 text-left transition-all hover:border-purple-500/30"
+                style={{
+                  borderRadius: "6px",
+                  borderStyle: "dashed",
+                  borderColor: "rgba(124, 58, 237, 0.3)",
+                  background: "transparent",
+                }}
+              >
+                <div
+                  className="flex h-14 w-14 shrink-0 items-center justify-center text-2xl font-bold"
+                  style={{ borderRadius: "3px", background: "rgba(124, 58, 237, 0.1)", color: "#a78bfa" }}
+                >
+                  +
+                </div>
+                <span className="text-sm font-medium" style={{ color: "#a78bfa" }}>
+                  Create new band…
+                </span>
+              </button>
+            ) : (
+              <div
+                className="border p-6"
+                style={{
+                  borderRadius: "6px",
+                  background: "rgba(255, 255, 255, 0.03)",
+                  borderColor: "rgba(124, 58, 237, 0.2)",
+                }}
+              >
+                <label
+                  className="block text-xs font-medium uppercase tracking-[0.18em]"
+                  style={{ color: "#a78bfa" }}
+                >
+                  Band Name
+                  <input
+                    aria-label="Band Name"
+                    value={bandName}
+                    onChange={(event) => setBandName(event.target.value)}
+                    onKeyDown={(event) => { if (event.key === "Enter") void saveBand(); }}
+                    autoFocus
+                    className="mt-2 w-full border px-3 py-3 text-sm"
+                    style={{
+                      borderRadius: "3px",
+                      background: "rgba(10, 14, 39, 0.7)",
+                      borderColor: "rgba(192, 192, 192, 0.12)",
+                      color: "#e2e2f0",
+                    }}
+                  />
+                </label>
+                <div className="mt-4 flex gap-3">
+                  <button
+                    onClick={() => { setBandName(""); setIsCreatingBand(false); }}
+                    className="px-4 py-2 text-sm transition-colors hover:text-white"
+                    style={{ color: "#7a7a90" }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => void saveBand()}
+                    disabled={!bandName.trim() || isSavingBand}
+                    className="px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                    style={{ borderRadius: "3px", background: "linear-gradient(135deg, #14b8a6, #0f766e)" }}
+                  >
+                    Save Band
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );
