@@ -134,3 +134,139 @@ def test_list_bands_includes_archived_with_param():
     assert res.status_code == 200
     ids = [b["id"] for b in res.json()["bands"]]
     assert band_id in ids
+
+
+# ── Project rename + archive ──────────────────────────────────────────────────
+
+
+def test_patch_project_rename():
+    client = _client_with_user()
+    band_id = _get_default_band_id(client)
+    project_id = _get_default_project_id(client, band_id)
+    res = client.patch(f"/api/projects/{project_id}", json={"name": "Renamed Project"})
+    assert res.status_code == 200
+    assert res.json()["name"] == "Renamed Project"
+
+
+def test_patch_project_archive_cascades_to_songs():
+    client = _client_with_user()
+    band_id = _get_default_band_id(client)
+    project_id = _get_default_project_id(client, band_id)
+
+    res = client.patch(f"/api/projects/{project_id}", json={"archived": True})
+    assert res.status_code == 200
+    assert res.json()["archived_at"] is not None
+
+    # Default list should exclude it
+    rs = client.get(f"/api/bands/{band_id}/projects")
+    ids = [p["id"] for p in rs.json()["projects"]]
+    assert project_id not in ids
+
+
+def test_patch_project_unarchive():
+    client = _client_with_user()
+    band_id = _get_default_band_id(client)
+    project_id = _get_default_project_id(client, band_id)
+
+    client.patch(f"/api/projects/{project_id}", json={"archived": True})
+    res = client.patch(f"/api/projects/{project_id}", json={"archived": False})
+    assert res.status_code == 200
+    assert res.json()["archived_at"] is None
+
+    # Should be visible in default list again
+    rs = client.get(f"/api/bands/{band_id}/projects")
+    ids = [p["id"] for p in rs.json()["projects"]]
+    assert project_id in ids
+
+
+def test_list_projects_include_archived():
+    client = _client_with_user()
+    band_id = _get_default_band_id(client)
+    project_id = _get_default_project_id(client, band_id)
+    client.patch(f"/api/projects/{project_id}", json={"archived": True})
+
+    res = client.get(f"/api/bands/{band_id}/projects?include_archived=true")
+    ids = [p["id"] for p in res.json()["projects"]]
+    assert project_id in ids
+
+
+# ── Song rename + archive ─────────────────────────────────────────────────────
+
+
+def _get_project_songs_url(project_id: int) -> str:
+    return f"/api/projects/{project_id}/songs"
+
+
+def test_patch_song_rename():
+    """Upload a song via direct DB insert, then rename it."""
+    import app.db as db_mod
+
+    async def insert_song(project_id, user_id):
+        rs = await db_mod.execute(
+            """INSERT INTO songs (project_id, user_id, title, original_filename, audio_blob)
+               VALUES (?, ?, 'Test Song', 'test.mp3', X'')
+               RETURNING id""",
+            [project_id, user_id],
+        )
+        return int(rs.rows[0][0])
+
+    client = _client_with_user()
+    band_id = _get_default_band_id(client)
+    project_id = _get_default_project_id(client, band_id)
+    song_id = asyncio.run(insert_song(project_id, user_id=1))
+
+    res = client.patch(f"/api/songs/{song_id}", json={"title": "Renamed Song"})
+    assert res.status_code == 200
+    assert res.json()["title"] == "Renamed Song"
+    # original_filename must be unchanged
+    assert res.json()["original_filename"] == "test.mp3"
+
+
+def test_patch_song_archive():
+    import app.db as db_mod
+
+    async def insert_song(project_id, user_id):
+        rs = await db_mod.execute(
+            """INSERT INTO songs (project_id, user_id, title, original_filename, audio_blob)
+               VALUES (?, ?, 'Song To Archive', 'archive_me.mp3', X'')
+               RETURNING id""",
+            [project_id, user_id],
+        )
+        return int(rs.rows[0][0])
+
+    client = _client_with_user()
+    band_id = _get_default_band_id(client)
+    project_id = _get_default_project_id(client, band_id)
+    song_id = asyncio.run(insert_song(project_id, user_id=1))
+
+    res = client.patch(f"/api/songs/{song_id}", json={"archived": True})
+    assert res.status_code == 200
+    assert res.json()["archived_at"] is not None
+
+    # Should be hidden from default list
+    songs_res = client.get(_get_project_songs_url(project_id))
+    ids = [s["id"] for s in songs_res.json().get("songs", [])]
+    assert song_id not in ids
+
+
+def test_list_songs_include_archived():
+    import app.db as db_mod
+
+    async def insert_song(project_id, user_id):
+        rs = await db_mod.execute(
+            """INSERT INTO songs (project_id, user_id, title, original_filename, audio_blob)
+               VALUES (?, ?, 'Hidden Song', 'hidden.mp3', X'')
+               RETURNING id""",
+            [project_id, user_id],
+        )
+        return int(rs.rows[0][0])
+
+    client = _client_with_user()
+    band_id = _get_default_band_id(client)
+    project_id = _get_default_project_id(client, band_id)
+    song_id = asyncio.run(insert_song(project_id, user_id=1))
+    client.patch(f"/api/songs/{song_id}", json={"archived": True})
+
+    res = client.get(_get_project_songs_url(project_id) + "?include_archived=true")
+    ids = [s["id"] for s in res.json().get("songs", [])]
+    assert song_id in ids
