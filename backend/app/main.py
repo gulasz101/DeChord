@@ -178,6 +178,11 @@ class ProjectCreateRequest(BaseModel):
     description: str | None = Field(default=None, max_length=512)
 
 
+class BandUpdateRequest(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=200)
+    archived: bool | None = None
+
+
 def _row_to_dict(row) -> dict:
     return row.asdict() if hasattr(row, "asdict") else dict(row)
 
@@ -1634,15 +1639,17 @@ async def list_songs():
 
 
 @app.get("/api/bands")
-async def list_bands(request: Request):
+async def list_bands(request: Request, include_archived: bool = False):
     user = await _get_request_user(request)
+    archived_filter = "" if include_archived else "AND b.archived_at IS NULL"
     rows = await execute(
-        """
+        f"""
         SELECT
             b.id,
             b.name,
             b.owner_user_id,
             b.created_at,
+            b.archived_at,
             (
                 SELECT COUNT(*)
                 FROM projects p
@@ -1650,7 +1657,7 @@ async def list_bands(request: Request):
             ) AS project_count
         FROM bands b
         JOIN band_memberships bm ON bm.band_id = b.id
-        WHERE bm.user_id = ?
+        WHERE bm.user_id = ? {archived_filter}
         ORDER BY b.created_at DESC, b.id DESC
         """,
         [int(user["id"])],
@@ -1661,32 +1668,118 @@ async def list_bands(request: Request):
             "name": row[1],
             "owner_user_id": int(row[2]),
             "created_at": row[3],
-            "project_count": int(row[4]),
+            "archived_at": row[4],
+            "project_count": int(row[5]),
         }
         for row in rows.rows
     ]
     return {"bands": bands}
 
 
-@app.get("/api/bands/{band_id}/projects")
-async def list_band_projects(band_id: int, request: Request):
+@app.patch("/api/bands/{band_id}")
+async def patch_band(band_id: int, body: BandUpdateRequest, request: Request):
     user = await _get_request_user(request)
     await _require_band_membership(band_id, int(user["id"]))
+
+    rs = await execute(
+        "SELECT id, name, archived_at FROM bands WHERE id = ?", [band_id]
+    )
+    if not rs.rows:
+        raise HTTPException(status_code=404, detail="Band not found.")
+
+    updates: dict = {}
+    if body.name is not None:
+        updates["name"] = body.name
+
+    if body.archived is not None:
+        if body.archived:
+            await execute(
+                "UPDATE bands SET archived_at = CURRENT_TIMESTAMP WHERE id = ?",
+                [band_id],
+            )
+            await execute(
+                "UPDATE projects SET archived_at = CURRENT_TIMESTAMP WHERE band_id = ?",
+                [band_id],
+            )
+            await execute(
+                """UPDATE songs SET archived_at = CURRENT_TIMESTAMP
+                   WHERE project_id IN (SELECT id FROM projects WHERE band_id = ?)""",
+                [band_id],
+            )
+            await execute(
+                """UPDATE song_stems SET archived_at = CURRENT_TIMESTAMP
+                   WHERE song_id IN (
+                       SELECT s.id FROM songs s
+                       JOIN projects p ON s.project_id = p.id
+                       WHERE p.band_id = ?
+                   )""",
+                [band_id],
+            )
+        else:
+            await execute("UPDATE bands SET archived_at = NULL WHERE id = ?", [band_id])
+            await execute(
+                "UPDATE projects SET archived_at = NULL WHERE band_id = ?",
+                [band_id],
+            )
+            await execute(
+                """UPDATE songs SET archived_at = NULL
+                   WHERE project_id IN (SELECT id FROM projects WHERE band_id = ?)""",
+                [band_id],
+            )
+            await execute(
+                """UPDATE song_stems SET archived_at = NULL
+                   WHERE song_id IN (
+                       SELECT s.id FROM songs s
+                       JOIN projects p ON s.project_id = p.id
+                       WHERE p.band_id = ?
+                   )""",
+                [band_id],
+            )
+
+    if updates:
+        set_clause = ", ".join(f"{k} = ?" for k in updates)
+        await execute(
+            f"UPDATE bands SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            list(updates.values()) + [band_id],
+        )
+
+    rs2 = await execute(
+        "SELECT id, name, owner_user_id, created_at, archived_at FROM bands WHERE id = ?",
+        [band_id],
+    )
+    row = rs2.rows[0]
+    return {
+        "id": int(row[0]),
+        "name": row[1],
+        "owner_user_id": int(row[2]),
+        "created_at": row[3],
+        "archived_at": row[4],
+    }
+
+
+@app.get("/api/bands/{band_id}/projects")
+async def list_band_projects(
+    band_id: int, request: Request, include_archived: bool = False
+):
+    user = await _get_request_user(request)
+    await _require_band_membership(band_id, int(user["id"]))
+    archived_filter = "" if include_archived else "AND p.archived_at IS NULL"
     rows = await execute(
-        """
+        f"""
         SELECT
             p.id,
             p.band_id,
             p.name,
             p.description,
             p.created_at,
+            p.archived_at,
             (
                 SELECT COUNT(*)
                 FROM songs s
                 WHERE s.project_id = p.id
             ) AS song_count
         FROM projects p
-        WHERE p.band_id = ?
+        WHERE p.band_id = ? {archived_filter}
         ORDER BY p.created_at DESC, p.id DESC
         """,
         [band_id],
@@ -1701,7 +1794,8 @@ async def list_band_projects(band_id: int, request: Request):
                 "name": row[2],
                 "description": row[3],
                 "created_at": row[4],
-                "song_count": int(row[5]),
+                "archived_at": row[5],
+                "song_count": int(row[6]),
                 "unread_count": await _get_project_unread_count(
                     project_id, int(user["id"])
                 ),
