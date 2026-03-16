@@ -57,14 +57,10 @@ export function pauseAudios(audios: AudioLike[]) {
 }
 
 export async function playAudios(audios: AudioLike[]) {
-  console.log("playAudios called with:", audios.map(a => ({ src: a.src, readyState: a.readyState, networkState: a.networkState })));
   await Promise.all(audios.map((audio) => {
-    if (!audio.src || audio.src === window.location.href) {
-      console.warn("skipping audio with no src:", audio);
-      return Promise.resolve();
-    }
-    return audio.play().catch((e) => {
-      console.error("play error:", e);
+    if (!audio.src || audio.src === window.location.href) return Promise.resolve();
+    return audio.play().catch(() => {
+      // Ignore play errors - audio might not be ready
     });
   }));
 }
@@ -245,11 +241,7 @@ export function useAudioPlayer(sources: SourceConfig[]) {
 
   const play = useCallback(() => {
     const audios = Array.from(audioRefs.current.values());
-    if (audios.length === 0) {
-      console.warn("play called but no audio elements");
-      return;
-    }
-    console.log("play called with audios:", audios.map(a => ({ src: a.src, readyState: a.readyState })));
+    if (audios.length === 0) return;
     void playAudios(audios);
     setPlaying(true);
   }, []);
