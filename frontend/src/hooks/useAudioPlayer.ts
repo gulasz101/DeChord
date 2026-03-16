@@ -31,9 +31,10 @@ export function applyVolumeToAudios(
   enabledFlags: boolean[],
   volume: number,
 ) {
+  const clampedVol = Math.min(1, Math.max(0, volume));
   audios.forEach((audio, idx) => {
     const enabled = enabledFlags[idx] ?? true;
-    audio.volume = enabled ? volume : 0;
+    audio.volume = enabled ? clampedVol : 0;
   });
 }
 
@@ -56,7 +57,9 @@ export function pauseAudios(audios: AudioLike[]) {
 }
 
 export async function playAudios(audios: AudioLike[]) {
-  await Promise.all(audios.map((audio) => Promise.resolve(audio.play())));
+  const validAudios = audios.filter((audio) => audio.src && audio.src !== window.location.href);
+  if (validAudios.length === 0) return;
+  await Promise.all(validAudios.map((audio) => Promise.resolve(audio.play())));
 }
 
 export function useAudioPlayer(sources: SourceConfig[]) {
@@ -106,7 +109,7 @@ export function useAudioPlayer(sources: SourceConfig[]) {
         const progress = Math.min(1, elapsed / FADE_DURATION_MS);
         const eased = easeOutQuad(progress);
 
-        audio.volume = startVol + (endVol - startVol) * eased;
+        audio.volume = Math.min(1, Math.max(0, startVol + (endVol - startVol) * eased));
 
         if (progress < 1) {
           fadeRafRefs.current.set(key, requestAnimationFrame(tick));
@@ -187,7 +190,7 @@ export function useAudioPlayer(sources: SourceConfig[]) {
       if (prevEnabled !== undefined && prevEnabled !== nowEnabled) {
         fadeAudio(audio, source.key, nowEnabled, volume);
       } else if (prevEnabled === undefined) {
-        audio.volume = nowEnabled ? volume : 0;
+        audio.volume = nowEnabled ? Math.min(1, Math.max(0, volume)) : 0;
       }
 
       prevEnabledRef.current.set(source.key, nowEnabled);
