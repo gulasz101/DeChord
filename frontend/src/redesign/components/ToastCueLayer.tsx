@@ -19,7 +19,7 @@ export function ToastCueLayer({ toasts, exitingIds }: ToastCueLayerProps) {
   return (
     <div className="toast-container pointer-events-none">
       {toasts.map((toast) => {
-        const gradientIdx = authorGradientIndex(toast.authorName);
+        const dotIdx = authorGradientIndex(toast.authorName);
         const isExiting = exitingIds.has(toast.id);
         return (
           <div
@@ -27,13 +27,12 @@ export function ToastCueLayer({ toasts, exitingIds }: ToastCueLayerProps) {
             data-testid={`toast-${toast.id}`}
             className={[
               "toast",
-              `toast-gradient-${gradientIdx}`,
               isExiting ? "toast-exiting" : "",
             ]
               .filter(Boolean)
               .join(" ")}
           >
-            <span className="toast-author">{toast.authorName}</span>
+            <span className={`toast-dot toast-dot-${dotIdx}`} />
             <span className="toast-text">{toast.text}</span>
           </div>
         );

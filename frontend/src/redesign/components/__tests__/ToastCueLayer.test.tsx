@@ -15,12 +15,6 @@ describe("ToastCueLayer", () => {
     expect(screen.getByText("tension resolves to Dm")).toBeInTheDocument();
   });
 
-  it("renders author names", () => {
-    render(<ToastCueLayer toasts={baseToasts} exitingIds={new Set()} />);
-    expect(screen.getByText("Wojciech")).toBeInTheDocument();
-    expect(screen.getByText("Anna")).toBeInTheDocument();
-  });
-
   it("applies data-testid per toast id", () => {
     render(<ToastCueLayer toasts={baseToasts} exitingIds={new Set()} />);
     expect(screen.getByTestId("toast-1")).toBeInTheDocument();
@@ -41,11 +35,13 @@ describe("ToastCueLayer", () => {
     expect(wrapper.className).toMatch(/pointer-events-none/);
   });
 
-  it("assigns a deterministic gradient class based on author name", () => {
+  it("renders a colored dot accent based on author name", () => {
     render(<ToastCueLayer toasts={[{ id: 1, text: "x", authorName: "Wojciech" }]} exitingIds={new Set()} />);
     // "Wojciech" hash: sum of char codes % 8 — must be stable across renders
     const toast = screen.getByTestId("toast-1");
-    // gradient class follows pattern toast-gradient-{0-7}
-    expect(toast.className).toMatch(/toast-gradient-\d/);
+    // dot element has class toast-dot-{0-7}
+    const dot = toast.querySelector(".toast-dot");
+    expect(dot).toBeInTheDocument();
+    expect(dot?.className).toMatch(/toast-dot-\d/);
   });
 });
