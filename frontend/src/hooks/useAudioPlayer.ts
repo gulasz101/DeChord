@@ -57,9 +57,12 @@ export function pauseAudios(audios: AudioLike[]) {
 }
 
 export async function playAudios(audios: AudioLike[]) {
-  const validAudios = audios.filter((audio) => audio.src && audio.src !== window.location.href);
-  if (validAudios.length === 0) return;
-  await Promise.all(validAudios.map((audio) => Promise.resolve(audio.play())));
+  await Promise.all(audios.map((audio) => {
+    if (!audio.src || audio.src === window.location.href) return Promise.resolve();
+    return audio.play().catch(() => {
+      // Ignore play errors - audio might not be ready
+    });
+  }));
 }
 
 export function useAudioPlayer(sources: SourceConfig[]) {
