@@ -85,6 +85,8 @@ export function PlayerPage({
   const prevTimestamp = useRef<number>(0);
   const [noteModal, setNoteModal] = useState<NoteModalState>(null);
 
+  const [playbackMode, setPlaybackMode] = useState<"original" | "stems">("original");
+
   // Stem mixer state
   const [activeStemKeys, setActiveStemKeys] = useState<Set<string>>(() => {
     const keys = new Set<string>();
@@ -101,26 +103,31 @@ export function PlayerPage({
   const saveSignatureRef = useRef<string | null>(null);
 
   const songId = Number(song.id);
-  const playbackMode = song.stems.length > 0 ? "stems" : "full_mix";
-  const enabledByStem = useMemo(
-    () => Object.fromEntries(song.stems.map((stem) => [stem.stemKey, activeStemKeys.has(stem.stemKey)])),
-    [activeStemKeys, song.stems],
-  );
+  const enabledBySourceKey = useMemo(() => {
+    const stemEntries = song.stems
+      .filter((s) => !s.isArchived)
+      .map((s) => [s.stemKey, activeStemKeys.has(s.stemKey)] as const);
+
+    return {
+      "__full_mix__": playbackMode === "original",
+      ...Object.fromEntries(stemEntries),
+    };
+  }, [playbackMode, activeStemKeys, song.stems]);
+
   const playbackSources = useMemo(
     () => resolvePlaybackSources({
       songId: Number.isNaN(songId) ? null : songId,
-      playbackMode,
       stems: song.stems.map((stem) => ({
-        stem_key: stem.stemKey,
-        relative_path: stem.description,
-        mime_type: null,
+        stemKey: stem.stemKey,
+        relativePath: stem.description,
+        mimeType: null,
         duration: null,
       })),
-      enabledByStem,
+      enabledBySourceKey,
     }),
-    [enabledByStem, playbackMode, song.stems, songId],
+    [enabledBySourceKey, song.stems, songId],
   );
-  const audioPlayer = useAudioPlayer(playbackSources.audioSrc, playbackSources.stemSources);
+  const audioPlayer = useAudioPlayer(playbackSources.sources);
   const player = audioPlayer;
   const currentTime = audioPlayer.currentTime;
   const playing = audioPlayer.playing;
@@ -604,12 +611,13 @@ export function PlayerPage({
         {sidePanel !== "none" && (
           <aside className="w-80 shrink-0 overflow-y-auto border-l p-4" style={{ borderColor: "rgba(192, 192, 192, 0.06)", background: "rgba(17, 22, 56, 0.7)", backdropFilter: "blur(16px)" }}>
             {sidePanel === "stems" && (
-              <>
-                <div className="mb-4 flex items-center justify-between">
-                  <h3 className="text-sm" style={{ fontFamily: "Playfair Display, serif", color: "#e8e8f0" }}>Stems</h3>
-                  <span className="text-[10px]" style={{ color: "#7a7a90" }}>{activeStemKeys.size} of {activeStemCount} active</span>
-                </div>
-                <StemMixer stems={song.stems} activeStemKeys={activeStemKeys} selectedVersions={selectedVersions}
+              <StemMixer
+                  stems={song.stems}
+                  activeStemKeys={activeStemKeys}
+                  selectedVersions={selectedVersions}
+                  playbackMode={playbackMode}
+                  onPlaybackModeChange={setPlaybackMode}
+                  hasStems={song.stems.filter((s) => !s.isArchived).length > 0}
                   onToggleStem={(key) => setActiveStemKeys((prev) => {
                     const next = new Set(prev);
                     if (next.has(key)) {
@@ -619,8 +627,8 @@ export function PlayerPage({
                     }
                     return next;
                   })}
-                  onSelectVersion={(key, id) => setSelectedVersions((prev) => ({ ...prev, [key]: id }))} />
-              </>
+                  onSelectVersion={(key, id) => setSelectedVersions((prev) => ({ ...prev, [key]: id }))}
+                />
             )}
 
             {sidePanel === "comments" && (

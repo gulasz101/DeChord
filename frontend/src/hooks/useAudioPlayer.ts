@@ -1,13 +1,11 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 
-const EMPTY_STEM_SOURCES: StemSource[] = [];
-
 export interface LoopPoints {
   start: number;
   end: number;
 }
 
-export interface StemSource {
+export interface SourceConfig {
   key: string;
   url: string;
   enabled: boolean;
@@ -20,6 +18,12 @@ export interface AudioLike {
   playbackRate: number;
   play: () => Promise<void> | void;
   pause: () => void;
+}
+
+const FADE_DURATION_MS = 75;
+
+function easeOutQuad(t: number): number {
+  return 1 - (1 - t) * (1 - t);
 }
 
 export function applyVolumeToAudios(
@@ -55,33 +59,26 @@ export async function playAudios(audios: AudioLike[]) {
   await Promise.all(audios.map((audio) => Promise.resolve(audio.play())));
 }
 
-export function useAudioPlayer(src: string | null, stemSources: StemSource[] = EMPTY_STEM_SOURCES) {
-  const audioRefs = useRef<HTMLAudioElement[]>([]);
+export function useAudioPlayer(sources: SourceConfig[]) {
+  const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
   const rafRef = useRef<number>(0);
   const loopRef = useRef<LoopPoints | null>(null);
+  const fadeRafRefs = useRef<Map<string, number>>(new Map());
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [volume, setVolumeState] = useState(1);
   const [playbackRate, setPlaybackRateState] = useState(1);
   const [loop, setLoopState] = useState<LoopPoints | null>(null);
+  const [loadErrors, setLoadErrors] = useState<Set<string>>(new Set());
 
-  const sources = useMemo(
-    () => (stemSources.length > 0
-      ? stemSources.map((s) => ({ url: s.url, enabled: s.enabled }))
-      : src
-        ? [{ url: src, enabled: true }]
-        : []),
-    [stemSources, src],
-  );
-  const enabledFlags = useMemo(() => sources.map((s) => s.enabled), [sources]);
   const sourceConfigSignature = useMemo(
-    () => sources.map((s) => `${s.url}:${s.enabled ? 1 : 0}`).join("|"),
+    () => sources.map((s) => `${s.key}:${s.url}`).join("|"),
     [sources],
   );
   const enabledSignature = useMemo(
-    () => enabledFlags.map((enabled) => (enabled ? "1" : "0")).join(""),
-    [enabledFlags],
+    () => sources.map((s) => `${s.key}:${s.enabled ? 1 : 0}`).join("|"),
+    [sources],
   );
 
   const setLoop = useCallback((nextLoop: LoopPoints | null) => {
@@ -89,44 +86,118 @@ export function useAudioPlayer(src: string | null, stemSources: StemSource[] = E
     setLoopState(nextLoop);
   }, []);
 
+  const fadeAudio = useCallback(
+    (
+      audio: HTMLAudioElement,
+      key: string,
+      targetEnabled: boolean,
+      targetVolume: number,
+    ) => {
+      const existingRaf = fadeRafRefs.current.get(key);
+      if (existingRaf) cancelAnimationFrame(existingRaf);
+
+      const startVol = audio.volume;
+      const endVol = targetEnabled ? targetVolume : 0;
+      const startTime = performance.now();
+
+      const tick = (now: number) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(1, elapsed / FADE_DURATION_MS);
+        const eased = easeOutQuad(progress);
+
+        audio.volume = startVol + (endVol - startVol) * eased;
+
+        if (progress < 1) {
+          fadeRafRefs.current.set(key, requestAnimationFrame(tick));
+        } else {
+          fadeRafRefs.current.delete(key);
+        }
+      };
+
+      fadeRafRefs.current.set(key, requestAnimationFrame(tick));
+    },
+    [],
+  );
+
   useEffect(() => {
-    if (sources.length === 0) return;
-    const audios = sources.map((source) => {
-      return new Audio(source.url);
+    if (sources.length === 0) {
+      audioRefs.current.forEach((audio) => {
+        audio.pause();
+        audio.src = "";
+      });
+      audioRefs.current.clear();
+      return;
+    }
+
+    sources.forEach((source) => {
+      if (!audioRefs.current.has(source.key)) {
+        const audio = new Audio(source.url);
+
+        audio.addEventListener("error", () => {
+          setLoadErrors((prev) => new Set([...prev, source.key]));
+        });
+
+        audioRefs.current.set(source.key, audio);
+      }
     });
-    audioRefs.current = audios;
+
+    const currentKeys = new Set(sources.map((s) => s.key));
+    audioRefs.current.forEach((audio, key) => {
+      if (!currentKeys.has(key)) {
+        audio.pause();
+        audio.src = "";
+        audioRefs.current.delete(key);
+        setLoadErrors((prev) => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+      }
+    });
+
+    const primary = audioRefs.current.get(sources[0]?.key);
+    if (primary && !primary.dataset.listenersSet) {
+      primary.addEventListener("loadedmetadata", () => {
+        setDuration(primary.duration || 0);
+      });
+      primary.addEventListener("ended", () => {
+        setPlaying(false);
+      });
+      primary.dataset.listenersSet = "true";
+    }
+
     queueMicrotask(() => {
       setCurrentTime(0);
     });
 
-    const primary = audios.find((_a, idx) => sources[idx].enabled) ?? audios[0];
-    primary.addEventListener("loadedmetadata", () => {
-      setDuration(primary.duration || 0);
-    });
-    primary.addEventListener("ended", () => {
-      setPlaying(false);
-    });
-
     return () => {
-      audios.forEach((audio) => {
-        audio.pause();
-        audio.src = "";
-      });
-      audioRefs.current = [];
       cancelAnimationFrame(rafRef.current);
     };
   }, [sourceConfigSignature]);
 
   useEffect(() => {
-    applyVolumeToAudios(
-      audioRefs.current,
-      enabledFlags,
-      volume,
-    );
-  }, [volume, enabledFlags, enabledSignature]);
+    const prevEnabledRef = useRef<Map<string, boolean>>(new Map());
+
+    sources.forEach((source) => {
+      const audio = audioRefs.current.get(source.key);
+      if (!audio) return;
+
+      const prevEnabled = prevEnabledRef.current.get(source.key);
+      const nowEnabled = source.enabled;
+
+      if (prevEnabled !== undefined && prevEnabled !== nowEnabled) {
+        fadeAudio(audio, source.key, nowEnabled, volume);
+      } else if (prevEnabled === undefined) {
+        audio.volume = nowEnabled ? volume : 0;
+      }
+
+      prevEnabledRef.current.set(source.key, nowEnabled);
+    });
+  }, [enabledSignature, volume, fadeAudio]);
 
   useEffect(() => {
-    setPlaybackRateForAudios(audioRefs.current, playbackRate);
+    const audios = Array.from(audioRefs.current.values());
+    setPlaybackRateForAudios(audios, playbackRate);
   }, [playbackRate]);
 
   useEffect(() => {
@@ -136,9 +207,10 @@ export function useAudioPlayer(src: string | null, stemSources: StemSource[] = E
     }
 
     const tick = () => {
-      const audios = audioRefs.current;
+      const audios = Array.from(audioRefs.current.values());
       if (audios.length === 0) return;
-      const primary = audios.find((_a, idx) => enabledFlags[idx]) ?? audios[0];
+
+      const primary = audios[0];
       const nextLoop = loopRef.current;
 
       if (nextLoop && primary.currentTime >= nextLoop.end) {
@@ -153,17 +225,17 @@ export function useAudioPlayer(src: string | null, stemSources: StemSource[] = E
 
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [playing, loop, enabledFlags, enabledSignature]);
+  }, [playing, loop]);
 
   const play = useCallback(() => {
-    const audios = audioRefs.current;
+    const audios = Array.from(audioRefs.current.values());
     if (audios.length === 0) return;
     void playAudios(audios);
     setPlaying(true);
   }, []);
 
   const pause = useCallback(() => {
-    const audios = audioRefs.current;
+    const audios = Array.from(audioRefs.current.values());
     if (audios.length === 0) return;
     pauseAudios(audios);
     setPlaying(false);
@@ -175,21 +247,21 @@ export function useAudioPlayer(src: string | null, stemSources: StemSource[] = E
   }, [playing, play, pause]);
 
   const seek = useCallback((time: number) => {
-    const audios = audioRefs.current;
+    const audios = Array.from(audioRefs.current.values());
     if (audios.length === 0) return;
-    const primary = audios.find((_a, idx) => enabledFlags[idx]) ?? audios[0];
+    const primary = audios[0];
     const clamped = seekAudios(audios, time, primary.duration || 0);
     setCurrentTime(clamped);
-  }, [enabledFlags]);
+  }, []);
 
   const seekRelative = useCallback((delta: number) => {
-    const audios = audioRefs.current;
+    const audios = Array.from(audioRefs.current.values());
     if (audios.length === 0) return;
-    const primary = audios.find((_a, idx) => enabledFlags[idx]) ?? audios[0];
+    const primary = audios[0];
     const next = Math.max(0, Math.min(primary.duration || 0, primary.currentTime + delta));
     const clamped = seekAudios(audios, next, primary.duration || 0);
     setCurrentTime(clamped);
-  }, [enabledFlags]);
+  }, []);
 
   const setVolume = useCallback((v: number) => {
     setVolumeState(v);
@@ -199,6 +271,16 @@ export function useAudioPlayer(src: string | null, stemSources: StemSource[] = E
     setPlaybackRateState(rate);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      audioRefs.current.forEach((audio) => {
+        audio.pause();
+        audio.src = "";
+      });
+      fadeRafRefs.current.forEach((raf) => cancelAnimationFrame(raf));
+    };
+  }, []);
+
   return {
     currentTime,
     duration,
@@ -206,6 +288,7 @@ export function useAudioPlayer(src: string | null, stemSources: StemSource[] = E
     volume,
     playbackRate,
     loop,
+    loadErrors,
     play,
     pause,
     togglePlay,
