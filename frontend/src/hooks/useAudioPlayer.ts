@@ -64,6 +64,7 @@ export function useAudioPlayer(sources: SourceConfig[]) {
   const rafRef = useRef<number>(0);
   const loopRef = useRef<LoopPoints | null>(null);
   const fadeRafRefs = useRef<Map<string, number>>(new Map());
+  const prevEnabledRef = useRef<Map<string, boolean>>(new Map());
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -176,8 +177,6 @@ export function useAudioPlayer(sources: SourceConfig[]) {
   }, [sourceConfigSignature]);
 
   useEffect(() => {
-    const prevEnabledRef = useRef<Map<string, boolean>>(new Map());
-
     sources.forEach((source) => {
       const audio = audioRefs.current.get(source.key);
       if (!audio) return;
