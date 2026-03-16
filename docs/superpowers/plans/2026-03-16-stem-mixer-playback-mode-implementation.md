@@ -1,5 +1,17 @@
 # Stem Mixer Playback Mode Implementation Plan
 
+> **Status:** Tasks 1-4 COMPLETE, hotfixes applied for runtime issues
+> 
+> **Commits:**
+> - Task 1: `93a5e19` - feat(playback): unify source resolution with full_mix as first source
+> - Tasks 2-4: `612ed79` - feat(audio): add fade transitions and unified sources in useAudioPlayer
+> - Task 3 fix: `afdba55` - fix: update StemMixer import path for correct types
+> - Hotfix 1: `a6c8283` - fix: move prevEnabledRef outside useEffect (Rules of Hooks)
+> - Hotfix 2: `c8af0fc` - fix: clamp volume to [0,1] range  
+> - Hotfix 3: `5b695c2` - fix: simplified playAudios error handling
+> - Hotfix 4: `8d9c4d8` - fix: add URL updates for existing audio
+> - Hotfix 5: `41fedad` - fix: remove debug logging, keep URL update fix
+
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Enable seamless switching between original song and stems playback during playback, with individual stem mute/unmute controls featuring smooth fade transitions.
@@ -65,7 +77,7 @@ useAudioPlayer(sources: SourceConfig[])
 - Modify: `frontend/src/lib/playbackSources.ts`
 - Create: `frontend/src/lib/__tests__/playbackSources.unified.test.ts`
 
-- [ ] **Step 1: Write failing test for unified source resolution**
+- [x] **Step 1: Write failing test for unified source resolution**
 
 ```typescript
 // frontend/src/lib/__tests__/playbackSources.unified.test.ts
@@ -124,12 +136,12 @@ describe("resolvePlaybackSources unified", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd frontend && bun test src/lib/__tests__/playbackSources.unified.test.ts`
 Expected: FAIL - tests fail or types don't match
 
-- [ ] **Step 3: Update playbackSources.ts**
+- [x] **Step 3: Update playbackSources.ts**
 
 ```typescript
 // frontend/src/lib/playbackSources.ts
@@ -178,16 +190,15 @@ export function resolvePlaybackSources({
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd frontend && bun test src/lib/__tests__/playbackSources.unified.test.ts`
-Expected: All tests PASS
+Expected: PASS - 4 tests passing
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
-git add frontend/src/lib/playbackSources.ts frontend/src/lib/__tests__/playbackSources.unified.test.ts
-git commit -m "feat(playback): unify source resolution with full_mix as first source [plan: docs/superpowers/plans/2026-03-16-stem-mixer-playback-mode-implementation.md, Task 1]"
+git commit -m "feat(playback): unify source resolution with full_mix as first source [plan: docs/superpowers/plans/2026-03-16-stem-mixer-playback-mode-implementation.md, Task 1, cli: opencode, model: minimax-m2.5-free]"
 ```
 
 ---
@@ -295,12 +306,12 @@ describe("useAudioPlayer fade transitions", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd frontend && bun test src/hooks/__tests__/useAudioPlayer.fade.test.ts`
 Expected: FAIL - fade logic not implemented
 
-- [ ] **Step 3: Update useAudioPlayer.ts with fade logic**
+- [x] **Step 3: Update useAudioPlayer.ts with fade logic**
 
 ```typescript
 // frontend/src/hooks/useAudioPlayer.ts
@@ -605,17 +616,17 @@ export function useAudioPlayer(sources: SourceConfig[]) {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd frontend && bun test src/hooks/__tests__/useAudioPlayer.fade.test.ts`
 Expected: All tests PASS
 
-- [ ] **Step 5: Run existing audio player tests to ensure no regressions**
+- [x] **Step 5: Run existing audio player tests to ensure no regressions**
 
 Run: `cd frontend && bun test src/hooks/__tests__/useAudioPlayer*.test.ts`
 Expected: All tests PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/hooks/useAudioPlayer.ts frontend/src/hooks/__tests__/useAudioPlayer.fade.test.ts
