@@ -1,4 +1,4 @@
-import type { StemInfo } from "../../lib/types";
+import type { StemInfo } from "../lib/types";
 
 interface StemMixerProps {
   stems: StemInfo[];
