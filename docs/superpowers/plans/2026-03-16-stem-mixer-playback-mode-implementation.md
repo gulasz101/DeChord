@@ -10,6 +10,31 @@
 
 ---
 
+## Breaking Changes
+
+### useAudioPlayer API Change
+
+**Old signature:**
+```typescript
+useAudioPlayer(src: string | null, stemSources: StemSource[])
+```
+
+**New signature:**
+```typescript
+useAudioPlayer(sources: SourceConfig[])
+```
+
+**Migration:** All callers must be updated. PlayerPage is the only known caller.
+
+### Naming Migration
+
+| Old Name | New Name |
+|----------|----------|
+| `playbackMode: "full_mix" \| "stems"` | `playbackMode: "original" \| "stems"` |
+| `enabledByStem: Record<string, boolean>` | `enabledBySourceKey: Record<string, boolean>` |
+
+---
+
 ## File Structure
 
 ### Files to Modify
@@ -28,6 +53,7 @@
 | `frontend/src/lib/__tests__/playbackSources.unified.test.ts` | Test unified source resolution |
 | `frontend/src/hooks/__tests__/useAudioPlayer.fade.test.ts` | Test fade transitions |
 | `frontend/src/redesign/components/__tests__/StemMixer.mode.test.tsx` | Test mode toggle UI |
+| `frontend/src/redesign/pages/__tests__/PlayerPage.playbackMode.test.tsx` | Test integration |
 
 ---
 
@@ -223,6 +249,48 @@ describe("useAudioPlayer fade transitions", () => {
     // Audio volumes should have changed
     // Note: Actual verification requires mocking HTMLAudioElement
     expect(result.current).toBeDefined();
+  });
+
+  it("handles rapid toggle sequences without error", async () => {
+    const sources = [
+      { key: "stem1", url: "http://example.com/stem1.mp3", enabled: true },
+    ];
+
+    const { rerender } = renderHook(
+      ({ sources }) => useAudioPlayer(sources),
+      { initialProps: { sources } }
+    );
+
+    // Rapid toggle sequence
+    for (let i = 0; i < 10; i++) {
+      const newSources = [
+        { key: "stem1", url: "http://example.com/stem1.mp3", enabled: i % 2 === 0 },
+      ];
+      rerender({ sources: newSources });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10);
+      });
+    }
+
+    // Should not throw or leave pending animations
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+  });
+
+  it("cleans up audio elements on unmount", async () => {
+    const sources = [
+      { key: "stem1", url: "http://example.com/stem1.mp3", enabled: true },
+    ];
+
+    const { unmount } = renderHook(() => useAudioPlayer(sources));
+
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+
+    // Unmount should not throw
+    expect(() => unmount()).not.toThrow();
   });
 });
 ```
@@ -613,7 +681,7 @@ describe("StemMixer playback mode toggle", () => {
     expect(screen.queryByRole("button", { name: /original/i })).not.toBeInTheDocument();
   });
 
-  it("calls onPlaybackModeChange when mode button clicked", () => {
+  it("calls onPlaybackModeChange with 'stems' when Stems button clicked", () => {
     const onModeChange = vi.fn();
     render(
       <StemMixer
@@ -630,6 +698,25 @@ describe("StemMixer playback mode toggle", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /stems/i }));
     expect(onModeChange).toHaveBeenCalledWith("stems");
+  });
+
+  it("calls onPlaybackModeChange with 'original' when Original button clicked", () => {
+    const onModeChange = vi.fn();
+    render(
+      <StemMixer
+        stems={mockStems}
+        activeStemKeys={new Set(["bass"])}
+        selectedVersions={{}}
+        playbackMode="stems"
+        onPlaybackModeChange={onModeChange}
+        hasStems={true}
+        onToggleStem={() => {}}
+        onSelectVersion={() => {}}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /original/i }));
+    expect(onModeChange).toHaveBeenCalledWith("original");
   });
 
   it("shows stem list only in stems mode", () => {
@@ -995,9 +1082,291 @@ git commit -m "feat(player): integrate unified playback mode with StemMixer [pla
 
 ---
 
-## Chunk 5: Integration Testing and Cleanup
+## Chunk 5: Error Handling
 
-### Task 5: Run full test suite and verify behavior
+### Task 5: Add audio load error tracking
+
+**Files:**
+- Modify: `frontend/src/hooks/useAudioPlayer.ts`
+- Modify: `frontend/src/redesign/components/StemMixer.tsx`
+- Create: `frontend/src/hooks/__tests__/useAudioPlayer.error.test.ts`
+
+- [ ] **Step 1: Write failing test for error tracking**
+
+```typescript
+// frontend/src/hooks/__tests__/useAudioPlayer.error.test.ts
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { renderHook, act } from "@testing-library/react";
+import { useAudioPlayer, type SourceConfig } from "../useAudioPlayer";
+
+describe("useAudioPlayer error handling", () => {
+  let mockAudio: HTMLAudioElement;
+  const audioConstructor = vi.fn();
+
+  beforeEach(() => {
+    mockAudio = {
+      pause: vi.fn(),
+      play: vi.fn().mockResolvedValue(undefined),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dataset: {},
+    } as unknown as HTMLAudioElement;
+
+    vi.stubGlobal("Audio", audioConstructor.mockReturnValue(mockAudio));
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it("tracks load errors for failed sources", async () => {
+    const sources: SourceConfig[] = [
+      { key: "stem1", url: "http://example.com/stem1.mp3", enabled: true },
+    ];
+
+    const { result } = renderHook(() => useAudioPlayer(sources));
+
+    // Simulate error event
+    const errorListener = mockAudio.addEventListener.mock.calls.find(
+      (call) => call[0] === "error"
+    )?.[1];
+
+    if (errorListener) {
+      act(() => {
+        errorListener({ type: "error" } as Event);
+      });
+    }
+
+    // The hook should expose loadErrors state
+    expect(result.current.loadErrors).toBeDefined();
+  });
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `cd frontend && bun test src/hooks/__tests__/useAudioPlayer.error.test.ts`
+Expected: FAIL - loadErrors not exposed
+
+- [ ] **Step 3: Add error tracking to useAudioPlayer**
+
+Add to `useAudioPlayer.ts`:
+
+```typescript
+// Add new state
+const [loadErrors, setLoadErrors] = useState<Set<string>>(new Set());
+
+// In the audio creation loop, add error listener:
+sources.forEach((source) => {
+  if (!audioRefs.current.has(source.key)) {
+    const audio = new Audio(source.url);
+
+    // Add error listener
+    audio.addEventListener("error", () => {
+      setLoadErrors((prev) => new Set([...prev, source.key]));
+    });
+
+    audioRefs.current.set(source.key, audio);
+  }
+});
+
+// Clear error when source is removed
+const currentKeys = new Set(sources.map((s) => s.key));
+audioRefs.current.forEach((audio, key) => {
+  if (!currentKeys.has(key)) {
+    audio.pause();
+    audio.src = "";
+    audioRefs.current.delete(key);
+    setLoadErrors((prev) => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  }
+});
+
+// Return loadErrors in the result
+return {
+  // ... existing returns
+  loadErrors,
+};
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `cd frontend && bun test src/hooks/__tests__/useAudioPlayer.error.test.ts`
+Expected: All tests PASS
+
+- [ ] **Step 5: Add error indicator to StemMixer**
+
+In `StemMixer.tsx`, add new prop and display:
+
+```typescript
+interface StemMixerProps {
+  // ... existing props
+  loadErrors?: Set<string>;
+}
+
+// In the stem card, add after label:
+{loadErrors?.has(key) && (
+  <span className="ml-2 text-[10px] text-amber-400">⚠ Failed to load</span>
+)}
+```
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add frontend/src/hooks/useAudioPlayer.ts frontend/src/hooks/__tests__/useAudioPlayer.error.test.ts frontend/src/redesign/components/StemMixer.tsx
+git commit -m "feat(audio): add load error tracking and UI indicator [plan: docs/superpowers/plans/2026-03-16-stem-mixer-playback-mode-implementation.md, Task 5]"
+```
+
+---
+
+## Chunk 6: PlayerPage Integration Tests
+
+### Task 6: Add PlayerPage integration tests
+
+**Files:**
+- Create: `frontend/src/redesign/pages/__tests__/PlayerPage.playbackMode.test.tsx`
+
+- [ ] **Step 1: Write integration test for playback mode switching**
+
+```typescript
+// frontend/src/redesign/pages/__tests__/PlayerPage.playbackMode.test.tsx
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { PlayerPage } from "../PlayerPage";
+import type { Band, Project, Song, User } from "../../../lib/types";
+
+// Mock the audio player
+vi.mock("../../../hooks/useAudioPlayer", () => ({
+  useAudioPlayer: vi.fn(() => ({
+    currentTime: 0,
+    duration: 180,
+    playing: false,
+    volume: 1,
+    playbackRate: 1,
+    loop: null,
+    play: vi.fn(),
+    pause: vi.fn(),
+    togglePlay: vi.fn(),
+    seek: vi.fn(),
+    seekRelative: vi.fn(),
+    setVolume: vi.fn(),
+    setPlaybackRate: vi.fn(),
+    setLoop: vi.fn(),
+    loadErrors: new Set(),
+  })),
+}));
+
+const mockUser: User = {
+  id: 1,
+  name: "Test User",
+  email: "test@example.com",
+  avatar: "TU",
+};
+
+const mockBand: Band = {
+  id: 1,
+  name: "Test Band",
+  slug: "test-band",
+};
+
+const mockProject: Project = {
+  id: 1,
+  name: "Test Project",
+  slug: "test-project",
+};
+
+const mockSongWithStems: Song = {
+  id: "1",
+  title: "Test Song",
+  artist: "Test Artist",
+  key: "C",
+  tempo: 120,
+  duration: 180,
+  chords: [
+    { start: 0, end: 4, label: "C" },
+    { start: 4, end: 8, label: "G" },
+  ],
+  notes: [],
+  stems: [
+    { id: "1", stemKey: "bass", label: "Bass", sourceType: "System", uploaderName: "Admin", description: "Bass stem", version: 1, isArchived: false },
+    { id: "2", stemKey: "drums", label: "Drums", sourceType: "System", uploaderName: "Admin", description: "Drums stem", version: 1, isArchived: false },
+  ],
+};
+
+describe("PlayerPage playback mode integration", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("shows mode toggle when song has stems", async () => {
+    render(
+      <PlayerPage
+        user={mockUser}
+        band={mockBand}
+        project={mockProject}
+        song={mockSongWithStems}
+        onBack={vi.fn()}
+      />
+    );
+
+    // Open the stems panel
+    fireEvent.click(screen.getByRole("button", { name: /stems/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /original/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /stems/i })).toBeInTheDocument();
+    });
+  });
+
+  it("switches to stems mode when Stems button clicked", async () => {
+    const { container } = render(
+      <PlayerPage
+        user={mockUser}
+        band={mockBand}
+        project={mockProject}
+        song={mockSongWithStems}
+        onBack={vi.fn()}
+      />
+    );
+
+    // Open the stems panel
+    fireEvent.click(screen.getByRole("button", { name: /stems/i }));
+
+    await waitFor(() => {
+      const stemsModeButton = screen.getByRole("button", { name: /stems/i });
+      fireEvent.click(stemsModeButton);
+    });
+
+    // Stem list should be visible
+    await waitFor(() => {
+      expect(screen.getByText("Bass")).toBeInTheDocument();
+    });
+  });
+});
+```
+
+- [ ] **Step 2: Run test to verify it passes**
+
+Run: `cd frontend && bun test src/redesign/pages/__tests__/PlayerPage.playbackMode.test.tsx`
+Expected: All tests PASS
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add frontend/src/redesign/pages/__tests__/PlayerPage.playbackMode.test.tsx
+git commit -m "test(player): add playback mode integration tests [plan: docs/superpowers/plans/2026-03-16-stem-mixer-playback-mode-implementation.md, Task 6]"
+```
+
+---
+
+## Chunk 7: Integration Testing and Cleanup
+
+### Task 7: Run full test suite and verify behavior
 
 **Files:**
 - Run tests across the codebase
@@ -1027,7 +1396,7 @@ Run: `cd frontend && bun dev`
 
 ```bash
 git add -A
-git commit -m "fix: resolve test failures from playback mode integration [plan: docs/superpowers/plans/2026-03-16-stem-mixer-playback-mode-implementation.md, Task 5]"
+git commit -m "fix: resolve test failures from playback mode integration [plan: docs/superpowers/plans/2026-03-16-stem-mixer-playback-mode-implementation.md, Task 7]"
 ```
 
 ---
@@ -1040,4 +1409,6 @@ git commit -m "fix: resolve test failures from playback mode integration [plan: 
 | 2 | Fade transitions | `useAudioPlayer.ts`, test |
 | 3 | Mode toggle UI | `StemMixer.tsx`, test |
 | 4 | PlayerPage integration | `PlayerPage.tsx` |
-| 5 | Integration testing | All test files |
+| 5 | Error handling | `useAudioPlayer.ts`, `StemMixer.tsx`, test |
+| 6 | PlayerPage integration tests | Test file |
+| 7 | Integration testing | All test files |
