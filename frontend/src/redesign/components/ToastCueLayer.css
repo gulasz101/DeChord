@@ -4,24 +4,23 @@
   left: 16px;
   display: flex;
   flex-direction: column-reverse;
-  gap: 8px;
-  width: 340px;
+  gap: 10px;
+  width: 320px;
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
   z-index: 9999;
 }
 
 .toast {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border-radius: 999px;
-  padding: 8px 16px;
+  background: rgba(20, 20, 30, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 0 10px 10px 0;
+  padding: 10px 14px;
   font-size: 13px;
   color: #fff;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  max-width: 320px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   animation: slideInLeft 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -29,36 +28,39 @@
   animation: fadeOut 0.35s ease forwards;
 }
 
-.toast-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
+.toast-accent-0 { border-left: 3px solid #a78bfa; }
+.toast-accent-1 { border-left: 3px solid #60a5fa; }
+.toast-accent-2 { border-left: 3px solid #f472b6; }
+.toast-accent-3 { border-left: 3px solid #2dd4bf; }
+.toast-accent-4 { border-left: 3px solid #fbbf24; }
+.toast-accent-5 { border-left: 3px solid #38bdf8; }
+.toast-accent-6 { border-left: 3px solid #fb7185; }
+.toast-accent-7 { border-left: 3px solid #4ade80; }
 
-.toast-dot-0 { background: #a78bfa; }
-.toast-dot-1 { background: #60a5fa; }
-.toast-dot-2 { background: #f472b6; }
-.toast-dot-3 { background: #2dd4bf; }
-.toast-dot-4 { background: #fbbf24; }
-.toast-dot-5 { background: #38bdf8; }
-.toast-dot-6 { background: #fb7185; }
-.toast-dot-7 { background: #4ade80; }
+.toast-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
 
 .toast-author {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  opacity: 0.6;
-  color: #fff;
+  color: #a78bfa;
+}
+
+.toast-timestamp {
+  font-size: 10px;
+  color: #7a7a90;
 }
 
 .toast-text {
   font-size: 13px;
-  line-height: 1.4;
-  color: #fff;
-  opacity: 0.95;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 @keyframes slideInLeft {

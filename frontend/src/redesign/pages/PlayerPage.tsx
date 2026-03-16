@@ -79,7 +79,7 @@ export function PlayerPage({
   const [draftText, setDraftText] = useState("");
   const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
   const [editingText, setEditingText] = useState("");
-  const [activeToasts, setActiveToasts] = useState<Array<{ id: number; text: string; authorName: string }>>([]);
+  const [activeToasts, setActiveToasts] = useState<Array<{ id: number; text: string; authorName: string; timestampSec?: number }>>([]);
   const [exitingToastIds, setExitingToastIds] = useState<Set<number>>(new Set());
   const firedNoteIds = useRef<Set<number>>(new Set());
   const prevTimestamp = useRef<number>(0);
@@ -330,7 +330,7 @@ export function PlayerPage({
         setActiveToasts((prev) => {
           const deduped = prev.filter((t) => t.id !== toastId);
           const capped = deduped.length >= 5 ? deduped.slice(1) : deduped;
-          return [...capped, { id: toastId, text: note.text, authorName: note.authorName ?? "Unknown" }];
+          return [...capped, { id: toastId, text: note.text, authorName: note.authorName ?? "Unknown", timestampSec: note.timestampSec ?? undefined }];
         });
         setTimeout(() => {
           setExitingToastIds((prev) => new Set([...prev, toastId]));

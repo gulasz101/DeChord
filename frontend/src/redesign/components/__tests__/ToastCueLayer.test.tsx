@@ -4,8 +4,8 @@ import { describe, expect, it } from "vitest";
 import { ToastCueLayer } from "../ToastCueLayer";
 
 const baseToasts = [
-  { id: 1, text: "try the bass lower", authorName: "Wojciech" },
-  { id: 2, text: "tension resolves to Dm", authorName: "Anna" },
+  { id: 1, text: "try the bass lower", authorName: "Wojciech", timestampSec: 12.5 },
+  { id: 2, text: "tension resolves to Dm", authorName: "Anna", timestampSec: 45.0 },
 ];
 
 describe("ToastCueLayer", () => {
@@ -13,6 +13,18 @@ describe("ToastCueLayer", () => {
     render(<ToastCueLayer toasts={baseToasts} exitingIds={new Set()} />);
     expect(screen.getByText("try the bass lower")).toBeInTheDocument();
     expect(screen.getByText("tension resolves to Dm")).toBeInTheDocument();
+  });
+
+  it("renders author names in header", () => {
+    render(<ToastCueLayer toasts={baseToasts} exitingIds={new Set()} />);
+    expect(screen.getByText("Wojciech")).toBeInTheDocument();
+    expect(screen.getByText("Anna")).toBeInTheDocument();
+  });
+
+  it("renders timestamps when provided", () => {
+    render(<ToastCueLayer toasts={baseToasts} exitingIds={new Set()} />);
+    expect(screen.getByText(/· 0:12/)).toBeInTheDocument();
+    expect(screen.getByText(/· 0:45/)).toBeInTheDocument();
   });
 
   it("applies data-testid per toast id", () => {
@@ -35,13 +47,10 @@ describe("ToastCueLayer", () => {
     expect(wrapper.className).toMatch(/pointer-events-none/);
   });
 
-  it("renders a colored dot accent based on author name", () => {
+  it("renders a left-accent border based on author name", () => {
     render(<ToastCueLayer toasts={[{ id: 1, text: "x", authorName: "Wojciech" }]} exitingIds={new Set()} />);
-    // "Wojciech" hash: sum of char codes % 8 — must be stable across renders
     const toast = screen.getByTestId("toast-1");
-    // dot element has class toast-dot-{0-7}
-    const dot = toast.querySelector(".toast-dot");
-    expect(dot).toBeInTheDocument();
-    expect(dot?.className).toMatch(/toast-dot-\d/);
+    // accent class follows pattern toast-accent-{0-7}
+    expect(toast.className).toMatch(/toast-accent-\d/);
   });
 });
